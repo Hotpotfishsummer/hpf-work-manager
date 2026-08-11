@@ -1,0 +1,29 @@
+# ---- 依赖与构建产物 ----
+node_modules/
+frontend/dist/
+dist/
+build/
+
+# ---- Python ----
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# ---- 环境变量与密钥（含模板外的本地配置） ----
+.env
+.env.local
+.env.*.local
+*.local
+
+# ---- 测试/临时数据库文件 ----
+*.db
+e2e_test.db
+
+# ---- 工具元数据（WorkBuddy 项目数据，不进版本库） ----
+.workbuddy/
+
+# ---- OS ----
+.DS_Store
+Thumbs.db

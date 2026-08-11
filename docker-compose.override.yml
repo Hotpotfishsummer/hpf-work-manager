@@ -1,0 +1,30 @@
+# 开发编排（覆盖生产配置）：源码挂载 + 热更新
+# 用法：docker compose -f docker-compose.yml -f docker-compose.override.yml up
+
+services:
+  backend:
+    build:
+      context: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-hpf}:${POSTGRES_PASSWORD:-hpf}@postgres:5432/${POSTGRES_DB:-hpf_work}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-only-for-local}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-10080}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+
+  frontend:
+    build:
+      context: ./frontend
+      target: build # 复用 Dockerfile 的 node 构建阶段跑 vite dev server
+    command: npm run dev -- --host 0.0.0.0
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # 匿名卷保护容器内 node_modules
+    ports:
+      - "8080:8080"
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8000

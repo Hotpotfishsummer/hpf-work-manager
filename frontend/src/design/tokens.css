@@ -1,0 +1,79 @@
+/* ============================================================
+   BMW Design Tokens
+   源自项目根目录 DESIGN.md（awesome-design-md / bmw 企业站风格）
+   规则：组件内一律引用 CSS 变量，禁止内联 hex。
+   ============================================================ */
+
+:root {
+  /* ---- Colors（colors 区块，token 值逐字取自 DESIGN.md）---- */
+  --bmw-primary: #1c69d4;            /* BMW corporate blue — 唯一主行动色 */
+  --bmw-primary-active: #0653b6;     /* 按钮按下态 */
+  --bmw-primary-disabled: #d6d6d6;   /* 禁用态底色 */
+  --bmw-ink: #262626;                /* 标题/主文字 */
+  --bmw-body: #3c3c3c;               /* 正文 */
+  --bmw-body-strong: #1a1a1a;        /* 强调段落 */
+  --bmw-muted: #6b6b6b;              /* 次要文字/说明 */
+  --bmw-muted-soft: #9a9a9a;         /* 禁用文字 */
+  --bmw-hairline: #e6e6e6;           /* 1px 分隔线/描边 */
+  --bmw-hairline-strong: #cccccc;    /* 强调描边 */
+  --bmw-canvas: #ffffff;             /* 页面默认底色 */
+  --bmw-surface-soft: #f7f7f7;       /* 页脚/次级条带 */
+  --bmw-surface-card: #fafafa;       /* 卡片图块底板 */
+  --bmw-surface-strong: #ebebeb;     /* 重灰分隔 */
+  --bmw-surface-dark: #1a2129;       /* 深海军蓝 — 仅用于 hero 横幅 */
+  --bmw-surface-dark-elevated: #262e38; /* 深色 hero 上的嵌套卡片 */
+  --bmw-on-primary: #ffffff;
+  --bmw-on-dark: #ffffff;
+  --bmw-on-dark-soft: #bbbbbb;
+  --bmw-success: #22c55e;            /* 已完成/成功 */
+  --bmw-warning: #f59e0b;            /* 警告/临期 */
+  --bmw-error: #dc2626;              /* 延期/错误 */
+
+  /* M 三色条纹 —— 仅 M 运动场景，本应用不使用（保留注释防误用） */
+  /* --bmw-m-blue-light: #0066b1; --bmw-m-blue-dark: #1c69d4; --bmw-m-red: #e22718; */
+
+  /* ---- Typography（BMW Type Next Latin 授权字体 → 用 Inter 700/300 替代）---- */
+  --bmw-font: 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, sans-serif;
+
+  /* 字号阶梯（display-xl 64 → caption 12），字距一律 0，无负字距 */
+  --bmw-text-display-xl: 64px;
+  --bmw-text-display-lg: 48px;
+  --bmw-text-display-md: 32px;
+  --bmw-text-display-sm: 24px;
+  --bmw-text-title-lg: 20px;
+  --bmw-text-title-md: 18px;
+  --bmw-text-title-sm: 16px;
+  --bmw-text-body-md: 16px;
+  --bmw-text-body-sm: 14px;
+  --bmw-text-caption: 12px;
+  --bmw-text-button: 14px;
+  --bmw-text-nav: 14px;
+
+  --bmw-weight-display: 700;   /* 展示/标题/按钮/导航 */
+  --bmw-weight-body: 300;      /* 正文 Light —— 700/300 对比是品牌签名，系统无 500 */
+  --bmw-weight-caption: 400;   /* caption/nav 中性上下文才用 400 */
+
+  /* ---- Shapes：圆角二元制 —— 一切矩形 0px，仅圆形图标按钮用 full ---- */
+  --bmw-radius-none: 0px;
+  --bmw-radius-full: 9999px;
+
+  /* ---- Spacing（8px 基准）---- */
+  --bmw-space-xxs: 4px;
+  --bmw-space-xs: 8px;
+  --bmw-space-sm: 12px;
+  --bmw-space-md: 16px;
+  --bmw-space-lg: 24px;
+  --bmw-space-xl: 32px;
+  --bmw-space-xxl: 48px;
+  --bmw-space-section: 80px;
+
+  /* ---- Components（按钮/输入框规格）---- */
+  --bmw-control-height: 48px;        /* 按钮/输入框统一高度 ≥ WCAG AAA */
+  --bmw-button-padding: 14px 32px;   /* 主按钮内边距 */
+  --bmw-input-padding: 14px 16px;    /* 输入框内边距 */
+  --bmw-card-padding: 24px;          /* 详情卡片内边距 */
+  --bmw-card-padding-sm: 16px;       /* 紧凑卡片内边距 */
+  --bmw-content-max: 1440px;         /* 内容最大宽度，居中 */
+  --bmw-nav-height: 64px;            /* 顶栏高度 */
+}

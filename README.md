@@ -1,0 +1,98 @@
+# HPF Work Manager
+
+任务 / 项目管理与进度追踪 Web 应用。前后端分离架构，前端 Vue 3 + TypeScript，后端 Python FastAPI，全容器化部署（Docker Compose）。
+
+UI 遵循 **BMW 企业设计风格**（见根目录 [`DESIGN.md`](./DESIGN.md)，来自 awesome-design-md 设计系统库）。
+
+## 技术栈
+
+| 层 | 技术 |
+|---|---|
+| 前端 | Vue 3.5 · Vite · TypeScript · Pinia · Vue Router · Element Plus · frappe-gantt (MIT) · ECharts 5 · Inter 字体 |
+| 后端 | Python 3.12 · FastAPI · SQLAlchemy 2.0 (async) · asyncpg · Alembic · PyJWT · passlib[bcrypt] |
+| 数据库 | PostgreSQL 16 |
+| 部署 | Docker Compose（frontend/nginx + backend/uvicorn + postgres） |
+
+## 核心功能
+
+- **项目管理**：项目 CRUD、起止日期、归档、里程碑
+- **任务管理**：任务 CRUD、状态流转（待办/进行中/已完成）、优先级、进度百分比、预估工时（预留）、批量更新、依赖关系
+- **进度追踪**：
+  - 项目进度 = 已完成任务数 / 总任务数（实时计算）
+  - 甘特图（frappe-gantt，BMW 样式定制，延期任务标红）
+  - 燃尽图（ECharts：期望线 + 实际线，基于 completed_at 推导，无快照表）
+  - 延期预警（后端派生，前端三处高亮：概览/看板/甘特图）
+- **认证**：注册/登录，JWT（7 天有效期，个人/小团队场景）
+
+## 目录结构
+
+```
+├── docker-compose.yml           # 生产编排
+├── docker-compose.override.yml  # 开发编排（热更新）
+├── .env.example                 # 环境变量模板
+├── DESIGN.md                    # BMW 设计系统（UI 唯一设计源）
+├── frontend/                    # Vue 3 前端
+└── backend/                     # FastAPI 后端
+```
+
+## 快速启动（Docker Compose）
+
+```bash
+# 1. 准备环境变量
+cp .env.example .env
+# 编辑 .env，务必修改 SECRET_KEY（生成方式见文件注释）
+
+# 2. 生产模式：一键启动
+docker compose up -d --build
+# 访问 http://localhost:8080
+
+# 3. 开发模式：源码挂载 + 热更新
+docker compose -f docker-compose.yml -f docker-compose.override.yml up --build
+# 前端 http://localhost:8080（vite dev server，代理 /api 到 backend）
+# 后端 http://localhost:8000/docs（Swagger 文档）
+```
+
+首次启动后端容器会自动执行 `alembic upgrade head` 建表。停止：`docker compose down`（数据保存在 `pgdata` 卷中）。
+
+## 本地开发（不使用 Docker）
+
+```bash
+# 后端
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -e .
+cp .env.example .env   # 按需修改 DATABASE_URL
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
+
+# 前端（新终端）
+cd frontend
+npm install
+npm run dev            # http://localhost:8080，/api 自动代理到 :8000
+```
+
+## API 一览
+
+| 模块 | 端点 |
+|---|---|
+| 认证 | `POST /api/auth/register` · `POST /api/auth/login` · `GET /api/auth/me` |
+| 项目 | `GET/POST /api/projects` · `GET/PUT/DELETE /api/projects/{id}` |
+| 里程碑 | `GET/POST /api/projects/{pid}/milestones` · `PUT/DELETE /api/milestones/{id}` |
+| 任务 | `GET/POST /api/projects/{pid}/tasks` · `GET/PUT/DELETE /api/tasks/{id}` · `POST /api/tasks/bulk` · `GET/POST/DELETE /api/tasks/{id}/dependencies` |
+| 统计 | `GET /api/projects/{pid}/stats` · `.../burndown` · `.../gantt` |
+
+完整交互式文档：启动后访问 `http://localhost:8000/docs`。
+
+## 设计系统
+
+UI 视觉规范由根目录 `DESIGN.md`（BMW 企业风格）约束，前端通过 `src/design/tokens.css` 落地为 CSS 变量，组件一律引用变量、禁止内联色值。要点：
+
+- **主色**：BMW Blue `#1c69d4`（唯一行动色）；**形状**：全局 0px 直角
+- **字体**：Inter 替代授权字体 BMW Type Next Latin，700 展示 / 300 正文对比
+- **无阴影**：深度来自色块对比（深海军蓝 hero `#1a2129`）+ hairline 分隔线
+- 状态色映射：done→绿 / 进行中→蓝 / 待办→灰 / **延期→红**
+
+## 说明与范围外
+
+- 本仓库 `DESIGN.md` 仅为设计风格参考，不含任何宝马商标图形资产
+- 当前范围不含：RBAC 权限、评论/附件/通知、工时加权进度（仅预留字段）、进度历史快照、K8s 部署

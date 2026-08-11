@@ -1,0 +1,54 @@
+# 生产编排：frontend(nginx) + backend(uvicorn) + postgres
+# 用法：cp .env.example .env 并修改密钥后 docker compose up -d --build
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hpf}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hpf}
+      POSTGRES_DB: ${POSTGRES_DB:-hpf_work}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hpf} -d ${POSTGRES_DB:-hpf_work}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-hpf}:${POSTGRES_PASSWORD:-hpf}@postgres:5432/${POSTGRES_DB:-hpf_work}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-10080}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app
+    # 生产环境后端不对外暴露，仅由 nginx 内部访问；需要调试时取消注释：
+    # ports:
+    #   - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    networks:
+      - app
+
+volumes:
+  pgdata:
+
+networks:
+  app:
+    driver: bridge

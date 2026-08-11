@@ -1,0 +1,24 @@
+# ---------- 构建阶段：安装项目与依赖（含原生编译） ----------
+FROM python:3.12-slim AS builder
+WORKDIR /build
+COPY pyproject.toml ./
+COPY app ./app
+RUN pip install --no-cache-dir --prefix=/install .
+
+# ---------- 运行阶段：剥离构建产物，镜像更小 ----------
+FROM python:3.12-slim
+WORKDIR /app
+
+# 非 root 运行
+RUN useradd --create-home --shell /usr/sbin/nologin appuser
+
+COPY --from=builder /install /usr/local
+COPY alembic ./alembic
+COPY alembic.ini ./
+COPY app ./app
+
+USER appuser
+EXPOSE 8000
+
+# 启动时先执行数据库迁移，再启动 API
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

@@ -1,0 +1,76 @@
+/* ============================================================
+   全局基础样式（BMW 企业风格）
+   白底 canvas、正文 Light 300、无阴影、直角
+   ============================================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--bmw-font);
+  font-weight: var(--bmw-weight-body);
+  font-size: var(--bmw-text-body-md);
+  color: var(--bmw-body);
+  background-color: var(--bmw-canvas);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: 0;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--bmw-font);
+  font-weight: var(--bmw-weight-display);
+  color: var(--bmw-ink);
+  letter-spacing: 0;
+}
+
+a {
+  color: var(--bmw-primary);
+  text-decoration: none;
+}
+a:hover { color: var(--bmw-primary-active); }
+
+/* UPPERCASE 内联文字链接（LEARN MORE 风格） */
+.text-link-upper {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--bmw-ink);
+  cursor: pointer;
+  user-select: none;
+  background: none;
+  border: none;
+  padding: 0;
+}
+.text-link-upper:hover { color: var(--bmw-primary); }
+.text-link-upper .chev { margin-left: 4px; }
+
+/* BMW 直角卡片（无阴影，深度来自色块对比） */
+.bmw-card {
+  background-color: var(--bmw-canvas);
+  border: 1px solid var(--bmw-hairline);
+  border-radius: var(--bmw-radius-none);
+  padding: var(--bmw-card-padding);
+}
+
+/* 状态色文字（语义映射：done→success / 进行中→primary / 待办→muted / 延期→error） */
+.status-text-success { color: var(--bmw-success); }
+.status-text-primary { color: var(--bmw-primary); }
+.status-text-muted { color: var(--bmw-muted); }
+.status-text-error { color: var(--bmw-error); font-weight: 700; }
+
+/* 页面内容容器：最大 1440px 居中 */
+.page-container {
+  max-width: var(--bmw-content-max);
+  margin: 0 auto;
+  padding: 0 var(--bmw-space-lg);
+}
