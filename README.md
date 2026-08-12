@@ -20,12 +20,13 @@ UI 遵循 **BMW 企业设计风格**（见根目录 [`DESIGN.md`](./DESIGN.md)�
 | 文档 | 内容 |
 |---|---|
 | [01 · 架构设计](./docs/01-架构设计.md) | 技术选型、系统架构、目录结构、核心设计决策 |
-| [02 · 数据模型](./docs/02-数据模型.md) | 五表结构、索引、级联策略、状态机、迁移管理 |
+| [02 · 数据模型](./docs/02-数据模型.md) | 六表结构、索引、级联策略、状态机、迁移管理 |
 | [03 · API 参考](./docs/03-API参考.md) | 全部端点、认证、状态流转规则、错误码 |
 | [04 · 前端指南](./docs/04-前端指南.md) | 前端架构、页面、组件、设计系统落地 |
 | [05 · 部署指南](./docs/05-部署指南.md) | Docker 部署、环境变量、排障 |
 | [06 · 开发指南](./docs/06-开发指南.md) | 环境搭建、测试、代码约定、扩展路线 |
 | [07 · VS Code 调试](./docs/07-VSCode开发调试.md) | 一键启动、断点调试（前端/后端/全栈） |
+| [08 · AI 接入指南](./docs/08-AI接入指南.md) | 让 AI 编码工具通过 MCP / API Key 自动更新进度，SSE 实时同步 |
 
 ## 核心功能
 
@@ -37,6 +38,10 @@ UI 遵循 **BMW 企业设计风格**（见根目录 [`DESIGN.md`](./DESIGN.md)�
   - 燃尽图（ECharts：期望线 + 实际线，基于 completed_at 推导，无快照表）
   - 延期预警（后端派生，前端三处高亮：概览/看板/甘特图）
 - **认证**：注册/登录，JWT（7 天有效期，个人/小团队场景）
+- **AI 工具接入**：
+  - **API Key**：长期有效、可撤销的机器凭证（创建 `/api/keys`，换 JWT `/api/keys/exchange`）
+  - **MCP Server**：AI 编码工具零适配接入（`{base}/mcp`，Streamable HTTP），19 个工具覆盖项目/里程碑/任务/依赖/统计
+  - **SSE 实时推送**：AI 更新后自动广播到前端，多工具/多机器进度实时一致（`/api/events/stream`）
 
 ## 目录结构
 
@@ -92,10 +97,13 @@ npm run dev            # http://localhost:8080，/api 自动代理到 :8000
 | 模块 | 端点 |
 |---|---|
 | 认证 | `POST /api/auth/register` · `POST /api/auth/login` · `GET /api/auth/me` |
+| API Key | `GET/POST /api/keys` · `DELETE /api/keys/{id}` · `POST /api/keys/exchange` |
 | 项目 | `GET/POST /api/projects` · `GET/PUT/DELETE /api/projects/{id}` |
 | 里程碑 | `GET/POST /api/projects/{pid}/milestones` · `PUT/DELETE /api/milestones/{id}` |
 | 任务 | `GET/POST /api/projects/{pid}/tasks` · `GET/PUT/DELETE /api/tasks/{id}` · `POST /api/tasks/bulk` · `GET/POST/DELETE /api/tasks/{id}/dependencies` |
 | 统计 | `GET /api/projects/{pid}/stats` · `.../burndown` · `.../gantt` |
+| 实时推送 | `GET /api/events/stream?project_id={pid}`（SSE） |
+| MCP | `{base}/mcp`（Streamable HTTP，AI 工具接入） |
 
 完整交互式文档：启动后访问 `http://localhost:8000/docs`。
 
@@ -112,3 +120,4 @@ UI 视觉规范由根目录 `DESIGN.md`（BMW 企业风格）约束，前端通�
 
 - 本仓库 `DESIGN.md` 仅为设计风格参考，不含任何宝马商标图形资产
 - 当前范围不含：RBAC 权限、评论/附件/通知、工时加权进度（仅预留字段）、进度历史快照、K8s 部署
+- AI 写操作当前为**完整 CRUD** 权限（无细粒度分级），请仅向可信工具发放 API Key

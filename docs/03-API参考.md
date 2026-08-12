@@ -146,7 +146,55 @@
 | 状态码 | 场景 |
 |---|---|
 | 400 | 重复注册、重复/自依赖、项目起止日期异常、业务校验 |
-| 401 | 未登录 / token 失效 / 凭据错误 |
+| 401 | 未登录 / token 失效 / 凭据错误 / API Key 无效 |
 | 404 | 资源不存在或无权限（统一 404 防探测） |
 | 422 | 请求体字段校验失败（枚举/长度/范围） |
 | 204 | 删除/批量操作成功（无响应体） |
+
+## 8. API Key（AI 工具接入）
+
+> AI 工具使用长期有效的 API Key，避免 7 天 JWT 过期。Key 只在创建时返回一次，落库仅存哈希；可随时撤销。
+
+### POST /keys — 创建（需登录）
+```json
+// 请求
+{ "name": "Claude Code" }
+// 响应 201 —— key 仅此一次返回
+{ "id": 1, "name": "Claude Code", "key": "hpf_a1b2c3_<64位十六进制>", "prefix": "a1b2c3" }
+```
+
+### GET /keys — 列表（需登录）
+```json
+[ { "id": 1, "name": "Claude Code", "prefix": "a1b2c3", "created_at": "...", "last_used_at": null, "revoked_at": null } ]
+```
+
+### DELETE /keys/{id} — 撤销（需登录）
+- 撤销后该 Key 立即失效，无法恢复 → `204`
+
+### POST /keys/exchange — 用 API Key 换 JWT
+```json
+// 请求
+{ "key": "hpf_a1b2c3_<...>" }
+// 响应 200 —— 返回短期 JWT，可调用既有 /api 接口
+{ "access_token": "<jwt>" }
+```
+- 供不方便直接跑 MCP 的脚本/工具使用；失败 → `401`
+
+> **两种使用方式**：① 通过 MCP Server（推荐，见 `08-AI接入指南.md`）；② 通过 `/keys/exchange` 换 JWT 后调 REST。
+
+## 9. SSE 实时推送（进度同步）
+
+### GET /events/stream?project_id={pid} — 项目变更事件流（需登录）
+- 长连接，`text/event-stream`。任一写操作（项目/里程碑/任务/依赖）后推送 `project-update` 事件。
+- 事件格式（`data` 字段为 JSON）：
+```json
+{ "type": "updated", "entity": "task", "entity_id": 42, "project_id": 1, "ts": "2026-08-12T05:41:00+00:00" }
+```
+- `entity` ∈ `project`/`milestone`/`task`；`type` ∈ `created`/`updated`/`deleted`
+- 每 25s 发送 `ping` 心跳保活；前端可据此自动刷新受影响项目。
+
+## 10. MCP Server（AI 工具）
+
+- 端点：`{base}/mcp`（Streamable HTTP 传输，兼容 SSE）
+- 认证：`Authorization: Bearer <API Key 或 JWT>`
+- 工具清单与用法见 `08-AI接入指南.md`
