@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7  # 个人/小团队：7 天，无需 refresh token
     cors_origins: str = "http://localhost:8080,http://localhost:3000"
+    mcp_enabled: bool = True
+    mcp_path: str = "/mcp"
+    # MCP DNS 防重绑定的允许 Host（逗号分隔）；空则从 CORS_ORIGINS 推导
+    mcp_allowed_hosts: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -8,6 +8,12 @@ from app.schemas.task import (
     TaskBulkUpdate,
     TaskOut,
 )
+from app.schemas.api_key import (
+    ApiKeyCreate,
+    ApiKeyOut,
+    ApiKeyCreated,
+    ApiKeyIssueToken,
+)
 from app.schemas.stats import (
     OverdueTask,
     ProjectStats,
@@ -32,6 +38,10 @@ __all__ = [
     "TaskUpdate",
     "TaskBulkUpdate",
     "TaskOut",
+    "ApiKeyCreate",
+    "ApiKeyOut",
+    "ApiKeyCreated",
+    "ApiKeyIssueToken",
     "OverdueTask",
     "ProjectStats",
     "BurndownPoint",
