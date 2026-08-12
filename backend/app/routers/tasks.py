@@ -5,7 +5,7 @@ from app.deps import CurrentUser, DbDep
 from app.models import Project, Task, TaskDependency
 from app.routers.projects import _get_owned_project
 from app.schemas import TaskBulkUpdate, TaskCreate, TaskOut, TaskUpdate
-from app.services.stats import is_overdue
+from app.services.tasks import apply_task_update, to_out
 from app.utils.time import utcnow
 
 router = APIRouter(tags=["tasks"])
@@ -24,12 +24,6 @@ async def _get_task(db: DbDep, user: CurrentUser, task_id: int) -> Task:
     return task
 
 
-def _to_out(task: Task) -> TaskOut:
-    out = TaskOut.model_validate(task)
-    out.overdue = is_overdue(task)
-    return out
-
-
 @router.get("/projects/{project_id}/tasks", response_model=list[TaskOut])
 async def list_tasks(
     project_id: int,
@@ -43,7 +37,7 @@ async def list_tasks(
     if status_filter:
         stmt = stmt.where(Task.status == status_filter)
     tasks = (await db.execute(stmt.order_by(Task.created_at.desc()))).scalars().all()
-    outs = [_to_out(t) for t in tasks]
+    outs = [to_out(t) for t in tasks]
     if overdue:
         outs = [t for t in outs if t.overdue]
     return outs
@@ -72,12 +66,12 @@ async def create_task(
     db.add(task)
     await db.commit()
     await db.refresh(task)
-    return _to_out(task)
+    return to_out(task)
 
 
 @router.get("/tasks/{task_id}", response_model=TaskOut)
 async def get_task(task_id: int, user: CurrentUser, db: DbDep):
-    return _to_out(await _get_task(db, user, task_id))
+    return to_out(await _get_task(db, user, task_id))
 
 
 @router.put("/tasks/{task_id}", response_model=TaskOut)
@@ -86,27 +80,10 @@ async def update_task(
 ):
     task = await _get_task(db, user, task_id)
     data = payload.model_dump(exclude_unset=True)
-
-    # 状态流转自动维护 progress / completed_at
-    if "status" in data:
-        if data["status"] == "done":
-            task.status = "done"
-            task.progress = 100
-            task.completed_at = task.completed_at or utcnow()
-        else:
-            task.status = data["status"]
-            task.completed_at = None
-    if "progress" in data and task.status != "done":
-        task.progress = max(0, min(100, data["progress"]))
-
-    for key in ("name", "description", "milestone_id", "priority",
-                "start_date", "due_date", "estimated_hours"):
-        if key in data:
-            setattr(task, key, data[key])
-
+    apply_task_update(task, data)
     await db.commit()
     await db.refresh(task)
-    return _to_out(task)
+    return to_out(task)
 
 
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -131,20 +108,7 @@ async def bulk_update(payload: TaskBulkUpdate, user: CurrentUser, db: DbDep):
     )
     data = payload.data.model_dump(exclude_unset=True)
     for task in tasks:
-        if "status" in data:
-            if data["status"] == "done":
-                task.status = "done"
-                task.progress = 100
-                task.completed_at = task.completed_at or utcnow()
-            else:
-                task.status = data["status"]
-                task.completed_at = None
-        if "progress" in data and task.status != "done":
-            task.progress = max(0, min(100, data["progress"]))
-        for key in ("name", "description", "milestone_id", "priority",
-                    "start_date", "due_date", "estimated_hours"):
-            if key in data:
-                setattr(task, key, data[key])
+        apply_task_update(task, data)
     await db.commit()
 
 

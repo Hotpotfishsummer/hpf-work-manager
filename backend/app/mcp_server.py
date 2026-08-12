@@ -1,0 +1,584 @@
+"""MCP Server：让 AI 编码工具通过 MCP 协议读写项目数据。
+
+- 通过 Streamable HTTP 传输暴露（FastMCP.streamable_http_app()）
+- 认证由外层 ASGI 中间件完成，将解析出的用户名写入 contextvar
+- 工具复用 services 层与模型，避免业务逻辑分叉
+"""
+
+import contextvars
+from datetime import date
+from urllib.parse import urlparse
+
+from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
+from sqlalchemy import select
+
+from app.config import settings
+from app.core.events import publish
+from app.database import AsyncSessionLocal
+from app.models import Milestone, Project, Task, TaskDependency, User
+from app.schemas import (
+    MilestoneCreate,
+    ProjectCreate,
+    TaskCreate,
+)
+from app.services.stats import get_burndown, get_gantt_data, get_project_stats
+from app.services.tasks import apply_task_update, to_out
+from app.utils.time import utcnow
+
+# 由 ASGI 中间件在每次请求时写入当前认证用户名
+current_username: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "mcp_current_username", default=None
+)
+
+def _allowed_hosts() -> list[str]:
+    """MCP DNS 防重绑定允许的 Host 列表。显式配置优先，否则从 CORS 源推导。"""
+    if settings.mcp_allowed_hosts.strip():
+        return [h.strip() for h in settings.mcp_allowed_hosts.split(",") if h.strip()]
+    hosts = set()
+    for raw in settings.cors_origin_list:
+        host = urlparse(raw).netloc
+        if host:
+            hosts.add(host)
+    hosts.add("localhost")
+    return list(hosts)
+
+
+mcp = FastMCP(
+    "HPF Work Manager",
+    streamable_http_path="/",
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=bool(_allowed_hosts()),
+        allowed_hosts=_allowed_hosts(),
+    ),
+    instructions=(
+        "HPF 任务/项目管理与进度追踪 MCP 服务。"
+        "提供项目、里程碑、任务、依赖与统计数据的读写能力，"
+        "AI 工具可在编码过程中自动维护任务状态与进度。"
+    ),
+)
+
+
+async def _get_user(db, username: str) -> User:
+    user = (
+        await db.execute(select(User).where(User.username == username))
+    ).scalar_one_or_none()
+    if user is None:
+        raise ValueError("当前用户不存在")
+    return user
+
+
+async def _require_project(db, username: str, project_id: int) -> Project:
+    user = await _get_user(db, username)
+    project = (
+        await db.execute(
+            select(Project).where(
+                Project.id == project_id, Project.owner_id == user.id
+            )
+        )
+    ).scalar_one_or_none()
+    if project is None:
+        raise ValueError(f"项目 {project_id} 不存在")
+    return project
+
+
+async def _require_task(db, username: str, task_id: int) -> Task:
+    user = await _get_user(db, username)
+    task = (
+        await db.execute(
+            select(Task)
+            .join(Project, Task.project_id == Project.id)
+            .where(Task.id == task_id, Project.owner_id == user.id)
+        )
+    ).scalar_one_or_none()
+    if task is None:
+        raise ValueError(f"任务 {task_id} 不存在")
+    return task
+
+
+def _project_dict(p: Project) -> dict:
+    return {
+        "id": p.id,
+        "name": p.name,
+        "description": p.description,
+        "status": p.status,
+        "start_date": p.start_date.isoformat() if p.start_date else None,
+        "end_date": p.end_date.isoformat() if p.end_date else None,
+        "created_at": p.created_at.isoformat() if p.created_at else None,
+    }
+
+
+def _milestone_dict(m: Milestone) -> dict:
+    return {
+        "id": m.id,
+        "project_id": m.project_id,
+        "name": m.name,
+        "due_date": m.due_date.isoformat() if m.due_date else None,
+        "status": m.status,
+        "created_at": m.created_at.isoformat() if m.created_at else None,
+    }
+
+
+def _task_dict(t: Task) -> dict:
+    return {
+        "id": t.id,
+        "project_id": t.project_id,
+        "milestone_id": t.milestone_id,
+        "name": t.name,
+        "description": t.description,
+        "status": t.status,
+        "priority": t.priority,
+        "progress": t.progress,
+        "start_date": t.start_date.isoformat() if t.start_date else None,
+        "due_date": t.due_date.isoformat() if t.due_date else None,
+        "completed_at": t.completed_at.isoformat() if t.completed_at else None,
+        "estimated_hours": t.estimated_hours,
+        "created_at": t.created_at.isoformat() if t.created_at else None,
+    }
+
+
+# ---------- 项目 ----------
+
+
+@mcp.tool()
+async def list_projects() -> list[dict]:
+    """列出当前用户的所有项目。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        user = await _get_user(db, username)
+        rows = (
+            (
+                await db.execute(
+                    select(Project)
+                    .where(Project.owner_id == user.id)
+                    .order_by(Project.created_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return [_project_dict(p) for p in rows]
+
+
+@mcp.tool()
+async def get_project(project_id: int) -> dict:
+    """获取单个项目详情。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        p = await _require_project(db, username, project_id)
+        return _project_dict(p)
+
+
+@mcp.tool()
+async def create_project(
+    name: str, description: str | None = None,
+    start_date: str | None = None, end_date: str | None = None,
+) -> dict:
+    """创建项目。name 必填；start_date/end_date 为 ISO 日期字符串。"""
+    username = _username()
+    payload = ProjectCreate(
+        name=name,
+        description=description,
+        start_date=date.fromisoformat(start_date) if start_date else None,
+        end_date=date.fromisoformat(end_date) if end_date else None,
+    )
+    async with AsyncSessionLocal() as db:
+        user = await _get_user(db, username)
+        project = Project(owner_id=user.id, **payload.model_dump())
+        db.add(project)
+        await db.commit()
+        await db.refresh(project)
+        await publish(project.id, "created", "project", project.id)
+        return _project_dict(project)
+
+
+@mcp.tool()
+async def update_project(
+    project_id: int, name: str | None = None, description: str | None = None,
+    status: str | None = None, start_date: str | None = None,
+    end_date: str | None = None,
+) -> dict:
+    """更新项目字段。仅更新传入的字段。"""
+    username = _username()
+    updates = {}
+    if name is not None:
+        updates["name"] = name
+    if description is not None:
+        updates["description"] = description
+    if status is not None:
+        updates["status"] = status
+    if start_date is not None:
+        updates["start_date"] = date.fromisoformat(start_date)
+    if end_date is not None:
+        updates["end_date"] = date.fromisoformat(end_date)
+    async with AsyncSessionLocal() as db:
+        p = await _require_project(db, username, project_id)
+        for key, value in updates.items():
+            setattr(p, key, value)
+        await db.commit()
+        await db.refresh(p)
+        await publish(p.id, "updated", "project", p.id)
+        return _project_dict(p)
+
+
+@mcp.tool()
+async def delete_project(project_id: int) -> str:
+    """删除项目及其全部任务、里程碑。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        p = await _require_project(db, username, project_id)
+        await db.delete(p)
+        await db.commit()
+        return f"项目 {project_id} 已删除"
+
+
+# ---------- 里程碑 ----------
+
+
+@mcp.tool()
+async def list_milestones(project_id: int) -> list[dict]:
+    """列出项目的所有里程碑。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        await _require_project(db, username, project_id)
+        rows = (
+            (
+                await db.execute(
+                    select(Milestone)
+                    .where(Milestone.project_id == project_id)
+                    .order_by(Milestone.due_date.asc().nulls_last())
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return [_milestone_dict(m) for m in rows]
+
+
+@mcp.tool()
+async def create_milestone(
+    project_id: int, name: str, due_date: str | None = None,
+) -> dict:
+    """在项目中创建里程碑。project_id 与 name 必填。"""
+    username = _username()
+    payload = MilestoneCreate(
+        name=name,
+        due_date=date.fromisoformat(due_date) if due_date else None,
+    )
+    async with AsyncSessionLocal() as db:
+        await _require_project(db, username, project_id)
+        ms = Milestone(project_id=project_id, **payload.model_dump())
+        db.add(ms)
+        await db.commit()
+        await db.refresh(ms)
+        await publish(project_id, "created", "milestone", ms.id)
+        return _milestone_dict(ms)
+
+
+@mcp.tool()
+async def update_milestone(
+    milestone_id: int, name: str | None = None, due_date: str | None = None,
+    status: str | None = None,
+) -> dict:
+    """更新里程碑。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        user = await _get_user(db, username)
+        ms = (
+            await db.execute(
+                select(Milestone)
+                .join(Project, Milestone.project_id == Project.id)
+                .where(Milestone.id == milestone_id, Project.owner_id == user.id)
+            )
+        ).scalar_one_or_none()
+        if ms is None:
+            raise ValueError(f"里程碑 {milestone_id} 不存在")
+        if name is not None:
+            ms.name = name
+        if due_date is not None:
+            ms.due_date = date.fromisoformat(due_date)
+        if status is not None:
+            ms.status = status
+        await db.commit()
+        await db.refresh(ms)
+        await publish(ms.project_id, "updated", "milestone", ms.id)
+        return _milestone_dict(ms)
+
+
+@mcp.tool()
+async def delete_milestone(milestone_id: int) -> str:
+    """删除里程碑（其下任务保留，milestone_id 置空）。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        user = await _get_user(db, username)
+        ms = (
+            await db.execute(
+                select(Milestone)
+                .join(Project, Milestone.project_id == Project.id)
+                .where(Milestone.id == milestone_id, Project.owner_id == user.id)
+            )
+        ).scalar_one_or_none()
+        if ms is None:
+            raise ValueError(f"里程碑 {milestone_id} 不存在")
+        pid = ms.project_id
+        await db.delete(ms)
+        await db.commit()
+        await publish(pid, "deleted", "milestone", milestone_id)
+        return f"里程碑 {milestone_id} 已删除"
+
+
+# ---------- 任务 ----------
+
+
+@mcp.tool()
+async def list_tasks(
+    project_id: int, status: str | None = None, overdue: bool | None = None
+) -> list[dict]:
+    """列出项目任务。可按 status（todo/in_progress/done）与 overdue 过滤。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        await _require_project(db, username, project_id)
+        stmt = select(Task).where(Task.project_id == project_id)
+        if status:
+            stmt = stmt.where(Task.status == status)
+        rows = (
+            (await db.execute(stmt.order_by(Task.created_at.desc()))).scalars().all()
+        )
+        outs = [to_out(t) for t in rows]
+        if overdue:
+            outs = [t for t in outs if t.overdue]
+        return [_task_dict(t) for t in outs]
+
+
+@mcp.tool()
+async def get_task(task_id: int) -> dict:
+    """获取单个任务详情。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        task = await _require_task(db, username, task_id)
+        return _task_dict(task)
+
+
+@mcp.tool()
+async def create_task(
+    project_id: int, name: str, description: str | None = None,
+    milestone_id: int | None = None, priority: str = "medium",
+    status: str = "todo", progress: int = 0, start_date: str | None = None,
+    due_date: str | None = None, estimated_hours: int | None = None,
+) -> dict:
+    """在项目中创建任务。project_id 与 name 必填。status=done 时自动 progress=100。"""
+    username = _username()
+    payload = TaskCreate(
+        name=name,
+        description=description,
+        milestone_id=milestone_id,
+        priority=priority,
+        status=status,
+        progress=progress,
+        start_date=date.fromisoformat(start_date) if start_date else None,
+        due_date=date.fromisoformat(due_date) if due_date else None,
+        estimated_hours=estimated_hours,
+    )
+    async with AsyncSessionLocal() as db:
+        await _require_project(db, username, project_id)
+        data = payload.model_dump()
+        if data["status"] == "done":
+            data["progress"] = 100
+            data["completed_at"] = utcnow()
+        else:
+            data["completed_at"] = None
+        task = Task(project_id=project_id, **data)
+        db.add(task)
+        await db.commit()
+        await db.refresh(task)
+        await publish(project_id, "created", "task", task.id)
+        return _task_dict(task)
+
+
+@mcp.tool()
+async def update_task(
+    task_id: int, name: str | None = None, description: str | None = None,
+    milestone_id: int | None = None, priority: str | None = None,
+    status: str | None = None, progress: int | None = None,
+    start_date: str | None = None, due_date: str | None = None,
+    estimated_hours: int | None = None,
+) -> dict:
+    """更新任务。仅更新传入字段；status=done 自动 progress=100。"""
+    username = _username()
+    updates = {}
+    if name is not None:
+        updates["name"] = name
+    if description is not None:
+        updates["description"] = description
+    if milestone_id is not None:
+        updates["milestone_id"] = milestone_id
+    if priority is not None:
+        updates["priority"] = priority
+    if status is not None:
+        updates["status"] = status
+    if progress is not None:
+        updates["progress"] = progress
+    if start_date is not None:
+        updates["start_date"] = date.fromisoformat(start_date)
+    if due_date is not None:
+        updates["due_date"] = date.fromisoformat(due_date)
+    if estimated_hours is not None:
+        updates["estimated_hours"] = estimated_hours
+    async with AsyncSessionLocal() as db:
+        task = await _require_task(db, username, task_id)
+        apply_task_update(task, updates)
+        await db.commit()
+        await db.refresh(task)
+        await publish(task.project_id, "updated", "task", task.id)
+        return _task_dict(task)
+
+
+@mcp.tool()
+async def delete_task(task_id: int) -> str:
+    """删除任务。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        task = await _require_task(db, username, task_id)
+        pid = task.project_id
+        await db.delete(task)
+        await db.commit()
+        await publish(pid, "deleted", "task", task_id)
+        return f"任务 {task_id} 已删除"
+
+
+@mcp.tool()
+async def add_task_dependency(task_id: int, depends_on_task_id: int) -> str:
+    """为任务添加依赖（前者依赖后者）。"""
+    username = _username()
+    if task_id == depends_on_task_id:
+        raise ValueError("任务不能依赖自身")
+    async with AsyncSessionLocal() as db:
+        task = await _require_task(db, username, task_id)
+        await _require_task(db, username, depends_on_task_id)
+        exists = (
+            await db.execute(
+                select(TaskDependency).where(
+                    TaskDependency.task_id == task_id,
+                    TaskDependency.depends_on_task_id == depends_on_task_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if exists is not None:
+            raise ValueError("依赖关系已存在")
+        db.add(TaskDependency(task_id=task_id, depends_on_task_id=depends_on_task_id))
+        await db.commit()
+        await publish(task.project_id, "updated", "task", task_id)
+        return f"任务 {task_id} 已依赖任务 {depends_on_task_id}"
+
+
+@mcp.tool()
+async def remove_task_dependency(task_id: int, depends_on_task_id: int) -> str:
+    """移除任务依赖。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        task = await _require_task(db, username, task_id)
+        row = (
+            await db.execute(
+                select(TaskDependency).where(
+                    TaskDependency.task_id == task_id,
+                    TaskDependency.depends_on_task_id == depends_on_task_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            raise ValueError("依赖关系不存在")
+        await db.delete(row)
+        await db.commit()
+        await publish(task.project_id, "updated", "task", task_id)
+        return f"任务 {task_id} 的依赖已移除"
+
+
+# ---------- 统计 ----------
+
+
+@mcp.tool()
+async def get_project_stats_mcp(project_id: int) -> dict:
+    """获取项目进度统计（总数/完成/进行中/待办/进度%/延期列表）。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        await _require_project(db, username, project_id)
+        stats = await get_project_stats(db, project_id)
+        return {
+            "total_tasks": stats.total_tasks,
+            "done_tasks": stats.done_tasks,
+            "in_progress_tasks": stats.in_progress_tasks,
+            "todo_tasks": stats.todo_tasks,
+            "progress": stats.progress,
+            "overdue_tasks": [
+                {
+                    "id": o.id,
+                    "name": o.name,
+                    "due_date": o.due_date.isoformat() if o.due_date else None,
+                    "days_late": o.days_late,
+                    "priority": o.priority,
+                }
+                for o in stats.overdue_tasks
+            ],
+        }
+
+
+@mcp.tool()
+async def get_burndown_mcp(project_id: int) -> list[dict]:
+    """获取项目燃尽图数据（期望线 + 实际线）。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        p = await _require_project(db, username, project_id)
+        start = p.start_date or date.today()
+        end = p.end_date or date.today()
+        points = await get_burndown(db, project_id, start, end)
+        return [
+            {"date": pt.date, "ideal_remaining": pt.ideal_remaining, "actual_remaining": pt.actual_remaining}
+            for pt in points
+        ]
+
+
+@mcp.tool()
+async def get_gantt_mcp(project_id: int) -> dict:
+    """获取项目甘特图数据（任务 + 依赖）。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        p = await _require_project(db, username, project_id)
+        start = p.start_date or date.today()
+        end = p.end_date or date.today()
+        gantt = await get_gantt_data(db, project_id, start, end)
+        return {
+            "project_start": gantt.project_start,
+            "project_end": gantt.project_end,
+            "tasks": [
+                {
+                    "id": t.id,
+                    "name": t.name,
+                    "start": t.start,
+                    "end": t.end,
+                    "progress": t.progress,
+                    "dependencies": t.dependencies,
+                    "overdue": t.overdue,
+                    "status": t.status,
+                }
+                for t in gantt.tasks
+            ],
+        }
+
+
+def get_mcp_app():
+    """返回可挂载到 FastAPI 的 ASGI 应用（Starlette）。"""
+    return mcp.streamable_http_app()
+
+
+def get_session_manager():
+    """返回 MCP 的 StreamableHTTP 会话管理器，供宿主 App lifespan 启动。"""
+    if mcp._session_manager is None:
+        mcp.streamable_http_app()  # 触发惰性创建
+    return mcp._session_manager
+
+
+def _username() -> str:
+    username = current_username.get()
+    if not username:
+        raise ValueError("未认证：请提供有效的 API Key")
+    return username
