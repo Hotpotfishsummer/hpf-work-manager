@@ -59,6 +59,27 @@ async def main():
         r = await c.get("/projects")
         check("无 token 访问被拒(401)", r.status_code == 401)
 
+        # 4.1 API Key：创建 / 列表 / exchange / 用 key 换 JWT 后建项目
+        r = await c.post("/keys", headers=H, json={"name": "claude-code"})
+        check("创建 API Key", r.status_code == 201 and r.json()["key"].startswith("hpf_"),
+              f"-> {r.status_code}")
+        api_key = r.json()["key"]
+        r = await c.get("/keys", headers=H)
+        check("列出 API Key", r.status_code == 200 and len(r.json()) == 1)
+        r = await c.post("/keys/exchange", json={"key": api_key})
+        check("API Key 换 JWT", r.status_code == 200 and r.json().get("access_token"))
+        machine_jwt = r.json()["access_token"]
+        MH = {"Authorization": f"Bearer {machine_jwt}"}
+        r = await c.post("/projects", headers=MH, json={"name": "AI 创建的项目"})
+        check("用 API Key 换的 JWT 建项目", r.status_code == 201, f"-> {r.status_code}")
+        # 撤销后 exchange 应失败
+        r = await c.get("/keys", headers=H)
+        key_id = r.json()[0]["id"]
+        r = await c.delete(f"/keys/{key_id}", headers=H)
+        check("撤销 API Key", r.status_code == 204)
+        r = await c.post("/keys/exchange", json={"key": api_key})
+        check("撤销后 exchange 被拒(401)", r.status_code == 401, f"-> {r.status_code}")
+
         # 5. 创建项目
         r = await c.post("/projects", headers=H, json={
             "name": "官网改版", "description": "2026 官网重构",
@@ -147,8 +168,14 @@ async def main():
         check("删除项目", r.status_code == 204)
         r = await c.get(f"/projects/{pid}", headers=H)
         check("项目已删除(404)", r.status_code == 404)
-        r = await c.get(f"/projects", headers=H)
-        check("项目列表为空", r.json() == [])
+        r = await c.get("/projects", headers=H)
+        check("项目列表不含已删项目", all(p["id"] != pid for p in r.json()))
+
+        # 17. SSE 事件流：未登录 401，非本人项目 404，正常项目 200
+        r = await c.get(f"/events/stream?project_id={pid}")
+        check("SSE 未授权被拒(401)", r.status_code == 401)
+        r = await c.get("/events/stream?project_id=999999", headers=H)
+        check("SSE 他人项目被拒(404)", r.status_code == 404)
 
     # 清理本次创建的 /tmp 临时数据库（仅限自身文件）
     if os.path.exists(DB_PATH):
