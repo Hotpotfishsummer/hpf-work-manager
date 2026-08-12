@@ -20,3 +20,7 @@ class User(Base):
     projects: Mapped[list["Project"]] = relationship(
         back_populates="owner", cascade="all, delete-orphan"
     )
+
+    api_keys: Mapped[list["ApiKey"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
