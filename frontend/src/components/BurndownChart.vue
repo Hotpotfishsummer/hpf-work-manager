@@ -6,71 +6,75 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as echarts from 'echarts'
 import type { BurndownPoint } from '@/types'
+import { chartColors, onThemeChange } from '@/composables/useThemeColors'
 
 const props = defineProps<{ data: BurndownPoint[] }>()
 
 const chartRef = ref<HTMLElement>()
 let chart: echarts.ECharts | null = null
+let ro: ResizeObserver | null = null
+
+function buildOption() {
+  const font = 'Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif'
+  return {
+    animationDuration: 300,
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: chartColors.surface,
+      borderColor: chartColors.outlineVariant,
+      textStyle: { color: chartColors.onSurface, fontFamily: font, fontWeight: 400 },
+    },
+    legend: {
+      data: ['期望剩余', '实际剩余'],
+      top: 0,
+      right: 0,
+      itemWidth: 16,
+      itemHeight: 3,
+      textStyle: { color: chartColors.onSurfaceVariant, fontFamily: font, fontWeight: 400 },
+    },
+    grid: { left: 44, right: 20, top: 44, bottom: 28 },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: props.data.map((d) => d.date),
+      axisLine: { lineStyle: { color: chartColors.outlineVariant } },
+      axisTick: { show: false },
+      axisLabel: { color: chartColors.onSurfaceVariant, fontFamily: font, fontWeight: 400 },
+    },
+    yAxis: {
+      type: 'value',
+      minInterval: 1,
+      splitLine: { lineStyle: { color: chartColors.outlineVariant } },
+      axisLabel: { color: chartColors.onSurfaceVariant, fontFamily: font, fontWeight: 400 },
+    },
+    series: [
+      {
+        name: '期望剩余',
+        type: 'line',
+        data: props.data.map((d) => d.ideal_remaining),
+        smooth: true,
+        symbol: 'none',
+        lineStyle: { color: chartColors.onSurfaceVariant, width: 2 },
+        itemStyle: { color: chartColors.onSurfaceVariant },
+      },
+      {
+        name: '实际剩余',
+        type: 'line',
+        data: props.data.map((d) => d.actual_remaining),
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 6,
+        lineStyle: { color: chartColors.primary, width: 2 },
+        itemStyle: { color: chartColors.primary },
+      },
+    ],
+  }
+}
 
 function render() {
   if (!chartRef.value || props.data.length === 0) return
   chart = chart ?? echarts.init(chartRef.value)
-  chart.setOption(
-    {
-      animationDuration: 300,
-      tooltip: {
-        trigger: 'axis',
-        backgroundColor: '#ffffff',
-        borderColor: '#e6e6e6',
-        textStyle: { color: '#262626', fontFamily: 'Inter', fontWeight: 300 },
-      },
-      legend: {
-        data: ['期望剩余', '实际剩余'],
-        top: 0,
-        right: 0,
-        itemWidth: 16,
-        itemHeight: 3,
-        textStyle: { color: '#6b6b6b', fontFamily: 'Inter', fontWeight: 400 },
-      },
-      grid: { left: 44, right: 20, top: 44, bottom: 28 },
-      xAxis: {
-        type: 'category',
-        boundaryGap: false,
-        data: props.data.map((d) => d.date),
-        axisLine: { lineStyle: { color: '#cccccc' } },
-        axisTick: { show: false },
-        axisLabel: { color: '#6b6b6b', fontFamily: 'Inter', fontWeight: 300 },
-      },
-      yAxis: {
-        type: 'value',
-        minInterval: 1,
-        splitLine: { lineStyle: { color: '#ebebeb' } },
-        axisLabel: { color: '#6b6b6b', fontFamily: 'Inter', fontWeight: 300 },
-      },
-      series: [
-        {
-          name: '期望剩余',
-          type: 'line',
-          data: props.data.map((d) => d.ideal_remaining),
-          smooth: true,
-          symbol: 'none',
-          lineStyle: { color: '#9a9a9a', width: 2 },
-          itemStyle: { color: '#9a9a9a' },
-        },
-        {
-          name: '实际剩余',
-          type: 'line',
-          data: props.data.map((d) => d.actual_remaining),
-          smooth: true,
-          symbol: 'circle',
-          symbolSize: 6,
-          lineStyle: { color: '#1c69d4', width: 2 },
-          itemStyle: { color: '#1c69d4' },
-        },
-      ],
-    },
-    true
-  )
+  chart.setOption(buildOption(), true)
 }
 
 function onResize() {
@@ -82,13 +86,18 @@ watch(
   () => nextTick(render)
 )
 
+onThemeChange(() => render())
+
 onMounted(() => {
   render()
   window.addEventListener('resize', onResize)
+  ro = new ResizeObserver(onResize)
+  if (chartRef.value) ro.observe(chartRef.value)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
+  ro?.disconnect()
   chart?.dispose()
   chart = null
 })

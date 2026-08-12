@@ -134,58 +134,60 @@ async function submit() {
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: var(--bmw-canvas);
+  background-color: var(--md-surface);
 }
 
-/* hero-band-dark */
+/* hero-band：始终深色横幅 */
 .login-hero {
-  background-color: var(--bmw-surface-dark);
-  color: var(--bmw-on-dark);
+  background-color: var(--md-inverse-surface);
+  color: var(--md-inverse-on-surface);
   text-align: center;
-  padding: var(--bmw-space-xxl) var(--bmw-space-lg);
+  padding: var(--md-space-7) var(--md-space-5);
 }
-.hero-mark { color: var(--bmw-primary); margin-bottom: var(--bmw-space-sm); }
+.hero-mark { color: var(--md-primary); margin-bottom: var(--md-space-2); }
 .hero-title {
   margin: 0;
-  color: var(--bmw-on-dark);
-  font-size: var(--bmw-text-display-md);
-  font-weight: var(--bmw-weight-display);
+  color: var(--md-inverse-on-surface);
+  font-size: var(--md-text-display-sm);
+  font-weight: var(--md-weight-bold);
   letter-spacing: 0.5px;
 }
 .hero-sub {
-  margin: var(--bmw-space-sm) 0 0;
-  color: var(--bmw-on-dark-soft);
-  font-size: var(--bmw-text-body-sm);
-  font-weight: var(--bmw-weight-body);
+  margin: var(--md-space-2) 0 0;
+  color: var(--md-inverse-on-surface);
+  opacity: 0.85;
+  font-size: var(--md-text-body-sm);
+  font-weight: var(--md-weight-regular);
 }
 
 /* 登录卡片 */
 .login-card {
   width: 100%;
   max-width: 420px;
-  margin: var(--bmw-space-xxl) auto;
-  padding: var(--bmw-card-padding);
-  border: 1px solid var(--bmw-hairline);
-  border-radius: var(--bmw-radius-none);
-  background-color: var(--bmw-canvas);
+  margin: var(--md-space-7) auto;
+  padding: var(--md-space-5);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-lg);
+  background-color: var(--md-surface);
+  box-shadow: var(--md-shadow-2);
 }
 
 .login-tabs :deep(.el-tabs__item) {
-  font-size: var(--bmw-text-title-sm);
-  font-weight: var(--bmw-weight-display);
+  font-size: var(--md-text-title-sm);
+  font-weight: var(--md-weight-bold);
 }
-.login-tabs :deep(.el-tabs__active-bar) { background-color: var(--bmw-primary); }
+.login-tabs :deep(.el-tabs__active-bar) { background-color: var(--md-primary); }
 
 .submit-btn {
   width: 100%;
-  height: var(--bmw-control-height);
-  margin-top: var(--bmw-space-xs);
+  height: var(--md-control-height);
+  margin-top: var(--md-space-1);
 }
 
 .legal {
-  margin: var(--bmw-space-lg) 0 0;
+  margin: var(--md-space-5) 0 0;
   text-align: center;
-  font-size: var(--bmw-text-caption);
-  color: var(--bmw-muted-soft);
+  font-size: var(--md-text-label-md);
+  color: var(--md-outline-variant);
 }
 </style>

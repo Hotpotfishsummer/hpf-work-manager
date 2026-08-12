@@ -22,7 +22,7 @@ import Gantt from 'frappe-gantt'
 import 'frappe-gantt/dist/frappe-gantt.css'
 import type { GanttTask as FGTask } from 'frappe-gantt'
 import type { GanttData } from '@/types'
-import './gantt-bmw.css'
+import './gantt.css'
 
 const props = defineProps<{ data: GanttData }>()
 
@@ -64,7 +64,7 @@ function render() {
       date_format: 'YYYY-MM-DD',
       header_height: 48,
       bar_height: 28,
-      bar_corner_radius: 0, // BMW 直角
+      bar_corner_radius: 6, // MD3 圆角
       padding: 16,
       on_date_change: (task, start, end) => {
         emit('date-change', task.id, fmt(start), fmt(end))
@@ -115,37 +115,38 @@ onMounted(() => {
 
 <style scoped>
 .gantt-wrap {
-  border: 1px solid var(--bmw-hairline);
-  border-radius: var(--bmw-radius-none);
-  background-color: var(--bmw-canvas);
-  padding: var(--bmw-space-md);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-lg);
+  background-color: var(--md-surface);
+  padding: var(--md-space-4);
   overflow-x: auto;
 }
 .gantt-toolbar {
   display: flex;
   align-items: center;
-  gap: var(--bmw-space-xs);
-  margin-bottom: var(--bmw-space-md);
+  gap: var(--md-space-1);
+  margin-bottom: var(--md-space-4);
 }
 .view-chip {
-  background-color: var(--bmw-canvas);
-  border: 1px solid var(--bmw-hairline-strong);
-  color: var(--bmw-ink);
-  font-family: var(--bmw-font);
-  font-size: var(--bmw-text-caption);
-  padding: var(--bmw-space-xxs) 12px;
+  background-color: var(--md-surface);
+  border: 1px solid var(--md-outline);
+  color: var(--md-on-surface);
+  font-family: var(--md-font);
+  font-size: var(--md-text-label-md);
+  padding: var(--md-space-1) 12px;
   cursor: pointer;
-  border-radius: var(--bmw-radius-none);
+  border-radius: var(--md-radius-full);
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 .view-chip.active {
-  background-color: var(--bmw-ink);
-  color: var(--bmw-on-dark);
-  border-color: var(--bmw-ink);
+  background-color: var(--md-primary);
+  color: var(--md-on-primary);
+  border-color: var(--md-primary);
 }
 .gantt-today {
   margin-left: auto;
-  font-size: var(--bmw-text-caption);
-  color: var(--bmw-muted);
+  font-size: var(--md-text-label-md);
+  color: var(--md-on-surface-variant);
 }
 .gantt-container { min-width: 720px; }
 </style>

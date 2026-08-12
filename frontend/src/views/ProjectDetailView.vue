@@ -24,7 +24,7 @@
             :percentage="Math.round(stats?.progress ?? 0)"
             :width="120"
             :stroke-width="6"
-            color="#1c69d4"
+            color="var(--md-primary)"
           >
             <template #default>
               <span class="progress-num">{{ Math.round(stats?.progress ?? 0) }}%</span>
@@ -144,6 +144,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { milestoneApi, projectApi, statsApi } from '@/api'
 import type { Milestone, Project, ProjectStats, BurndownPoint } from '@/types'
 import BurndownChart from '@/components/BurndownChart.vue'
+import { useProjectEvents } from '@/composables/useProjectEvents'
 
 const props = defineProps<{ id: string }>()
 const router = useRouter()
@@ -170,6 +171,14 @@ function fmtRange() {
   const e = project.value.end_date?.slice(0, 10) ?? '—'
   return `${s} 至 ${e}`
 }
+
+// 实时同步：AI 工具更新数据后自动刷新
+let reloadTimer: ReturnType<typeof setTimeout> | null = null
+function scheduleReload() {
+  if (reloadTimer) clearTimeout(reloadTimer)
+  reloadTimer = setTimeout(load, 400)
+}
+useProjectEvents(() => pid.value, scheduleReload)
 
 async function load() {
   loading.value = true
@@ -225,57 +234,59 @@ onMounted(load)
 </script>
 
 <style scoped>
-/* hero-band-dark */
+/* hero-band：始终深色横幅（inverse-surface），Apple 风格 */
 .hero-band {
-  background-color: var(--bmw-surface-dark);
-  color: var(--bmw-on-dark);
+  background-color: var(--md-inverse-surface);
+  color: var(--md-inverse-on-surface);
 }
 .hero-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--bmw-space-xl);
-  padding-top: var(--bmw-space-xl);
-  padding-bottom: var(--bmw-space-xl);
+  gap: var(--md-space-6);
+  padding-top: var(--md-space-6);
+  padding-bottom: var(--md-space-6);
   flex-wrap: wrap;
 }
 .hero-eyebrow {
-  margin: 0 0 var(--bmw-space-xs);
-  font-size: var(--bmw-text-caption);
-  font-weight: var(--bmw-weight-caption);
+  margin: 0 0 var(--md-space-1);
+  font-size: var(--md-text-label-md);
+  font-weight: var(--md-weight-medium);
   letter-spacing: 1.5px;
-  color: var(--bmw-on-dark-soft);
+  color: var(--md-inverse-on-surface);
 }
 .hero-title {
   margin: 0;
-  font-size: var(--bmw-text-display-lg);
-  color: var(--bmw-on-dark);
+  font-size: var(--md-text-display-lg);
+  color: var(--md-inverse-on-surface);
 }
 .hero-desc {
-  margin: var(--bmw-space-sm) 0 var(--bmw-space-lg);
-  font-size: var(--bmw-text-body-md);
-  font-weight: var(--bmw-weight-body);
-  color: var(--bmw-on-dark-soft);
+  margin: var(--md-space-2) 0 var(--md-space-5);
+  font-size: var(--md-text-body-md);
+  font-weight: var(--md-weight-regular);
+  color: var(--md-inverse-on-surface);
   max-width: 640px;
+  opacity: 0.85;
 }
-.hero-actions { display: flex; gap: var(--bmw-space-md); flex-wrap: wrap; }
+.hero-actions { display: flex; gap: var(--md-space-4); flex-wrap: wrap; }
 .hero-actions :deep(.el-button--primary) {
-  background-color: var(--bmw-primary);
-  border-color: var(--bmw-primary);
+  background-color: var(--md-primary);
+  border-color: var(--md-primary);
 }
-.hero-actions :deep(.el-button--primary:hover) { background-color: var(--bmw-primary-active); }
+.hero-actions :deep(.el-button--primary:hover) { background-color: var(--md-primary-active); }
 .hero-ghost-btn {
   background: transparent;
-  border: 1px solid var(--bmw-on-dark);
-  color: var(--bmw-on-dark);
+  border: 1px solid var(--md-inverse-on-surface);
+  color: var(--md-inverse-on-surface);
 }
-.hero-ghost-btn:hover { border-color: var(--bmw-primary); color: var(--bmw-on-dark); background: rgba(28,105,212,0.15); }
+.hero-ghost-btn:hover { border-color: var(--md-primary); color: var(--md-inverse-on-surface); background: rgba(0, 102, 204, 0.22); }
 
-/* hero 进度环（surface-dark-elevated 嵌套卡片） */
+/* hero 进度环（嵌套半透明卡片） */
 .hero-progress {
-  background-color: var(--bmw-surface-dark-elevated);
-  padding: var(--bmw-space-lg);
+  background-color: rgba(255, 255, 255, 0.08);
+  padding: var(--md-space-5);
   text-align: center;
+  border-radius: var(--md-radius-lg);
 }
 .hero-progress :deep(.el-progress__text) {
   display: flex;
@@ -284,101 +295,103 @@ onMounted(load)
 }
 .progress-num {
   font-size: 26px;
-  font-weight: var(--bmw-weight-display);
-  color: var(--bmw-on-dark);
+  font-weight: var(--md-weight-bold);
+  color: var(--md-inverse-on-surface);
   line-height: 1.1;
 }
 .progress-label {
-  font-size: var(--bmw-text-caption);
-  color: var(--bmw-on-dark-soft);
+  font-size: var(--md-text-label-md);
+  color: var(--md-inverse-on-surface);
+  opacity: 0.8;
 }
 .hero-range {
-  margin: var(--bmw-space-sm) 0 0;
-  font-size: var(--bmw-text-caption);
-  color: var(--bmw-on-dark-soft);
+  margin: var(--md-space-2) 0 0;
+  font-size: var(--md-text-label-md);
+  color: var(--md-inverse-on-surface);
+  opacity: 0.8;
 }
 
-/* subnav：category-tab 风格 */
+/* subnav：分类标签风格 */
 .subnav-wrap {
-  border-bottom: 1px solid var(--bmw-hairline);
-  background-color: var(--bmw-canvas);
+  border-bottom: 1px solid var(--md-outline-variant);
+  background-color: var(--md-surface);
 }
 .bmw-tabs :deep(.el-tabs__item) {
-  font-size: var(--bmw-text-button);
-  font-weight: var(--bmw-weight-display);
+  font-size: var(--md-text-label-lg);
+  font-weight: var(--md-weight-bold);
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: var(--bmw-muted);
-  padding: 0 var(--bmw-space-md);
+  color: var(--md-on-surface-variant);
+  padding: 0 var(--md-space-4);
 }
-.bmw-tabs :deep(.el-tabs__item.is-active) { color: var(--bmw-ink); }
-.bmw-tabs :deep(.el-tabs__active-bar) { height: 2px; background-color: var(--bmw-ink); }
+.bmw-tabs :deep(.el-tabs__item.is-active) { color: var(--md-on-surface); }
+.bmw-tabs :deep(.el-tabs__active-bar) { height: 2px; background-color: var(--md-primary); }
 
 .content {
-  padding-top: var(--bmw-space-xl);
+  padding-top: var(--md-space-6);
 }
 
 /* spec-cell */
 .stats-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  border: 1px solid var(--bmw-hairline);
-  margin-bottom: var(--bmw-space-lg);
+  border: 1px solid var(--md-outline-variant);
+  margin-bottom: var(--md-space-5);
 }
 @media (max-width: 640px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
 .spec-cell {
-  padding: var(--bmw-card-padding);
+  padding: var(--md-space-4);
   text-align: center;
-  border-right: 1px solid var(--bmw-hairline);
+  border-right: 1px solid var(--md-outline-variant);
 }
 .spec-cell:last-child { border-right: none; }
 .spec-value {
   display: block;
-  font-size: var(--bmw-text-display-sm);
-  font-weight: var(--bmw-weight-display);
-  color: var(--bmw-ink);
+  font-size: var(--md-text-display-sm);
+  font-weight: var(--md-weight-bold);
+  color: var(--md-on-surface);
 }
 .spec-label {
   display: block;
-  margin-top: var(--bmw-space-xxs);
-  font-size: var(--bmw-text-caption);
+  margin-top: var(--md-space-1);
+  font-size: var(--md-text-label-md);
   letter-spacing: 1px;
   text-transform: uppercase;
-  color: var(--bmw-muted);
+  color: var(--md-on-surface-variant);
 }
 
 .two-col {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: var(--bmw-space-lg);
-  margin-bottom: var(--bmw-space-lg);
+  gap: var(--md-space-5);
+  margin-bottom: var(--md-space-5);
 }
 @media (max-width: 1024px) { .two-col { grid-template-columns: 1fr; } }
 
 .section-card { margin-bottom: 0; }
 .section-title {
   margin: 0;
-  font-size: var(--bmw-text-title-lg);
+  font-size: var(--md-text-title-lg);
 }
 .section-sub {
-  margin: var(--bmw-space-xxs) 0 var(--bmw-space-md);
-  font-size: var(--bmw-text-caption);
+  margin: var(--md-space-1) 0 var(--md-space-4);
+  font-size: var(--md-text-label-md);
   letter-spacing: 1.5px;
-  color: var(--bmw-muted);
+  color: var(--md-on-surface-variant);
 }
 
 .ok-block {
   display: flex;
   align-items: center;
-  gap: var(--bmw-space-xs);
-  color: var(--bmw-muted);
-  font-size: var(--bmw-text-body-sm);
-  padding: var(--bmw-space-md) 0;
+  gap: var(--md-space-1);
+  color: var(--md-on-surface-variant);
+  font-size: var(--md-text-body-sm);
+  padding: var(--md-space-4) 0;
 }
 .ok-dot {
   width: 10px; height: 10px;
-  border-radius: var(--bmw-radius-full);
-  background-color: var(--bmw-success);
+  border-radius: var(--md-radius-full);
+  background-color: var(--md-status-done);
 }
 
 .overdue-list {
@@ -389,28 +402,28 @@ onMounted(load)
 .overdue-item {
   display: flex;
   align-items: center;
-  gap: var(--bmw-space-sm);
-  padding: var(--bmw-space-sm) 0;
-  border-bottom: 1px solid var(--bmw-hairline);
+  gap: var(--md-space-2);
+  padding: var(--md-space-2) 0;
+  border-bottom: 1px solid var(--md-outline-variant);
 }
 .overdue-item:last-child { border-bottom: none; }
-.od-name { flex: 1; font-weight: var(--bmw-weight-display); font-size: var(--bmw-text-body-sm); color: var(--bmw-ink); }
-.od-late { font-size: var(--bmw-text-caption); color: var(--bmw-error); font-weight: 700; }
+.od-name { flex: 1; font-weight: var(--md-weight-bold); font-size: var(--md-text-body-sm); color: var(--md-on-surface); }
+.od-late { font-size: var(--md-text-label-md); color: var(--md-status-overdue); font-weight: 700; }
 
 .milestone-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--bmw-space-lg);
+  margin-bottom: var(--md-space-5);
 }
 .milestone-row {
   display: flex;
   align-items: center;
-  gap: var(--bmw-space-sm);
+  gap: var(--md-space-2);
 }
 .milestone-name {
-  font-weight: var(--bmw-weight-display);
-  font-size: var(--bmw-text-body-md);
-  color: var(--bmw-ink);
+  font-weight: var(--md-weight-bold);
+  font-size: var(--md-text-body-md);
+  color: var(--md-on-surface);
 }
 </style>

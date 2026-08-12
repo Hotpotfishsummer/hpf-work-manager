@@ -15,7 +15,7 @@
       </div>
     </div>
 
-    <!-- filter-chips：BMW 风格筛选 -->
+    <!-- filter-chips：筛选 -->
     <div class="chips-row">
       <button
         v-for="c in FILTERS"
@@ -167,6 +167,7 @@ import { Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { milestoneApi, projectApi, taskApi } from '@/api'
 import type { Milestone, Project, Task, TaskPriority, TaskStatus } from '@/types'
+import { useProjectEvents } from '@/composables/useProjectEvents'
 
 const props = defineProps<{ id: string }>()
 const router = useRouter()
@@ -187,9 +188,9 @@ const formRef = ref<FormInstance>()
 const PRIORITY_LABEL: Record<TaskPriority, string> = { high: '高', medium: '中', low: '低' }
 
 const COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
-  { status: 'todo', label: '待办', color: '#9a9a9a' },
-  { status: 'in_progress', label: '进行中', color: '#1c69d4' },
-  { status: 'done', label: '已完成', color: '#22c55e' },
+  { status: 'todo', label: '待办', color: 'var(--md-status-todo)' },
+  { status: 'in_progress', label: '进行中', color: 'var(--md-status-inprogress)' },
+  { status: 'done', label: '已完成', color: 'var(--md-status-done)' },
 ]
 
 const FILTERS = [
@@ -232,9 +233,10 @@ function priorityTagType(p: TaskPriority) {
 }
 
 function progressColor(t: Task) {
-  if (t.overdue) return '#dc2626'
-  if (t.status === 'done') return '#22c55e'
-  return '#1c69d4'
+  if (t.overdue) return 'var(--md-status-overdue)'
+  if (t.status === 'done') return 'var(--md-status-done)'
+  if (t.status === 'in_progress') return 'var(--md-status-inprogress)'
+  return 'var(--md-status-todo)'
 }
 
 async function load() {
@@ -252,6 +254,14 @@ async function load() {
     loading.value = false
   }
 }
+
+// 实时同步：AI 工具更新任务后自动刷新
+let reloadTimer: ReturnType<typeof setTimeout> | null = null
+function scheduleReload() {
+  if (reloadTimer) clearTimeout(reloadTimer)
+  reloadTimer = setTimeout(load, 400)
+}
+useProjectEvents(() => pid.value, scheduleReload)
 
 function openCreate() {
   editing.value = null
@@ -340,133 +350,141 @@ onMounted(load)
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  padding: var(--bmw-space-xl) 0 var(--bmw-space-md);
+  padding: var(--md-space-6) 0 var(--md-space-4);
 }
-.page-title { margin: 0; font-size: var(--bmw-text-display-md); }
+.page-title { margin: 0; font-size: var(--md-text-display-sm); }
 .page-sub {
-  margin: var(--bmw-space-xs) 0 0;
-  font-size: var(--bmw-text-body-sm);
-  color: var(--bmw-muted);
+  margin: var(--md-space-1) 0 0;
+  font-size: var(--md-text-body-sm);
+  color: var(--md-on-surface-variant);
   letter-spacing: 1.5px;
 }
-.head-actions { display: flex; gap: var(--bmw-space-sm); }
+.head-actions { display: flex; gap: var(--md-space-2); }
 
-/* filter-chips：白底 + 描边，激活态墨底白字 */
+/* filter-chips：描边胶囊，激活态主色填充 */
 .chips-row {
   display: flex;
   align-items: center;
-  gap: var(--bmw-space-xs);
-  margin-bottom: var(--bmw-space-lg);
+  gap: var(--md-space-1);
+  margin-bottom: var(--md-space-5);
   flex-wrap: wrap;
 }
 .filter-chip {
-  background-color: var(--bmw-canvas);
-  border: 1px solid var(--bmw-hairline-strong);
-  color: var(--bmw-ink);
-  font-size: var(--bmw-text-caption);
-  font-family: var(--bmw-font);
-  padding: var(--bmw-space-xs) 14px;
+  background-color: var(--md-surface);
+  border: 1px solid var(--md-outline);
+  color: var(--md-on-surface);
+  font-size: var(--md-text-label-md);
+  font-family: var(--md-font);
+  padding: var(--md-space-1) 16px;
   cursor: pointer;
-  border-radius: var(--bmw-radius-none);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  border-radius: var(--md-radius-full);
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
-.filter-chip:hover { border-color: var(--bmw-ink); }
+.filter-chip:hover { border-color: var(--md-on-surface); }
 .filter-chip.active {
-  background-color: var(--bmw-ink);
-  color: var(--bmw-on-dark);
-  border-color: var(--bmw-ink);
+  background-color: var(--md-primary);
+  color: var(--md-on-primary);
+  border-color: var(--md-primary);
 }
-.chips-count { margin-left: auto; font-size: var(--bmw-text-caption); color: var(--bmw-muted); }
+.chips-count { margin-left: auto; font-size: var(--md-text-label-md); color: var(--md-on-surface-variant); }
 
 /* 三列看板 */
 .board {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--bmw-space-lg);
+  gap: var(--md-space-5);
   align-items: start;
 }
 @media (max-width: 900px) { .board { grid-template-columns: 1fr; } }
 
 .board-col {
-  border: 1px solid var(--bmw-hairline);
-  border-radius: var(--bmw-radius-none);
-  background-color: var(--bmw-surface-soft);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-lg);
+  background-color: var(--md-surface-container);
   min-height: 320px;
 }
 .col-head {
   display: flex;
   align-items: center;
-  gap: var(--bmw-space-xs);
-  padding: var(--bmw-space-md);
-  background-color: var(--bmw-canvas);
-  border-bottom: 1px solid var(--bmw-hairline);
+  gap: var(--md-space-1);
+  padding: var(--md-space-4);
+  background-color: var(--md-surface);
+  border-bottom: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-lg) var(--md-radius-lg) 0 0;
 }
-.col-dot { width: 8px; height: 8px; border-radius: var(--bmw-radius-full); }
+.col-dot { width: 8px; height: 8px; border-radius: var(--md-radius-full); }
 .col-title {
-  font-size: var(--bmw-text-title-sm);
-  font-weight: var(--bmw-weight-display);
-  color: var(--bmw-ink);
+  font-size: var(--md-text-title-sm);
+  font-weight: var(--md-weight-bold);
+  color: var(--md-on-surface);
 }
 .col-count {
   margin-left: auto;
-  font-size: var(--bmw-text-caption);
-  color: var(--bmw-muted);
-  background-color: var(--bmw-surface-strong);
+  font-size: var(--md-text-label-md);
+  color: var(--md-on-surface-variant);
+  background-color: var(--md-surface-container-high);
   padding: 2px 8px;
+  border-radius: var(--md-radius-sm);
 }
 .col-body {
-  padding: var(--bmw-space-sm);
+  padding: var(--md-space-2);
   display: flex;
   flex-direction: column;
-  gap: var(--bmw-space-sm);
+  gap: var(--md-space-2);
 }
-.col-empty { padding: var(--bmw-space-lg) 0; }
+.col-empty { padding: var(--md-space-5) 0; }
 
-/* task-card：白底直角卡片，延期红色左描边 */
+/* task-card：圆角卡片，延期用状态色左描边 */
 .task-card {
-  background-color: var(--bmw-canvas);
-  border: 1px solid var(--bmw-hairline);
-  border-left: 3px solid var(--bmw-hairline-strong);
-  border-radius: var(--bmw-radius-none);
-  padding: var(--bmw-space-md);
+  background-color: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  border-left: 3px solid var(--md-outline);
+  border-radius: var(--md-radius-lg);
+  padding: var(--md-space-4);
   cursor: grab;
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
 }
-.task-card.is-overdue { border-left-color: var(--bmw-error); }
+.task-card:hover {
+  box-shadow: var(--md-shadow-1);
+  transform: translateY(-1px);
+}
+.task-card.is-overdue { border-left-color: var(--md-status-overdue); }
 .task-card:active { cursor: grabbing; }
 
-.tc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--bmw-space-xs); }
-.tc-name { font-size: var(--bmw-text-title-sm); font-weight: var(--bmw-weight-display); color: var(--bmw-ink); }
+.tc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--md-space-1); }
+.tc-name { font-size: var(--md-text-title-sm); font-weight: var(--md-weight-bold); color: var(--md-on-surface); }
 .tc-desc {
-  margin: var(--bmw-space-xs) 0;
-  font-size: var(--bmw-text-body-sm);
-  color: var(--bmw-body);
+  margin: var(--md-space-1) 0;
+  font-size: var(--md-text-body-sm);
+  color: var(--md-on-surface-variant);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.tc-meta { display: flex; align-items: center; justify-content: space-between; margin: var(--bmw-space-xs) 0; }
-.tc-date { font-size: var(--bmw-text-caption); color: var(--bmw-muted); }
-.tc-date.is-overdue { color: var(--bmw-error); font-weight: 700; }
+.tc-meta { display: flex; align-items: center; justify-content: space-between; margin: var(--md-space-1) 0; }
+.tc-date { font-size: var(--md-text-label-md); color: var(--md-on-surface-variant); }
+.tc-date.is-overdue { color: var(--md-status-overdue); font-weight: 700; }
 .tc-overdue {
-  font-size: var(--bmw-text-caption);
+  font-size: var(--md-text-label-md);
   font-weight: 700;
-  color: var(--bmw-on-dark);
-  background-color: var(--bmw-error);
+  color: var(--md-inverse-on-surface);
+  background-color: var(--md-status-overdue);
   padding: 1px 6px;
+  border-radius: var(--md-radius-sm);
 }
-.tc-progress { margin: var(--bmw-space-xs) 0; }
+.tc-progress { margin: var(--md-space-1) 0; }
 .tc-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-.tc-progress-text { font-size: var(--bmw-text-caption); color: var(--bmw-muted); font-weight: 700; }
+.tc-progress-text { font-size: var(--md-text-label-md); color: var(--md-on-surface-variant); font-weight: 700; }
 
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0 var(--bmw-space-md);
+  gap: 0 var(--md-space-4);
 }
 @media (max-width: 520px) { .form-grid { grid-template-columns: 1fr; } }
 </style>

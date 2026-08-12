@@ -35,6 +35,7 @@ import { ElMessage } from 'element-plus'
 import { projectApi, statsApi, taskApi } from '@/api'
 import type { GanttData, Project } from '@/types'
 import GanttChart from '@/components/GanttChart.vue'
+import { useProjectEvents } from '@/composables/useProjectEvents'
 
 const props = defineProps<{ id: string }>()
 const router = useRouter()
@@ -73,6 +74,14 @@ async function onProgressChange(taskId: string, progress: number) {
   gantt.value = await statsApi.gantt(pid.value)
 }
 
+// 实时同步：AI 工具更新后自动刷新甘特图
+let reloadTimer: ReturnType<typeof setTimeout> | null = null
+function scheduleReload() {
+  if (reloadTimer) clearTimeout(reloadTimer)
+  reloadTimer = setTimeout(load, 400)
+}
+useProjectEvents(() => pid.value, scheduleReload)
+
 onMounted(load)
 </script>
 
@@ -81,30 +90,30 @@ onMounted(load)
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  padding: var(--bmw-space-xl) 0 var(--bmw-space-md);
+  padding: var(--md-space-6) 0 var(--md-space-4);
 }
-.page-title { margin: 0; font-size: var(--bmw-text-display-md); }
+.page-title { margin: 0; font-size: var(--md-text-display-sm); }
 .page-sub {
-  margin: var(--bmw-space-xs) 0 0;
-  font-size: var(--bmw-text-body-sm);
-  color: var(--bmw-muted);
+  margin: var(--md-space-1) 0 0;
+  font-size: var(--md-text-body-sm);
+  color: var(--md-on-surface-variant);
   letter-spacing: 1.5px;
 }
-.head-actions { display: flex; gap: var(--bmw-space-sm); }
+.head-actions { display: flex; gap: var(--md-space-2); }
 
 .gantt-legend {
   display: flex;
-  gap: var(--bmw-space-lg);
-  margin: var(--bmw-space-lg) 0 0;
+  gap: var(--md-space-5);
+  margin: var(--md-space-5) 0 0;
   padding: 0;
-  font-size: var(--bmw-text-caption);
-  color: var(--bmw-muted);
+  font-size: var(--md-text-label-md);
+  color: var(--md-on-surface-variant);
   flex-wrap: wrap;
 }
 .legend-item { display: inline-flex; align-items: center; gap: 6px; }
-.legend-dot { width: 12px; height: 8px; display: inline-block; }
-.legend-blue { background-color: var(--bmw-primary); }
-.legend-red { background-color: var(--bmw-error); }
-.legend-line { width: 16px; height: 0; border-top: 2px dashed var(--bmw-muted-soft); }
-.legend-progress { width: 12px; height: 8px; display: inline-block; background: linear-gradient(90deg, #0653b6 55%, #1c69d4 55%); }
+.legend-dot { width: 12px; height: 8px; display: inline-block; border-radius: var(--md-radius-sm); }
+.legend-blue { background-color: var(--md-primary); }
+.legend-red { background-color: var(--md-status-overdue); }
+.legend-line { width: 16px; height: 0; border-top: 2px dashed var(--md-outline-variant); }
+.legend-progress { width: 12px; height: 8px; display: inline-block; border-radius: var(--md-radius-sm); background: linear-gradient(90deg, var(--md-primary-container) 55%, var(--md-primary) 55%); }
 </style>

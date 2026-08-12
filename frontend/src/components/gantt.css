@@ -1,98 +1,98 @@
 /* ============================================================
-   frappe-gantt → BMW 企业风格定制
-   蓝色主色 / 直角 / 无阴影 / 延期红色 / 今日线
+   frappe-gantt → Apple × Material Design 3 定制
+   主色动态色 / 圆角 / 无重阴影 / 延期状态色 / 今日线
    ============================================================ */
 
 .gantt-container .gantt {
-  font-family: var(--bmw-font);
-  font-size: var(--bmw-text-caption);
-  color: var(--bmw-body);
+  font-family: var(--md-font);
+  font-size: var(--md-text-label-md);
+  color: var(--md-on-surface);
 }
 
 /* 头部 */
 .gantt-container .gantt .grid-header {
-  fill: var(--bmw-surface-soft);
+  fill: var(--md-surface-container);
 }
 .gantt-container .gantt .grid-header .gantt-row-label,
 .gantt-container .gantt .grid-header .gantt-row-label span,
 .gantt-container .gantt .grid-header .gantt-row-label text {
-  fill: var(--bmw-muted);
-  font-weight: var(--bmw-weight-caption);
+  fill: var(--md-on-surface-variant);
+  font-weight: var(--md-weight-regular);
 }
 
 /* 网格线 */
 .gantt-container .gantt .grid-row,
 .gantt-container .gantt .grid-header-row {
-  fill: var(--bmw-canvas);
+  fill: var(--md-surface);
 }
 .gantt-container .gantt .row-line {
-  stroke: var(--bmw-hairline);
+  stroke: var(--md-outline-variant);
   stroke-width: 1;
 }
 .gantt-container .gantt .tick {
-  stroke: var(--bmw-hairline);
+  stroke: var(--md-outline-variant);
   stroke-width: 0.5;
 }
 .gantt-container .gantt .today-highlight {
-  fill: rgba(28, 105, 212, 0.08);
+  fill: rgba(0, 102, 204, 0.10);
 }
 
-/* 条形：纯色 BMW Blue（覆盖渐变） */
+/* 条形：动态主色（覆盖默认渐变） */
 .gantt-container .gantt .bar-wrapper .bar .bar-fill {
-  fill: var(--bmw-primary);
+  fill: var(--md-primary);
 }
 .gantt-container .gantt .bar-wrapper .bar .bar-progress {
-  fill: var(--bmw-primary-active);
+  fill: var(--md-primary-active);
 }
 
 /* 延期任务标红 */
 .gantt-container .gantt .bar-wrapper[data-overdue='true'] .bar .bar-fill {
-  fill: var(--bmw-error);
+  fill: var(--md-status-overdue);
 }
 .gantt-container .gantt .bar-wrapper[data-overdue='true'] .bar .bar-progress {
-  fill: #b91c1c;
+  fill: var(--md-status-overdue);
 }
 
 /* 任务名标签 */
 .gantt-container .gantt .bar-label {
   font-size: 11px;
-  fill: var(--bmw-on-dark);
+  fill: var(--md-inverse-on-surface);
   font-weight: 400;
 }
 
-/* 选中/悬停描边：蓝色，无阴影 */
+/* 选中/悬停描边：主色，无阴影 */
 .gantt-container .gantt .bar-wrapper.active .bar {
-  stroke: var(--bmw-primary-active);
+  stroke: var(--md-primary-active);
 }
 .gantt-container .gantt .bar-wrapper:hover .bar {
-  stroke: var(--bmw-primary);
+  stroke: var(--md-primary);
 }
 
 /* 依赖箭头 */
 .gantt-container .gantt .arrow {
-  stroke: var(--bmw-muted-soft);
+  stroke: var(--md-outline-variant);
   stroke-width: 1.6;
 }
 
-/* popup：直角白卡片 */
+/* popup：圆角白卡片 */
 .gantt-container .gantt .popup-wrapper .popup {
-  background-color: var(--bmw-canvas);
-  border: 1px solid var(--bmw-hairline-strong);
-  border-radius: var(--bmw-radius-none);
-  box-shadow: none;
-  padding: var(--bmw-space-sm) var(--bmw-space-md);
+  background-color: var(--md-surface);
+  border: 1px solid var(--md-outline);
+  border-radius: var(--md-radius-md);
+  box-shadow: var(--md-shadow-2);
+  padding: var(--md-space-2) var(--md-space-4);
 }
 .gantt-container .gantt .popup-wrapper .popup .title {
-  color: var(--bmw-ink);
-  font-weight: var(--bmw-weight-display);
-  font-size: var(--bmw-text-body-sm);
-  border-bottom: 1px solid var(--bmw-hairline);
+  color: var(--md-on-surface);
+  font-weight: var(--md-weight-bold);
+  font-size: var(--md-text-body-sm);
+  border-bottom: 1px solid var(--md-outline-variant);
 }
 .gantt-container .gantt .popup-wrapper .popup .subtitle {
-  color: var(--bmw-muted);
-  font-size: var(--bmw-text-caption);
+  color: var(--md-on-surface-variant);
+  font-size: var(--md-text-label-md);
   font-weight: 400;
 }
 .gantt-container .gantt .popup-wrapper .popup .pointer {
-  border-top-color: var(--bmw-hairline-strong);
+  border-top-color: var(--md-outline);
 }

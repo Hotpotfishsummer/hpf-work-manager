@@ -1,6 +1,6 @@
 <template>
   <div class="app-layout">
-    <!-- top-nav：白底 64px 吸顶，nav-link 14px/400 -->
+    <!-- top-nav：Apple 风格半透明毛玻璃吸顶导航 -->
     <header class="top-nav">
       <div class="page-container nav-inner">
         <router-link to="/projects" class="brand">
@@ -15,9 +15,15 @@
         <nav class="nav-menu">
           <router-link to="/projects" class="nav-item">项目</router-link>
           <router-link to="/projects" class="nav-item">进度</router-link>
+          <router-link to="/keys" class="nav-item">API Keys</router-link>
         </nav>
 
         <div class="nav-actions">
+          <button class="theme-toggle" :title="theme.scheme === 'dark' ? '切换到浅色' : '切换到深色'" @click="toggleTheme">
+            <el-icon v-if="theme.scheme === 'dark'"><Sunny /></el-icon>
+            <el-icon v-else><Moon /></el-icon>
+          </button>
+
           <el-dropdown trigger="click" @command="onUserCommand">
             <span class="nav-item user-chip">
               <el-icon><User /></el-icon>
@@ -40,12 +46,18 @@
 </template>
 
 <script setup lang="ts">
-import { User } from '@element-plus/icons-vue'
+import { Moon, Sunny, User } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const theme = useThemeStore()
+
+function toggleTheme() {
+  theme.setMode(theme.scheme === 'dark' ? 'light' : 'dark')
+}
 
 function onUserCommand(cmd: string) {
   if (cmd === 'logout') {
@@ -60,66 +72,89 @@ function onUserCommand(cmd: string) {
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: var(--bmw-canvas);
+  background-color: var(--md-surface);
 }
 
 .top-nav {
   position: sticky;
   top: 0;
   z-index: 100;
-  height: var(--bmw-nav-height);
-  background-color: var(--bmw-canvas);
-  border-bottom: 1px solid var(--bmw-hairline);
+  height: var(--md-nav-height);
+  background-color: color-mix(in srgb, var(--md-surface) 82%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--md-outline-variant);
 }
 
 .nav-inner {
   height: 100%;
   display: flex;
   align-items: center;
-  gap: var(--bmw-space-xl);
+  gap: var(--md-space-6);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: var(--bmw-space-xs);
-  color: var(--bmw-ink);
+  gap: var(--md-space-1);
+  color: var(--md-on-surface);
 }
-.brand:hover { color: var(--bmw-primary); }
-.brand-mark { color: var(--bmw-primary); }
+.brand:hover { color: var(--md-primary); }
+.brand-mark { color: var(--md-primary); }
 .brand-name {
-  font-size: var(--bmw-text-nav);
-  font-weight: var(--bmw-weight-display);
+  font-size: var(--md-text-label-lg);
+  font-weight: var(--md-weight-bold);
   letter-spacing: 0.3px;
 }
 
 .nav-menu {
   display: flex;
-  gap: var(--bmw-space-lg);
-  margin-left: var(--bmw-space-lg);
+  gap: var(--md-space-5);
+  margin-left: var(--md-space-5);
 }
 .nav-item {
-  font-size: var(--bmw-text-nav);
+  font-size: var(--md-text-label-lg);
   font-weight: 400;
   letter-spacing: 0.3px;
-  color: var(--bmw-ink);
-  padding: var(--bmw-space-xs) 0;
+  color: var(--md-on-surface);
+  padding: var(--md-space-1) 0;
   border-bottom: 2px solid transparent;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 .nav-item.router-link-active {
-  color: var(--bmw-ink);
-  border-bottom-color: var(--bmw-primary);
+  color: var(--md-on-surface);
+  border-bottom-color: var(--md-primary);
 }
-.nav-item:hover { color: var(--bmw-primary); }
+.nav-item:hover { color: var(--md-primary); }
 
 .nav-actions {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--md-space-2);
+}
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-full);
+  background-color: transparent;
+  color: var(--md-on-surface-variant);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.theme-toggle:hover {
+  background-color: var(--md-surface-container-high);
+  color: var(--md-on-surface);
+  border-color: var(--md-outline);
 }
 .user-chip {
   display: inline-flex;
   align-items: center;
-  gap: var(--bmw-space-xs);
+  gap: var(--md-space-1);
   cursor: pointer;
   outline: none;
 }
@@ -127,6 +162,6 @@ function onUserCommand(cmd: string) {
 
 .page-body {
   flex: 1;
-  padding-bottom: var(--bmw-space-xxl);
+  padding-bottom: var(--md-space-7);
 }
 </style>
