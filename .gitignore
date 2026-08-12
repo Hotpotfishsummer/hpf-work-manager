@@ -8,8 +8,16 @@ build/
 __pycache__/
 *.pyc
 *.pyo
+*.egg-info/
 .venv/
 venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+coverage.xml
+htmlcov/
 
 # ---- 环境变量与密钥（含模板外的本地配置） ----
 .env
@@ -19,11 +27,16 @@ venv/
 
 # ---- 测试/临时数据库文件 ----
 *.db
+*.sqlite3
 e2e_test.db
 
 # ---- 工具元数据（WorkBuddy 项目数据，不进版本库） ----
 .workbuddy/
 
+# ---- 回收站（软删除，见全局约定） ----
+.trash/
+
 # ---- OS ----
 .DS_Store
 Thumbs.db
+*.log
