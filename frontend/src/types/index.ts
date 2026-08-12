@@ -151,3 +151,19 @@ export interface GanttData {
   project_start: string
   project_end: string
 }
+
+export interface ApiKey {
+  id: number
+  name: string
+  prefix: string
+  created_at: string
+  last_used_at: string | null
+  revoked_at: string | null
+}
+
+export interface ApiKeyCreated {
+  id: number
+  name: string
+  key: string
+  prefix: string
+}

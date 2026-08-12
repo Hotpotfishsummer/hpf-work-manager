@@ -1,5 +1,7 @@
 import http from './http'
 import type {
+  ApiKey,
+  ApiKeyCreated,
   AuthResponse,
   BurndownPoint,
   GanttData,
@@ -65,4 +67,12 @@ export const statsApi = {
   burndown: (pid: number) =>
     http.get<BurndownPoint[], BurndownPoint[]>(`/projects/${pid}/burndown`),
   gantt: (pid: number) => http.get<GanttData, GanttData>(`/projects/${pid}/gantt`),
+}
+
+/* ---- API Key（AI 工具接入凭证） ---- */
+export const keyApi = {
+  list: () => http.get<ApiKey[], ApiKey[]>('/keys'),
+  create: (data: { name: string }) =>
+    http.post<ApiKeyCreated, ApiKeyCreated>('/keys', data),
+  revoke: (id: number) => http.delete<null, null>(`/keys/${id}`),
 }

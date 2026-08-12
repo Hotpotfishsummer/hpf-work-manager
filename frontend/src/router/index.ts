@@ -39,6 +39,11 @@ const router = createRouter({
           component: () => import('@/views/GanttView.vue'),
           props: true,
         },
+        {
+          path: 'keys',
+          name: 'api-keys',
+          component: () => import('@/views/ApiKeysView.vue'),
+        },
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: '/projects' },
