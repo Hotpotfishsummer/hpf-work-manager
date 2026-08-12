@@ -1,0 +1,143 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "backend: 安装依赖 (pip install -e .)",
+      "type": "shell",
+      "command": "${workspaceFolder}/backend/.venv/bin/python -m pip install -e .",
+      "cwd": "${workspaceFolder}/backend",
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "frontend: 安装依赖 (npm install)",
+      "type": "shell",
+      "command": "npm install",
+      "cwd": "${workspaceFolder}/frontend",
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "infra: 启动 PostgreSQL (docker compose)",
+      "type": "shell",
+      "command": "docker compose up -d postgres",
+      "cwd": "${workspaceFolder}",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "infra: 停止 PostgreSQL",
+      "type": "shell",
+      "command": "docker compose stop postgres",
+      "cwd": "${workspaceFolder}",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "backend: 数据库迁移 (alembic upgrade head)",
+      "type": "shell",
+      "command": "${workspaceFolder}/backend/.venv/bin/python -m alembic upgrade head",
+      "cwd": "${workspaceFolder}/backend",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "test: 迁移 SQL 离线验证 (--sql)",
+      "type": "shell",
+      "command": "${workspaceFolder}/backend/.venv/bin/python -m alembic upgrade head --sql | grep -E 'CREATE (TABLE|INDEX)' | wc -l",
+      "cwd": "${workspaceFolder}/backend",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "backend: 启动开发服务器 (uvicorn --reload)",
+      "type": "shell",
+      "command": "${workspaceFolder}/backend/.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
+      "cwd": "${workspaceFolder}/backend",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "uvicorn",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": "Uvicorn running on.*"
+        }
+      },
+      "presentation": { "reveal": "always", "panel": "dedicated", "group": "servers" }
+    },
+    {
+      "label": "frontend: 启动开发服务器 (npm run dev)",
+      "type": "shell",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/frontend",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": "Local:.*|ready in.*"
+        }
+      },
+      "presentation": { "reveal": "always", "panel": "dedicated", "group": "servers" }
+    },
+    {
+      "label": "frontend: 构建 (npm run build)",
+      "type": "shell",
+      "command": "npm run build",
+      "cwd": "${workspaceFolder}/frontend",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$tsc", "$eslint-compact"]
+    },
+    {
+      "label": "test: e2e 端到端验证 (33 项断言)",
+      "type": "shell",
+      "command": "${workspaceFolder}/backend/.venv/bin/python ${workspaceFolder}/scripts/e2e_check.py",
+      "cwd": "${workspaceFolder}",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "test: 全部（构建 + e2e + 迁移验证）",
+      "dependsOn": [
+        "frontend: 构建 (npm run build)",
+        "test: e2e 端到端验证 (33 项断言)",
+        "test: 迁移 SQL 离线验证 (--sql)"
+      ],
+      "dependsOrder": "parallel",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "启动: 完整开发环境 (PostgreSQL + backend + frontend)",
+      "dependsOn": [
+        "infra: 启动 PostgreSQL (docker compose)",
+        "backend: 数据库迁移 (alembic upgrade head)",
+        "backend: 启动开发服务器 (uvicorn --reload)",
+        "frontend: 启动开发服务器 (npm run dev)"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "启动: 后端开发环境 (DB + 迁移 + uvicorn)",
+      "dependsOn": [
+        "infra: 启动 PostgreSQL (docker compose)",
+        "backend: 数据库迁移 (alembic upgrade head)",
+        "backend: 启动开发服务器 (uvicorn --reload)"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "启动: 前端开发环境 (vite)",
+      "dependsOn": ["frontend: 启动开发服务器 (npm run dev)"],
+      "problemMatcher": []
+    }
+  ]
+}

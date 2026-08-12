@@ -1,0 +1,55 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug: FastAPI 后端 (:8000)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["app.main:app", "--host", "0.0.0.0", "--port", "8000"],
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "DATABASE_URL": "postgresql+asyncpg://hpf:hpf@localhost:5432/hpf_work",
+        "SECRET_KEY": "dev-secret-key-for-vscode-debug",
+        "CORS_ORIGINS": "http://localhost:5173,http://localhost:8080"
+      },
+      "jinja": true,
+      "justMyCode": true,
+      "console": "integratedTerminal",
+      "preLaunchTask": "backend: 数据库迁移 (alembic upgrade head)"
+    },
+    {
+      "name": "Debug: 前端 (Chrome + Vite :8080)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:8080",
+      "webRoot": "${workspaceFolder}/frontend",
+      "sourceMaps": true,
+      "preLaunchTask": "frontend: 启动开发服务器 (npm run dev)"
+    },
+    {
+      "name": "Debug: e2e 端到端测试",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/e2e_check.py",
+      "cwd": "${workspaceFolder}",
+      "env": { "SECRET_KEY": "test-secret" },
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Debug: Python 当前文件",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "调试: 全栈 (后端 + 前端)",
+      "configurations": ["Debug: FastAPI 后端 (:8000)", "Debug: 前端 (Chrome + Vite :8080)"]
+    }
+  ]
+}

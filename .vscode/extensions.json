@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "Vue.volar",
+    "ms-python.python",
+    "ms-python.debugpy",
+    "ms-python.black-formatter",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "ms-azuretools.vscode-docker",
+    "EditorConfig.EditorConfig"
+  ]
+}
