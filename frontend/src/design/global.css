@@ -1,6 +1,6 @@
 /* ============================================================
-   全局基础样式（BMW 企业风格）
-   白底 canvas、正文 Light 300、无阴影、直角
+   全局基础样式（Apple × MD3）
+   surface 画布、SF 栈、紧凑密度、Apple 留白的页面节奏
    ============================================================ */
 
 * {
@@ -16,61 +16,100 @@ body,
 }
 
 body {
-  font-family: var(--bmw-font);
-  font-weight: var(--bmw-weight-body);
-  font-size: var(--bmw-text-body-md);
-  color: var(--bmw-body);
-  background-color: var(--bmw-canvas);
+  font-family: var(--md-font);
+  font-weight: var(--md-weight-regular);
+  font-size: var(--md-text-body);
+  line-height: 1.5;
+  letter-spacing: var(--md-track-body);
+  color: var(--md-on-surface);
+  background-color: var(--md-surface);
   -webkit-font-smoothing: antialiased;
-  letter-spacing: 0;
+  text-rendering: optimizeLegibility;
+  transition: background-color var(--md-duration-standard) var(--md-ease-standard),
+    color var(--md-duration-standard) var(--md-ease-standard);
 }
 
 h1, h2, h3, h4 {
-  font-family: var(--bmw-font);
-  font-weight: var(--bmw-weight-display);
-  color: var(--bmw-ink);
-  letter-spacing: 0;
+  font-family: var(--md-font);
+  font-weight: var(--md-weight-semibold);
+  color: var(--md-ink);
+  letter-spacing: var(--md-track-title);
+  margin: 0;
 }
 
 a {
-  color: var(--bmw-primary);
+  color: var(--md-primary);
   text-decoration: none;
 }
-a:hover { color: var(--bmw-primary-active); }
+a:hover { color: var(--md-primary); text-decoration: underline; }
 
-/* UPPERCASE 内联文字链接（LEARN MORE 风格） */
-.text-link-upper {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--bmw-ink);
-  cursor: pointer;
-  user-select: none;
-  background: none;
-  border: none;
-  padding: 0;
-}
-.text-link-upper:hover { color: var(--bmw-primary); }
-.text-link-upper .chev { margin-left: 4px; }
-
-/* BMW 直角卡片（无阴影，深度来自色块对比） */
-.bmw-card {
-  background-color: var(--bmw-canvas);
-  border: 1px solid var(--bmw-hairline);
-  border-radius: var(--bmw-radius-none);
-  padding: var(--bmw-card-padding);
+/* 页面标题（Apple display 28/600/-0.374px） */
+.page-title {
+  font-size: var(--md-text-display);
+  font-weight: var(--md-weight-semibold);
+  line-height: 1.2;
+  letter-spacing: var(--md-track-display);
+  color: var(--md-on-surface);
 }
 
-/* 状态色文字（语义映射：done→success / 进行中→primary / 待办→muted / 延期→error） */
-.status-text-success { color: var(--bmw-success); }
-.status-text-primary { color: var(--bmw-primary); }
-.status-text-muted { color: var(--bmw-muted); }
-.status-text-error { color: var(--bmw-error); font-weight: 700; }
+/* 页面眉：Apple 留白（section 上下呼吸感） */
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--md-space-lg);
+  padding: var(--md-space-xl) 0 var(--md-space-md);
+}
+
+/* 眉下小字：CAPTION · 描述 */
+.page-sub {
+  margin: var(--md-space-xs) 0 0;
+  font-size: var(--md-text-body-sm);
+  font-weight: var(--md-weight-regular);
+  letter-spacing: var(--md-track-caption);
+  color: var(--md-on-surface-variant);
+}
+
+.head-actions {
+  display: flex;
+  gap: var(--md-space-sm);
+  flex-wrap: wrap;
+}
+
+/* MD3 卡片：surface-container-low + lg 圆角 + hairline */
+.md-card {
+  background-color: var(--md-surface-container-low);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-lg);
+  padding: var(--md-card-padding-lg);
+  color: var(--md-on-surface);
+}
+
+/* 状态色文字 */
+.status-text-success { color: var(--md-status-done); }
+.status-text-primary { color: var(--md-primary); }
+.status-text-muted { color: var(--md-status-todo); }
+.status-text-error { color: var(--md-status-overdue); font-weight: var(--md-weight-medium); }
 
 /* 页面内容容器：最大 1440px 居中 */
 .page-container {
-  max-width: var(--bmw-content-max);
+  max-width: var(--md-content-max);
   margin: 0 auto;
-  padding: 0 var(--bmw-space-lg);
+  padding: 0 var(--md-space-lg);
+}
+
+/* 焦点环：MD3 2px 主色 outline */
+:focus-visible {
+  outline: 2px solid var(--md-primary);
+  outline-offset: 2px;
+  border-radius: var(--md-radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

@@ -1,113 +1,291 @@
 /* ============================================================
-   Element Plus 主题定制 → BMW 企业风格
-   覆盖 Element Plus CSS 变量 + 高频组件样式（直角/48px/蓝主色/无阴影）
+   Element Plus 主题定制 → Apple × MD3
+   覆盖 ElPlus 变量映射到 MD3 角色 token，深浅两套由 html[data-theme] 驱动。
    ============================================================ */
 
 :root {
-  /* 主色：BMW corporate blue */
-  --el-color-primary: #1c69d4;
-  --el-color-primary-light-3: #5a93e0;
-  --el-color-primary-light-5: #8db4ea;
-  --el-color-primary-light-7: #c0d6f3;
-  --el-color-primary-light-8: #d9e6f8;
-  --el-color-primary-light-9: #ecf3fc;
-  --el-color-primary-dark-2: #0653b6;
+  /* 主色：MD3 primary */
+  --el-color-primary: var(--md-primary);
+  --el-color-primary-light-3: var(--md-primary-container);
+  --el-color-primary-light-5: var(--md-primary-container);
+  --el-color-primary-light-7: var(--md-primary-container);
+  --el-color-primary-light-8: var(--md-primary-container);
+  --el-color-primary-light-9: var(--md-primary-container);
+  --el-color-primary-dark-2: var(--md-primary);
 
-  /* 语义色 */
-  --el-color-success: #22c55e;
-  --el-color-warning: #f59e0b;
-  --el-color-danger: #dc2626;
-  --el-color-error: #dc2626;
-  --el-color-info: #6b6b6b;
+  /* 语义色 → MD3 角色 */
+  --el-color-success: var(--md-success);
+  --el-color-success-light-9: var(--md-success-container);
+  --el-color-warning: var(--md-warning);
+  --el-color-warning-light-9: var(--md-warning-container);
+  --el-color-danger: var(--md-error);
+  --el-color-danger-light-9: var(--md-error-container);
+  --el-color-error: var(--md-error);
+  --el-color-error-light-9: var(--md-error-container);
+  --el-color-info: var(--md-on-surface-variant);
 
-  /* 圆角二元制：全局直角 */
-  --el-border-radius-base: 0px;
-  --el-border-radius-small: 0px;
-  --el-border-radius-round: 0px;
-  --el-border-radius-circle: 9999px;
+  /* 圆角（MD3 阶梯） */
+  --el-border-radius-base: var(--md-radius-lg);
+  --el-border-radius-small: var(--md-radius-sm);
+  --el-border-radius-round: var(--md-radius-pill);
+  --el-border-radius-circle: var(--md-radius-pill);
 
   /* 文字色 */
-  --el-text-color-primary: #262626;
-  --el-text-color-regular: #3c3c3c;
-  --el-text-color-secondary: #6b6b6b;
-  --el-text-color-placeholder: #9a9a9a;
-  --el-text-color-disabled: #9a9a9a;
+  --el-text-color-primary: var(--md-on-surface);
+  --el-text-color-regular: var(--md-on-surface);
+  --el-text-color-secondary: var(--md-on-surface-variant);
+  --el-text-color-placeholder: var(--md-on-surface-variant);
+  --el-text-color-disabled: var(--md-on-surface-variant-2);
 
   /* 边框/表面 */
-  --el-border-color: #e6e6e6;
-  --el-border-color-light: #e6e6e6;
-  --el-border-color-lighter: #ebebeb;
-  --el-border-color-extra-light: #f2f2f2;
-  --el-fill-color-blank: #ffffff;
-  --el-bg-color: #ffffff;
-  --el-bg-color-page: #f7f7f7;
-  --el-bg-color-overlay: #ffffff;
-  --el-fill-color-light: #f7f7f7;
-  --el-fill-color-lighter: #fafafa;
+  --el-border-color: var(--md-outline);
+  --el-border-color-light: var(--md-outline-variant);
+  --el-border-color-lighter: var(--md-outline-variant);
+  --el-border-color-extra-light: var(--md-outline-variant);
+  --el-border-color-dark: var(--md-outline);
+  --el-border-color-hover: var(--md-outline);
+  --el-fill-color-blank: var(--md-surface-container-lowest);
+  --el-bg-color: var(--md-surface);
+  --el-bg-color-page: var(--md-surface);
+  --el-bg-color-overlay: var(--md-surface-container-high);
+  --el-fill-color: var(--md-surface-container-highest);
+  --el-fill-color-light: var(--md-surface-container-high);
+  --el-fill-color-lighter: var(--md-surface-container-low);
+  --el-fill-color-extra-light: var(--md-surface-container-low);
+  --el-fill-color-dark: var(--md-surface-container-highest);
+
+  /* 阴影：MD3 level-1/2 */
+  --el-box-shadow: var(--md-shadow-1);
+  --el-box-shadow-light: var(--md-shadow-1);
+  --el-box-shadow-lighter: var(--md-shadow-1);
+  --el-box-shadow-dark: var(--md-shadow-2);
 
   /* 字体 */
-  --el-font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
-    'Segoe UI', Roboto, sans-serif;
+  --el-font-family: var(--md-font);
+  --el-font-size-base: var(--md-text-body);
+  --el-font-size-small: var(--md-text-body-sm);
+  --el-font-size-extra-small: var(--md-text-caption);
+
+  /* 组件高度：紧凑密度 */
+  --el-component-size: var(--md-control-height);
+  --el-component-size-small: var(--md-chip-height);
 }
 
-/* ---- 按钮：直角 + BMW 字重 700 + 0.5px 字距 ---- */
+/* ---- 按钮：pill + 主色/tonal 双语法 ---- */
 .el-button {
-  border-radius: var(--bmw-radius-none);
-  font-family: var(--bmw-font);
-  font-size: var(--bmw-text-button);
-  font-weight: var(--bmw-weight-display);
-  letter-spacing: 0.5px;
+  border-radius: var(--md-radius-pill);
+  font-family: var(--md-font);
+  font-size: var(--md-text-label);
+  font-weight: var(--md-weight-medium);
+  letter-spacing: var(--md-track-small);
+  height: var(--md-control-height);
+  padding: var(--md-button-padding);
+  transition:
+    background-color var(--md-duration-standard) var(--md-ease-standard),
+    border-color var(--md-duration-standard) var(--md-ease-standard),
+    color var(--md-duration-standard) var(--md-ease-standard),
+    transform var(--md-duration-standard) var(--md-ease-standard);
 }
+.el-button:active:not(.is-disabled) {
+  transform: scale(var(--md-press-scale));
+}
+.el-button--large {
+  height: 48px;
+  padding: 0 24px;
+}
+.el-button--small {
+  height: 32px;
+  padding: 0 14px;
+  font-size: var(--md-text-label-sm);
+}
+
 .el-button--primary {
-  background-color: var(--bmw-primary);
-  border-color: var(--bmw-primary);
+  background-color: var(--md-primary);
+  border-color: var(--md-primary);
+  color: var(--md-on-primary);
 }
 .el-button--primary:hover,
-.el-button--primary:focus {
-  background-color: var(--bmw-primary-active);
-  border-color: var(--bmw-primary-active);
-}
+.el-button--primary:focus { background-color: var(--md-on-primary); color: var(--md-primary); border-color: var(--md-primary); }
+.el-button--primary:active { background-color: var(--md-primary); color: var(--md-on-primary); }
 .el-button--primary.is-disabled,
 .el-button--primary.is-disabled:hover {
-  background-color: var(--bmw-primary-disabled);
-  border-color: var(--bmw-primary-disabled);
-  color: var(--bmw-muted);
+  background-color: var(--md-surface-container-highest);
+  border-color: var(--md-surface-container-highest);
+  color: var(--md-on-surface-variant-2);
 }
-.el-button--large { height: var(--bmw-control-height); padding: 13px 31px; }
 
-/* 次级按钮：白底 + hairline-strong 描边 + 墨字 */
+/* tonal 语法（default 按钮） */
 .el-button--default {
-  background-color: var(--bmw-canvas);
-  border-color: var(--bmw-hairline-strong);
-  color: var(--bmw-ink);
+  background-color: var(--md-primary-container);
+  border-color: var(--md-primary-container);
+  color: var(--md-on-primary-container);
 }
 .el-button--default:hover,
 .el-button--default:focus {
-  color: var(--bmw-primary);
-  border-color: var(--bmw-primary);
-  background-color: var(--bmw-canvas);
+  background-color: var(--md-primary);
+  border-color: var(--md-primary);
+  color: var(--md-on-primary);
 }
 
-/* ---- 输入控件：直角 + 48px 高 + hairline 描边，聚焦描边加粗为 ink ---- */
+/* 文本/链接按钮 */
+.el-button.is-text {
+  background: transparent;
+  border: none;
+  color: var(--md-primary);
+}
+.el-button.is-text:hover,
+.el-button.is-text:focus { color: var(--md-primary); background: var(--md-primary-hover); }
+.el-button.is-text.is-danger { color: var(--md-error); }
+.el-button.is-text.is-danger:hover { background: rgba(186, 26, 26, 0.08); }
+
+/* ---- 输入控件：outlined + sm 圆角，聚焦 2px 主色 ---- */
 .el-input__wrapper,
 .el-select__wrapper,
 .el-textarea__inner {
-  border-radius: var(--bmw-radius-none);
+  border-radius: var(--md-radius-sm);
 }
-.el-input__wrapper {
-  box-shadow: 0 0 0 1px var(--bmw-hairline) inset;
-  min-height: var(--bmw-control-height);
-  font-weight: var(--bmw-weight-body);
+.el-input__wrapper,
+.el-select__wrapper {
+  box-shadow: 0 0 0 1px var(--md-outline-variant) inset;
+  min-height: var(--md-input-height);
+  background-color: transparent;
+  font-weight: var(--md-weight-regular);
+  transition: box-shadow var(--md-duration-standard) var(--md-ease-standard);
 }
-.el-input__wrapper:hover { box-shadow: 0 0 0 1px var(--bmw-hairline-strong) inset; }
-.el-input__wrapper.is-focus { box-shadow: 0 0 0 1px var(--bmw-ink) inset; }
+.el-input__wrapper:hover,
+.el-select__wrapper:hover { box-shadow: 0 0 0 1px var(--md-outline) inset; }
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focus { box-shadow: 0 0 0 2px var(--md-primary) inset; }
+.el-textarea__inner { box-shadow: 0 0 0 1px var(--md-outline-variant) inset; }
+.el-textarea__inner:hover { box-shadow: 0 0 0 1px var(--md-outline) inset; }
 
-/* ---- 弹窗/下拉：直角 ---- */
-.el-dialog, .el-message-box, .el-popper.is-light, .el-dropdown__popper {
-  border-radius: var(--bmw-radius-none);
+/* ---- 弹窗/下拉：MD3 表面 ---- */
+.el-dialog {
+  border-radius: var(--md-radius-xl);
+  background-color: var(--md-surface-container-lowest);
+  box-shadow: var(--md-shadow-2);
 }
-.el-tag { border-radius: var(--bmw-radius-none); font-weight: 400; }
-.el-progress-bar__outer { border-radius: var(--bmw-radius-none); background-color: var(--bmw-surface-strong); }
-.el-progress-bar__inner { border-radius: var(--bmw-radius-none); }
-.el-tabs__item { font-weight: var(--bmw-weight-display); }
-.el-table th.el-table__cell { font-weight: var(--bmw-weight-display); color: var(--bmw-ink); background-color: var(--bmw-surface-soft); }
+.el-message-box {
+  border-radius: var(--md-radius-xl);
+  background-color: var(--md-surface-container-lowest);
+  box-shadow: var(--md-shadow-2);
+}
+.el-popper.is-light,
+.el-dropdown__popper {
+  border-radius: var(--md-radius-md);
+  background-color: var(--md-surface-container-lowest);
+  border-color: var(--md-outline-variant);
+  box-shadow: var(--md-shadow-2);
+}
+.el-dropdown-menu__item:not(.is-disabled):hover { background-color: var(--md-primary-hover); color: var(--md-on-surface); }
+
+/* ---- 标签：MD3 圆角 + 状态色容器 ---- */
+.el-tag {
+  border-radius: var(--md-radius-xs);
+  font-family: var(--md-font);
+  font-weight: var(--md-weight-medium);
+  padding: var(--md-tag-padding);
+  height: auto;
+}
+.el-tag--primary { background-color: var(--md-primary-container); border-color: var(--md-primary-container); color: var(--md-on-primary-container); }
+.el-tag--success { background-color: var(--md-success-container); border-color: var(--md-success-container); color: var(--md-on-success-container); }
+.el-tag--warning { background-color: var(--md-warning-container); border-color: var(--md-warning-container); color: var(--md-on-warning-container); }
+.el-tag--danger,
+.el-tag--error { background-color: var(--md-error-container); border-color: var(--md-error-container); color: var(--md-on-error-container); }
+.el-tag--info { background-color: var(--md-surface-variant); border-color: var(--md-surface-variant); color: var(--md-on-surface-variant); }
+
+/* plain 变体：描边 + 文字色 */
+.el-tag.el-tag--plain {
+  background-color: transparent;
+  border-width: 1px;
+}
+.el-tag--primary.el-tag--plain { border-color: var(--md-outline); color: var(--md-primary); }
+.el-tag--success.el-tag--plain { border-color: var(--md-success); color: var(--md-success); }
+.el-tag--warning.el-tag--plain { border-color: var(--md-warning); color: var(--md-warning); }
+.el-tag--danger.el-tag--plain,
+.el-tag--error.el-tag--plain { border-color: var(--md-error); color: var(--md-error); }
+.el-tag--info.el-tag--plain { border-color: var(--md-outline); color: var(--md-on-surface-variant); }
+
+/* ---- 进度条：pill 轨道 ---- */
+.el-progress-bar__outer {
+  border-radius: var(--md-radius-pill);
+  background-color: var(--md-surface-container-highest);
+}
+.el-progress-bar__inner {
+  border-radius: var(--md-radius-pill);
+  transition: width var(--md-duration-standard) var(--md-ease-standard);
+}
+
+/* ---- 表格：MD3 表头 + hover 行 ---- */
+.el-table {
+  --el-table-border-color: var(--md-outline-variant);
+  --el-table-header-bg-color: var(--md-surface);
+  --el-table-tr-bg-color: var(--md-surface);
+  --el-table-row-hover-bg-color: var(--md-surface-container-low);
+  --el-table-header-text-color: var(--md-on-surface-variant);
+  --el-table-text-color: var(--md-on-surface);
+  font-family: var(--md-font);
+}
+.el-table th.el-table__cell {
+  font-weight: var(--md-weight-medium);
+  font-size: var(--md-text-label-sm);
+  letter-spacing: var(--md-track-caption);
+  color: var(--md-on-surface-variant);
+  background-color: var(--md-surface);
+}
+
+/* ---- Tabs：MD3 下划线主色 ---- */
+.el-tabs__item {
+  font-family: var(--md-font);
+  font-weight: var(--md-weight-medium);
+  font-size: var(--md-text-label);
+  color: var(--md-on-surface-variant);
+}
+.el-tabs__item.is-active { color: var(--md-on-surface); }
+.el-tabs__active-bar { background-color: var(--md-primary); }
+.el-tabs__nav-wrap::after { background-color: var(--md-outline-variant); }
+
+/* ---- 消息提示 ---- */
+.el-message {
+  border-radius: var(--md-radius-md);
+  background-color: var(--md-surface-container-high);
+  border-color: var(--md-outline-variant);
+  box-shadow: var(--md-shadow-2);
+}
+.el-alert {
+  border-radius: var(--md-radius-md);
+  background-color: var(--md-surface-container-low);
+  color: var(--md-on-surface);
+}
+
+/* ---- 空状态 / 分页 ---- */
+.el-empty__description p { color: var(--md-on-surface-variant); }
+.el-pagination {
+  --el-pagination-bg-color: transparent;
+  --el-pagination-button-bg-color: var(--md-surface-container-low);
+  --el-pagination-hover-color: var(--md-primary);
+  font-family: var(--md-font);
+  font-weight: var(--md-weight-regular);
+}
+.el-pagination.is-background .el-pager li { border-radius: var(--md-radius-pill); }
+
+/* ---- 加载遮罩 ---- */
+.el-loading-mask { background-color: rgba(0, 0, 0, 0.06); }
+[data-theme='dark'] .el-loading-mask { background-color: rgba(0, 0, 0, 0.4); }
+
+/* ---- 对话框标题 ---- */
+.el-dialog__title {
+  font-family: var(--md-font);
+  font-weight: var(--md-weight-semibold);
+  font-size: var(--md-text-title-lg);
+  color: var(--md-on-surface);
+  letter-spacing: var(--md-track-title);
+}
+
+/* ---- 表单标签 ---- */
+.el-form-item__label {
+  font-family: var(--md-font);
+  font-weight: var(--md-weight-medium);
+  font-size: var(--md-text-label);
+  color: var(--md-on-surface);
+}
