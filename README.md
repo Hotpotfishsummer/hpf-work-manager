@@ -13,6 +13,19 @@ UI 遵循 **BMW 企业设计风格**（见根目录 [`DESIGN.md`](./DESIGN.md)�
 | 数据库 | PostgreSQL 16 |
 | 部署 | Docker Compose（frontend/nginx + backend/uvicorn + postgres） |
 
+## 文档
+
+完整项目文档见 [`docs/`](./docs) 目录：
+
+| 文档 | 内容 |
+|---|---|
+| [01 · 架构设计](./docs/01-架构设计.md) | 技术选型、系统架构、目录结构、核心设计决策 |
+| [02 · 数据模型](./docs/02-数据模型.md) | 五表结构、索引、级联策略、状态机、迁移管理 |
+| [03 · API 参考](./docs/03-API参考.md) | 全部端点、认证、状态流转规则、错误码 |
+| [04 · 前端指南](./docs/04-前端指南.md) | 前端架构、页面、组件、设计系统落地 |
+| [05 · 部署指南](./docs/05-部署指南.md) | Docker 部署、环境变量、排障 |
+| [06 · 开发指南](./docs/06-开发指南.md) | 环境搭建、测试、代码约定、扩展路线 |
+
 ## 核心功能
 
 - **项目管理**：项目 CRUD、起止日期、归档、里程碑
@@ -31,6 +44,8 @@ UI 遵循 **BMW 企业设计风格**（见根目录 [`DESIGN.md`](./DESIGN.md)�
 ├── docker-compose.override.yml  # 开发编排（热更新）
 ├── .env.example                 # 环境变量模板
 ├── DESIGN.md                    # BMW 设计系统（UI 唯一设计源）
+├── docs/                        # 项目文档（架构/数据模型/API/前端/部署/开发）
+├── scripts/e2e_check.py         # 端到端 API 验证（33 项断言）
 ├── frontend/                    # Vue 3 前端
 └── backend/                     # FastAPI 后端
 ```
