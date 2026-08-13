@@ -62,6 +62,12 @@ class DevLogUpdate(BaseModel):
 class DevLogOut(DevLogBase):
     model_config = ConfigDict(from_attributes=True)
 
+    @model_validator(mode="after")
+    def _coerce(self) -> "DevLogOut":
+        if self.related_task_ids is None:
+            self.related_task_ids = []
+        return self
+
     id: int
     project_id: int
     session_id: int | None

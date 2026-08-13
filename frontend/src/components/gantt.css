@@ -9,6 +9,12 @@
   color: var(--md-on-surface);
 }
 
+/* 顶部日期轴文字（frappe-gantt 默认 fill:#555，深色主题下不可见）*/
+.gantt-container .gantt .upper-text,
+.gantt-container .gantt .lower-text {
+  fill: var(--md-on-surface-variant);
+}
+
 /* 头部 */
 .gantt-container .gantt .grid-header {
   fill: var(--md-surface-container);

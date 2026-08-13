@@ -79,7 +79,7 @@
           <span v-if="log.session_id">· 会话 #{{ log.session_id }}</span>
         </div>
         <p v-if="log.content" class="log-content">{{ log.content }}</p>
-        <div v-if="log.related_task_ids.length" class="log-tasks">
+        <div v-if="log.related_task_ids?.length" class="log-tasks">
           关联任务：<el-tag v-for="t in log.related_task_ids" :key="t" size="small" effect="plain">#{{ t }}</el-tag>
         </div>
       </div>

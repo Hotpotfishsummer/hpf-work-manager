@@ -42,11 +42,11 @@
     <!-- category-tab 子导航：UPPERCASE + ink 下划线 -->
     <div class="subnav-wrap">
       <div class="page-container subnav">
-        <el-tabs v-model="activeTab" class="bmw-tabs">
+        <el-tabs v-model="activeTab" class="bmw-tabs" @tab-click="onTabClick">
           <el-tab-pane label="概览" name="overview" />
-          <el-tab-pane label="任务" name="tasks" @click="router.push(`/projects/${pid}/tasks`)" />
-          <el-tab-pane label="甘特图" name="gantt" @click="router.push(`/projects/${pid}/gantt`)" />
-          <el-tab-pane label="开发记录" name="logs" @click="router.push(`/projects/${pid}/logs`)" />
+          <el-tab-pane label="任务" name="tasks" />
+          <el-tab-pane label="甘特图" name="gantt" />
+          <el-tab-pane label="开发记录" name="logs" />
         </el-tabs>
       </div>
     </div>
@@ -168,6 +168,12 @@ const milestoneForm = reactive<{ name: string; due_date: string | null }>({ name
 const PRIORITY_LABEL: Record<string, string> = { high: '高', medium: '中', low: '低' }
 
 const overdueTasks = computed(() => stats.value?.overdue_tasks ?? [])
+
+// 子 tab 跳转到独立路由页面（el-tab-pane 的 @click 不会触发，需用 el-tabs 的 @tab-click）
+function onTabClick(pane: { paneName: string }) {
+  if (pane.paneName === 'overview') return
+  router.push(`/projects/${pid.value}/${pane.paneName}`)
+}
 
 function fmtRange() {
   if (!project.value) return ''

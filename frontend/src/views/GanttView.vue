@@ -107,7 +107,7 @@ onMounted(load)
   margin: var(--md-space-5) 0 0;
   padding: 0;
   font-size: var(--md-text-label-md);
-  color: var(--md-on-surface-variant);
+  color: var(--md-on-surface);
   flex-wrap: wrap;
 }
 .legend-item { display: inline-flex; align-items: center; gap: 6px; }
