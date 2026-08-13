@@ -63,11 +63,19 @@
   fill: var(--md-status-overdue);
 }
 
-/* 任务名标签 */
+/* 任务名标签：在横道上用反色；溢出到网格（.big，横道比文字窄）时用表层对比色 */
 .gantt-container .gantt .bar-label {
   font-size: 11px;
   fill: var(--md-inverse-on-surface);
   font-weight: 400;
+  paint-order: stroke;
+  stroke: var(--md-surface);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+.gantt-container .gantt .bar-label.big {
+  fill: var(--md-on-surface);
+  stroke: none;
 }
 
 /* 选中/悬停描边：主色，无阴影 */
