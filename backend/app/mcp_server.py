@@ -6,7 +6,7 @@
 """
 
 import contextvars
-from datetime import date
+from datetime import date, datetime
 from urllib.parse import urlparse
 
 from mcp.server.fastmcp import FastMCP
@@ -16,11 +16,22 @@ from sqlalchemy import select
 from app.config import settings
 from app.core.events import publish
 from app.database import AsyncSessionLocal
-from app.models import Milestone, Project, Task, TaskDependency, User
+from app.models import DevLog, DevSession, Milestone, Project, Task, TaskDependency, User
 from app.schemas import (
+    DevLogCreate,
     MilestoneCreate,
     ProjectCreate,
     TaskCreate,
+)
+from app.services.dev_logs import (
+    _attach_session,
+    _validate_related_tasks,
+    apply_log_update,
+    get_dev_log_stats as _get_dev_log_stats_service,
+    get_dev_report as _get_dev_report_service,
+    get_project_state as _get_project_state_service,
+    session_to_dict,
+    to_dict,
 )
 from app.services.stats import get_burndown, get_gantt_data, get_project_stats
 from app.services.tasks import apply_task_update, to_out
@@ -563,6 +574,305 @@ async def get_gantt_mcp(project_id: int) -> dict:
                 for t in gantt.tasks
             ],
         }
+
+
+# ---------- 开发记录（DevLog / DevSession） ----------
+
+
+async def _require_log(db, username: str, log_id: int) -> DevLog:
+    user = await _get_user(db, username)
+    log = (
+        await db.execute(
+            select(DevLog)
+            .join(Project, DevLog.project_id == Project.id)
+            .where(DevLog.id == log_id, Project.owner_id == user.id)
+        )
+    ).scalar_one_or_none()
+    if log is None:
+        raise ValueError(f"记录 {log_id} 不存在")
+    return log
+
+
+async def _require_session(db, username: str, session_id: int) -> DevSession:
+    user = await _get_user(db, username)
+    s = (
+        await db.execute(
+            select(DevSession)
+            .join(Project, DevSession.project_id == Project.id)
+            .where(DevSession.id == session_id, Project.owner_id == user.id)
+        )
+    ).scalar_one_or_none()
+    if s is None:
+        raise ValueError(f"会话 {session_id} 不存在")
+    return s
+
+
+async def _create_log_entry(
+    db, username: str, project_id: int, entry_type: str, title: str,
+    content: str | None = None, severity: str | None = None,
+    related_task_ids: list[int] | None = None, git_ref: str | None = None,
+    session_id: int | None = None,
+) -> dict:
+    await _require_project(db, username, project_id)
+    payload = DevLogCreate(
+        entry_type=entry_type,
+        title=title,
+        content=content,
+        severity=severity,
+        related_task_ids=related_task_ids,
+        git_ref=git_ref,
+    )
+    try:
+        await _validate_related_tasks(db, project_id, related_task_ids)
+        sid = await _attach_session(db, project_id, session_id)
+    except ValueError as e:
+        raise ValueError(str(e))
+    log = DevLog(
+        project_id=project_id,
+        session_id=sid,
+        author=username,
+        **payload.model_dump(exclude={"session_id"}),
+    )
+    if log.status == "done":
+        log.resolved_at = utcnow()
+    db.add(log)
+    await db.commit()
+    await db.refresh(log)
+    await publish(project_id, "created", "log", log.id)
+    return to_dict(log)
+
+
+@mcp.tool()
+async def log_progress(
+    project_id: int, title: str, content: str | None = None,
+    related_task_ids: list[int] | None = None, git_ref: str | None = None,
+) -> dict:
+    """记录一次开发进展。project_id 与 title 必填；建议附 git_ref（commit 或分支名）溯源。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        return await _create_log_entry(
+            db, username, project_id, "progress", title, content,
+            related_task_ids=related_task_ids, git_ref=git_ref,
+        )
+
+
+@mcp.tool()
+async def log_difficulty(
+    project_id: int, title: str, content: str | None = None,
+    severity: str = "medium", related_task_ids: list[int] | None = None,
+) -> dict:
+    """记录遇到的难点。severity: low/medium/high。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        return await _create_log_entry(
+            db, username, project_id, "difficulty", title, content,
+            severity=severity, related_task_ids=related_task_ids,
+        )
+
+
+@mcp.tool()
+async def log_todo(
+    project_id: int, title: str, content: str | None = None,
+    related_task_ids: list[int] | None = None, git_ref: str | None = None,
+) -> dict:
+    """记录下一步待办（开发过程中的 TODO，比任务更轻量）。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        return await _create_log_entry(
+            db, username, project_id, "todo", title, content,
+            related_task_ids=related_task_ids, git_ref=git_ref,
+        )
+
+
+@mcp.tool()
+async def log_decision(
+    project_id: int, title: str, content: str | None = None,
+    related_task_ids: list[int] | None = None,
+) -> dict:
+    """记录一个技术决策及理由。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        return await _create_log_entry(
+            db, username, project_id, "decision", title, content,
+            related_task_ids=related_task_ids,
+        )
+
+
+@mcp.tool()
+async def log_blocker(
+    project_id: int, title: str, content: str | None = None,
+    severity: str = "high",
+) -> dict:
+    """记录阻塞项。severity: low/medium/high（默认 high）。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        return await _create_log_entry(
+            db, username, project_id, "blocker", title, content, severity=severity,
+        )
+
+
+@mcp.tool()
+async def log_note(project_id: int, title: str, content: str | None = None) -> dict:
+    """记录一条通用备注。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        return await _create_log_entry(db, username, project_id, "note", title, content)
+
+
+@mcp.tool()
+async def start_dev_session(project_id: int, title: str | None = None) -> dict:
+    """开始一次开发会话。后续 log_* 会自动归入本次会话，直到 end_dev_session。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        await _require_project(db, username, project_id)
+        s = DevSession(project_id=project_id, title=title, author=username)
+        db.add(s)
+        await db.commit()
+        await db.refresh(s)
+        await publish(project_id, "created", "session", s.id)
+        return session_to_dict(s)
+
+
+@mcp.tool()
+async def end_dev_session(session_id: int, summary: str | None = None) -> dict:
+    """结束一次开发会话，可选附会话总结。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        s = await _require_session(db, username, session_id)
+        s.ended_at = utcnow()
+        if summary is not None:
+            s.summary = summary
+        await db.commit()
+        await db.refresh(s)
+        await publish(s.project_id, "updated", "session", s.id)
+        return session_to_dict(s)
+
+
+@mcp.tool()
+async def list_dev_logs(
+    project_id: int, entry_type: str | None = None,
+    status: str | None = None, since: str | None = None, limit: int = 50,
+) -> list[dict]:
+    """列出项目的开发记录。可按 entry_type（progress/difficulty/todo/decision/blocker/milestone/note）与 status（open/done）过滤。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        await _require_project(db, username, project_id)
+        stmt = select(DevLog).where(DevLog.project_id == project_id)
+        if entry_type:
+            stmt = stmt.where(DevLog.entry_type == entry_type)
+        if status:
+            stmt = stmt.where(DevLog.status == status)
+        if since:
+            stmt = stmt.where(DevLog.created_at >= datetime.fromisoformat(since))
+        rows = (
+            (await db.execute(stmt.order_by(DevLog.created_at.desc()).limit(limit)))
+            .scalars()
+            .all()
+        )
+        return [to_dict(r) for r in rows]
+
+
+@mcp.tool()
+async def get_dev_log_stats_mcp(project_id: int) -> dict:
+    """获取开发记录统计（今日记录/进行中难点/未完成待办/决策数等）。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        await _require_project(db, username, project_id)
+        stats = await _get_dev_log_stats_service(db, project_id)
+        return {
+            "total": stats.total,
+            "today_count": stats.today_count,
+            "open_todos": stats.open_todos,
+            "open_difficulties": stats.open_difficulties,
+            "open_blockers": stats.open_blockers,
+            "decisions": stats.decisions,
+            "type_counts": stats.type_counts,
+            "latest_activity": stats.latest_activity,
+        }
+
+
+@mcp.tool()
+async def get_project_state(project_id: int) -> dict:
+    """获取项目开发状态聚合包（待办/难点/阻塞/最近进展/最近决策/进行中会话），用于新会话快速恢复上下文。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        await _require_project(db, username, project_id)
+        return await _get_project_state_service(db, project_id)
+
+
+@mcp.tool()
+async def get_dev_report(
+    project_id: int, start: str | None = None, end: str | None = None,
+) -> str:
+    """生成项目开发汇报文本（Markdown）。start/end 为 ISO 日期，可省略表示全部时间。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        await _require_project(db, username, project_id)
+        start_d = date.fromisoformat(start) if start else None
+        end_d = date.fromisoformat(end) if end else None
+        return await _get_dev_report_service(db, project_id, start_d, end_d)
+
+
+@mcp.tool()
+async def update_dev_log(
+    log_id: int, title: str | None = None, content: str | None = None,
+    severity: str | None = None, status: str | None = None,
+    related_task_ids: list[int] | None = None,
+) -> dict:
+    """更新一条开发记录。仅更新传入字段。"""
+    username = _username()
+    updates = {}
+    if title is not None:
+        updates["title"] = title
+    if content is not None:
+        updates["content"] = content
+    if severity is not None:
+        updates["severity"] = severity
+    if status is not None:
+        updates["status"] = status
+    if related_task_ids is not None:
+        updates["related_task_ids"] = related_task_ids
+    async with AsyncSessionLocal() as db:
+        log = await _require_log(db, username, log_id)
+        if "related_task_ids" in updates:
+            try:
+                await _validate_related_tasks(db, log.project_id, updates["related_task_ids"])
+            except ValueError as e:
+                raise ValueError(str(e))
+        apply_log_update(log, updates)
+        await db.commit()
+        await db.refresh(log)
+        await publish(log.project_id, "updated", "log", log.id)
+        return to_dict(log)
+
+
+@mcp.tool()
+async def delete_dev_log(log_id: int) -> str:
+    """删除一条开发记录。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        log = await _require_log(db, username, log_id)
+        pid = log.project_id
+        await db.delete(log)
+        await db.commit()
+        await publish(pid, "deleted", "log", log_id)
+        return f"记录 {log_id} 已删除"
+
+
+@mcp.tool()
+async def resolve_dev_log(log_id: int) -> dict:
+    """将一条开发记录标记为完成（仅 todo / blocker 条目可用）。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        log = await _require_log(db, username, log_id)
+        if log.entry_type not in ("todo", "blocker"):
+            raise ValueError("仅 todo / blocker 条目可标记完成")
+        log.status = "done"
+        log.resolved_at = utcnow()
+        await db.commit()
+        await db.refresh(log)
+        await publish(log.project_id, "updated", "log", log.id)
+        return to_dict(log)
 
 
 def get_mcp_app():

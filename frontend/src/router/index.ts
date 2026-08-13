@@ -40,6 +40,12 @@ const router = createRouter({
           props: true,
         },
         {
+          path: 'projects/:id/logs',
+          name: 'project-logs',
+          component: () => import('@/views/DevLogView.vue'),
+          props: true,
+        },
+        {
           path: 'keys',
           name: 'api-keys',
           component: () => import('@/views/ApiKeysView.vue'),

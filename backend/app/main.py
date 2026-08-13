@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import auth, events, keys, milestones, projects, stats, tasks
+from app.routers import auth, dev_logs, events, keys, milestones, projects, stats, tasks
 
 # ---- MCP Server（AI 工具接入）----
 # 在宿主 App lifespan 中启动 MCP 会话管理器（挂载子应用不会自动触发其 lifespan）
@@ -52,6 +52,7 @@ app.include_router(projects.router, prefix=API_PREFIX)
 app.include_router(milestones.router, prefix=API_PREFIX)
 app.include_router(tasks.router, prefix=API_PREFIX)
 app.include_router(stats.router, prefix=API_PREFIX)
+app.include_router(dev_logs.router, prefix=API_PREFIX)
 app.include_router(events.router, prefix=API_PREFIX)
 
 

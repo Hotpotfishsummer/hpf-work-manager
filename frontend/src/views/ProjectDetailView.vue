@@ -14,6 +14,9 @@
             <el-button class="hero-ghost-btn" size="large" @click="router.push(`/projects/${pid}/gantt`)">
               查看甘特图
             </el-button>
+            <el-button class="hero-ghost-btn" size="large" @click="router.push(`/projects/${pid}/logs`)">
+              开发记录
+            </el-button>
           </div>
         </div>
 
@@ -43,6 +46,7 @@
           <el-tab-pane label="概览" name="overview" />
           <el-tab-pane label="任务" name="tasks" @click="router.push(`/projects/${pid}/tasks`)" />
           <el-tab-pane label="甘特图" name="gantt" @click="router.push(`/projects/${pid}/gantt`)" />
+          <el-tab-pane label="开发记录" name="logs" @click="router.push(`/projects/${pid}/logs`)" />
         </el-tabs>
       </div>
     </div>
@@ -234,10 +238,11 @@ onMounted(load)
 </script>
 
 <style scoped>
-/* hero-band：始终深色横幅（inverse-surface），Apple 风格 */
+/* hero-band：跟随主题的表面带，Apple 留白风格 */
 .hero-band {
-  background-color: var(--md-inverse-surface);
-  color: var(--md-inverse-on-surface);
+  background-color: var(--md-surface);
+  color: var(--md-on-surface);
+  border-bottom: 1px solid var(--md-outline-variant);
 }
 .hero-inner {
   display: flex;
@@ -253,37 +258,36 @@ onMounted(load)
   font-size: var(--md-text-label-md);
   font-weight: var(--md-weight-medium);
   letter-spacing: 1.5px;
-  color: var(--md-inverse-on-surface);
+  color: var(--md-on-surface-variant);
 }
 .hero-title {
   margin: 0;
   font-size: var(--md-text-display-lg);
-  color: var(--md-inverse-on-surface);
+  color: var(--md-on-surface);
 }
 .hero-desc {
   margin: var(--md-space-2) 0 var(--md-space-5);
   font-size: var(--md-text-body-md);
   font-weight: var(--md-weight-regular);
-  color: var(--md-inverse-on-surface);
+  color: var(--md-on-surface-variant);
   max-width: 640px;
-  opacity: 0.85;
 }
 .hero-actions { display: flex; gap: var(--md-space-4); flex-wrap: wrap; }
 .hero-actions :deep(.el-button--primary) {
   background-color: var(--md-primary);
   border-color: var(--md-primary);
 }
-.hero-actions :deep(.el-button--primary:hover) { background-color: var(--md-primary-active); }
+.hero-actions :deep(.el-button--primary:hover) { background-color: color-mix(in srgb, var(--md-primary) 92%, var(--md-on-primary)); }
 .hero-ghost-btn {
   background: transparent;
-  border: 1px solid var(--md-inverse-on-surface);
-  color: var(--md-inverse-on-surface);
+  border: 1px solid var(--md-outline);
+  color: var(--md-on-surface);
 }
-.hero-ghost-btn:hover { border-color: var(--md-primary); color: var(--md-inverse-on-surface); background: rgba(0, 102, 204, 0.22); }
+.hero-ghost-btn:hover { border-color: var(--md-primary); color: var(--md-primary); background: var(--md-primary-hover); }
 
-/* hero 进度环（嵌套半透明卡片） */
+/* hero 进度环（嵌套卡片，跟随主题） */
 .hero-progress {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: var(--md-surface-container-high);
   padding: var(--md-space-5);
   text-align: center;
   border-radius: var(--md-radius-lg);
@@ -296,19 +300,17 @@ onMounted(load)
 .progress-num {
   font-size: 26px;
   font-weight: var(--md-weight-bold);
-  color: var(--md-inverse-on-surface);
+  color: var(--md-on-surface);
   line-height: 1.1;
 }
 .progress-label {
   font-size: var(--md-text-label-md);
-  color: var(--md-inverse-on-surface);
-  opacity: 0.8;
+  color: var(--md-on-surface-variant);
 }
 .hero-range {
   margin: var(--md-space-2) 0 0;
   font-size: var(--md-text-label-md);
-  color: var(--md-inverse-on-surface);
-  opacity: 0.8;
+  color: var(--md-on-surface-variant);
 }
 
 /* subnav：分类标签风格 */

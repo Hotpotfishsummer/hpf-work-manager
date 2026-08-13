@@ -141,11 +141,80 @@
 ```
 - `dependencies` 为 frappe-gantt 格式：`"任务id:前置任务id,任务id:前置任务id"`
 
+## 6.5 开发记录（DevLog / 会话）
+
+> DevLog 记录开发**过程**（进度/难点/待办/决策/阻塞），与任务、里程碑互补。会话（Session）用于把一段连续开发内的记录归组，支持收口总结。
+
+### POST /projects/{pid}/logs — 创建记录（需登录）
+```json
+// 请求 —— entry_type 必填；status 仅 todo/blocker；severity 仅 difficulty/blocker
+{ "entry_type": "progress", "title": "完成登录模块", "content": "实现 JWT 签发与校验",
+  "git_ref": "a1b2c3d", "related_task_ids": [42], "session_id": null }
+// 响应 201
+{ "id": 1, "project_id": 1, "session_id": 3, "entry_type": "progress", "status": "open",
+  "severity": null, "title": "完成登录模块", "content": "...", "related_task_ids": [42],
+  "git_ref": "a1b2c3d", "author": "alice", "created_at": "...", "updated_at": "...", "resolved_at": null }
+```
+- `entry_type` ∈ `progress`/`difficulty`/`todo`/`decision`/`blocker`/`milestone`/`note`
+- `related_task_ids` 必须属于本项目，否则 `400`
+- 不传 `session_id` 时，自动归入本项目最近未结束的会话
+
+### GET /projects/{pid}/logs — 列表（需登录）
+- 查询参数：`entry_type`、`status`、`since`（日期，含当日）、`limit`（≤200）、`offset`
+- 按 `created_at` 倒序 → `200` 返回 `[DevLogOut]`
+
+### GET /projects/{pid}/logs/stats — 统计（需登录）
+```json
+{ "total": 12, "today_count": 3, "open_todos": 2, "open_difficulties": 1, "open_blockers": 0,
+  "decisions": 4, "type_counts": { "progress": 5, "difficulty": 2, "todo": 3, "decision": 4,
+  "blocker": 0, "milestone": 1, "note": 0 }, "latest_activity": "2026-08-13T02:00:00+00:00" }
+```
+
+### POST /projects/{pid}/logs/report — 生成开发汇报（需登录）
+```json
+// 请求
+{ "start": "2026-08-01", "end": "2026-08-13" }   // 均可省略，省略=全部时间
+// 响应 200
+{ "text": "# 开发汇报（全部时间）\n\n## 进展\n- **完成登录模块**\n..." }
+```
+
+### GET /logs/{id} — 单条记录（需登录）→ `200 [DevLogOut]`，无权限 `404`
+
+### PUT /logs/{id} — 更新记录（需登录）
+- 局部更新：仅更新传入字段（`exclude_unset`）；`related_task_ids` 变更会重新做项目归属校验
+- 响应 `200 [DevLogOut]`
+
+### POST /logs/{id}/resolve — 标记完成（需登录）
+- 仅 `todo` / `blocker` 条目可用，否则 `400`；置 `status=done` 并盖章 `resolved_at` → `200 [DevLogOut]`
+
+### DELETE /logs/{id} — 删除记录（需登录）→ `204`
+
+### POST /projects/{pid}/sessions — 开始会话（需登录）
+```json
+// 请求
+{ "title": "实现登录模块" }
+// 响应 201 —— log_count 为已归入该会话的记录数
+{ "id": 3, "project_id": 1, "title": "实现登录模块", "started_at": "...", "ended_at": null,
+  "summary": null, "author": "alice", "created_at": "...", "log_count": 0 }
+```
+
+### POST /sessions/{id}/end — 结束会话（需登录）
+```json
+// 请求
+{ "summary": "完成认证流程与 12 个单测" }
+// 响应 200
+{ "id": 3, "project_id": 1, "title": "...", "started_at": "...", "ended_at": "...",
+  "summary": "完成认证流程与 12 个单测", "author": "alice", "created_at": "...", "log_count": 7 }
+```
+
+### GET /projects/{pid}/sessions — 会话列表（需登录）
+- 按 `started_at` 倒序，`ended_at=null` 表示进行中 → `200 [DevSessionOut]`
+
 ## 7. 错误码速查
 
 | 状态码 | 场景 |
 |---|---|
-| 400 | 重复注册、重复/自依赖、项目起止日期异常、业务校验 |
+| 400 | 重复注册、重复/自依赖、项目起止日期异常、业务校验（含 related_task_ids 越权、resolve 非 todo/blocker） |
 | 401 | 未登录 / token 失效 / 凭据错误 / API Key 无效 |
 | 404 | 资源不存在或无权限（统一 404 防探测） |
 | 422 | 请求体字段校验失败（枚举/长度/范围） |
@@ -185,12 +254,12 @@
 ## 9. SSE 实时推送（进度同步）
 
 ### GET /events/stream?project_id={pid} — 项目变更事件流（需登录）
-- 长连接，`text/event-stream`。任一写操作（项目/里程碑/任务/依赖）后推送 `project-update` 事件。
+- 长连接，`text/event-stream`。任一写操作（项目/里程碑/任务/依赖/DevLog/会话）后推送 `project-update` 事件。
 - 事件格式（`data` 字段为 JSON）：
 ```json
 { "type": "updated", "entity": "task", "entity_id": 42, "project_id": 1, "ts": "2026-08-12T05:41:00+00:00" }
 ```
-- `entity` ∈ `project`/`milestone`/`task`；`type` ∈ `created`/`updated`/`deleted`
+- `entity` ∈ `project`/`milestone`/`task`/`log`/`session`；`type` ∈ `created`/`updated`/`deleted`
 - 每 25s 发送 `ping` 心跳保活；前端可据此自动刷新受影响项目。
 
 ## 10. MCP Server（AI 工具）

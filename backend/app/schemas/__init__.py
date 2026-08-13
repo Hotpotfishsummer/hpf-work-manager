@@ -21,6 +21,23 @@ from app.schemas.stats import (
     GanttDependency,
     GanttTask,
     GanttData,
+    DevLogStats,
+    DevReportRequest,
+    DevReport,
+)
+from app.schemas.dev_log import (
+    DevLogBase,
+    DevLogCreate,
+    DevLogUpdate,
+    DevLogOut,
+    DEV_LOG_TYPES,
+    DEV_LOG_STATUS,
+    SEVERITY,
+)
+from app.schemas.dev_session import (
+    DevSessionCreate,
+    DevSessionEnd,
+    DevSessionOut,
 )
 
 __all__ = [
@@ -48,4 +65,17 @@ __all__ = [
     "GanttDependency",
     "GanttTask",
     "GanttData",
+    "DevLogStats",
+    "DevReportRequest",
+    "DevReport",
+    "DevLogBase",
+    "DevLogCreate",
+    "DevLogUpdate",
+    "DevLogOut",
+    "DEV_LOG_TYPES",
+    "DEV_LOG_STATUS",
+    "SEVERITY",
+    "DevSessionCreate",
+    "DevSessionEnd",
+    "DevSessionOut",
 ]

@@ -33,3 +33,13 @@ class Project(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    dev_sessions: Mapped[list["DevSession"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    dev_logs: Mapped[list["DevLog"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

@@ -48,3 +48,23 @@ class GanttData(BaseModel):
     tasks: list[GanttTask]
     project_start: str
     project_end: str
+
+
+class DevLogStats(BaseModel):
+    total: int
+    today_count: int
+    open_todos: int
+    open_difficulties: int
+    open_blockers: int
+    decisions: int
+    type_counts: dict[str, int]
+    latest_activity: str | None
+
+
+class DevReportRequest(BaseModel):
+    start: date | None = None
+    end: date | None = None
+
+
+class DevReport(BaseModel):
+    text: str

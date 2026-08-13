@@ -4,6 +4,13 @@ import type {
   ApiKeyCreated,
   AuthResponse,
   BurndownPoint,
+  DevLog,
+  DevLogCreate,
+  DevLogStats,
+  DevLogUpdate,
+  DevReport,
+  DevSession,
+  DevSessionCreate,
   GanttData,
   Milestone,
   MilestoneCreate,
@@ -75,4 +82,33 @@ export const keyApi = {
   create: (data: { name: string }) =>
     http.post<ApiKeyCreated, ApiKeyCreated>('/keys', data),
   revoke: (id: number) => http.delete<null, null>(`/keys/${id}`),
+}
+
+/* ---- 开发记录 ---- */
+export const devLogApi = {
+  list: (
+    pid: number,
+    params?: { entry_type?: string; status?: string; since?: string; limit?: number; offset?: number },
+  ) => http.get<DevLog[], DevLog[]>(`/projects/${pid}/logs`, { params }),
+  create: (pid: number, data: DevLogCreate) =>
+    http.post<DevLog, DevLog>(`/projects/${pid}/logs`, data),
+  stats: (pid: number) =>
+    http.get<DevLogStats, DevLogStats>(`/projects/${pid}/logs/stats`),
+  report: (pid: number, start?: string | null, end?: string | null) =>
+    http.post<DevReport, DevReport>(`/projects/${pid}/logs/report`, { start, end }),
+  update: (id: number, data: DevLogUpdate) =>
+    http.put<DevLog, DevLog>(`/logs/${id}`, data),
+  resolve: (id: number) =>
+    http.post<DevLog, DevLog>(`/logs/${id}/resolve`),
+  remove: (id: number) => http.delete<null, null>(`/logs/${id}`),
+}
+
+/* ---- 开发会话 ---- */
+export const devSessionApi = {
+  list: (pid: number) =>
+    http.get<DevSession[], DevSession[]>(`/projects/${pid}/sessions`),
+  start: (pid: number, data: DevSessionCreate) =>
+    http.post<DevSession, DevSession>(`/projects/${pid}/sessions`, data),
+  end: (id: number, data: { summary?: string | null }) =>
+    http.post<DevSession, DevSession>(`/sessions/${id}/end`, data),
 }

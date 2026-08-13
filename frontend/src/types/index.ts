@@ -167,3 +167,83 @@ export interface ApiKeyCreated {
   key: string
   prefix: string
 }
+
+/* ---- 开发记录（DevLog / DevSession） ---- */
+
+export type DevLogType =
+  | 'progress'
+  | 'difficulty'
+  | 'todo'
+  | 'decision'
+  | 'blocker'
+  | 'milestone'
+  | 'note'
+
+export interface DevLog {
+  id: number
+  project_id: number
+  session_id: number | null
+  entry_type: DevLogType
+  status: string
+  severity: string | null
+  title: string
+  content: string | null
+  related_task_ids: number[]
+  git_ref: string | null
+  author: string
+  created_at: string
+  updated_at: string
+  resolved_at: string | null
+}
+
+export interface DevLogCreate {
+  entry_type?: DevLogType
+  status?: string
+  severity?: string | null
+  title: string
+  content?: string | null
+  related_task_ids?: number[] | null
+  git_ref?: string | null
+  session_id?: number | null
+}
+
+export interface DevLogUpdate {
+  entry_type?: DevLogType
+  status?: string
+  severity?: string | null
+  title?: string
+  content?: string | null
+  related_task_ids?: number[] | null
+  git_ref?: string | null
+}
+
+export interface DevLogStats {
+  total: number
+  today_count: number
+  open_todos: number
+  open_difficulties: number
+  open_blockers: number
+  decisions: number
+  type_counts: Record<DevLogType, number>
+  latest_activity: string | null
+}
+
+export interface DevSession {
+  id: number
+  project_id: number
+  title: string | null
+  started_at: string
+  ended_at: string | null
+  summary: string | null
+  author: string
+  created_at: string
+  log_count: number
+}
+
+export interface DevSessionCreate {
+  title?: string | null
+}
+
+export interface DevReport {
+  text: string
+}
