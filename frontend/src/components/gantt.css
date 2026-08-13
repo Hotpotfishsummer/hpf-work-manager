@@ -3,16 +3,20 @@
    主色动态色 / 圆角 / 无重阴影 / 延期状态色 / 今日线
    ============================================================ */
 
+.gantt-container {
+  background-color: var(--md-surface);
+  border-radius: var(--md-radius-lg);
+}
 .gantt-container .gantt {
   font-family: var(--md-font);
   font-size: var(--md-text-label-md);
   color: var(--md-on-surface);
 }
 
-/* 顶部日期轴文字（frappe-gantt 默认 fill:#555，深色主题下不可见）*/
+/* 顶部日期轴文字（frappe-gantt 默认 fill:#555，主题化）*/
 .gantt-container .gantt .upper-text,
 .gantt-container .gantt .lower-text {
-  fill: var(--md-on-surface-variant);
+  fill: var(--md-on-surface);
 }
 
 /* 头部 */
@@ -22,7 +26,7 @@
 .gantt-container .gantt .grid-header .gantt-row-label,
 .gantt-container .gantt .grid-header .gantt-row-label span,
 .gantt-container .gantt .grid-header .gantt-row-label text {
-  fill: var(--md-on-surface-variant);
+  fill: var(--md-on-surface);
   font-weight: var(--md-weight-regular);
 }
 
