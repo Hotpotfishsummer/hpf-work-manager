@@ -213,6 +213,10 @@ async function saveMilestone() {
     ElMessage.warning('请输入名称')
     return
   }
+  if (!milestoneForm.due_date) {
+    ElMessage.warning('请选择截止日期')
+    return
+  }
   savingMilestone.value = true
   try {
     await milestoneApi.create(pid.value, {
