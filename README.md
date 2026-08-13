@@ -27,6 +27,7 @@ UI 遵循 **BMW 企业设计风格**（见根目录 [`DESIGN.md`](./DESIGN.md)�
 | [06 · 开发指南](./docs/06-开发指南.md) | 环境搭建、测试、代码约定、扩展路线 |
 | [07 · VS Code 调试](./docs/07-VSCode开发调试.md) | 一键启动、断点调试（前端/后端/全栈） |
 | [08 · AI 接入指南](./docs/08-AI接入指南.md) | 让 AI 编码工具通过 MCP / API Key 自动更新进度，SSE 实时同步 |
+| [09 · AI 技能包](./skills/hpf-work-manager/) | 对外分发的 MCP 使用技能（SKILL.md + 34 个工具参考 + AI 工作流），供其他机器的 AI 工具接入 |
 
 ## 核心功能
 
@@ -51,6 +52,7 @@ UI 遵循 **BMW 企业设计风格**（见根目录 [`DESIGN.md`](./DESIGN.md)�
 ├── .env.example                 # 环境变量模板
 ├── DESIGN.md                    # BMW 设计系统（UI 唯一设计源）
 ├── docs/                        # 项目文档（架构/数据模型/API/前端/部署/开发）
+├── skills/hpf-work-manager/     # AI 接入技能包（SKILL.md + 工具参考，分发到其他机器）
 ├── scripts/e2e_check.py         # 端到端 API 验证（33 项断言）
 ├── frontend/                    # Vue 3 前端
 └── backend/                     # FastAPI 后端
