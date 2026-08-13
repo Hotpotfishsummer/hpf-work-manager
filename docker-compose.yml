@@ -27,6 +27,7 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-10080}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-}
     depends_on:
       postgres:
         condition: service_healthy
