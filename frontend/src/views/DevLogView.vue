@@ -23,10 +23,10 @@
 
     <!-- 筛选 + 会话 -->
     <div class="toolbar">
-      <el-select v-model="filters.entry_type" clearable placeholder="全部类型" style="width: 150px" @change="loadLogs">
+      <el-select v-model="filters.entry_type" clearable placeholder="全部类型" style="width: 150px">
         <el-option v-for="t in TYPE_OPTIONS" :key="t.value" :label="t.label" :value="t.value" />
       </el-select>
-      <el-select v-model="filters.status" clearable placeholder="全部状态" style="width: 140px" @change="loadLogs">
+      <el-select v-model="filters.status" clearable placeholder="全部状态" style="width: 140px">
         <el-option label="进行中" value="open" />
         <el-option label="已完成" value="done" />
       </el-select>
@@ -39,10 +39,10 @@
     </div>
 
     <!-- 记录时间线 -->
-    <el-empty v-if="!loading && logs.length === 0" description="暂无开发记录，AI 工具会在这里沉淀每次开发过程" :image-size="100" />
+    <el-empty v-if="!loading && filteredLogs.length === 0" description="暂无开发记录，AI 工具会在这里沉淀每次开发过程" :image-size="100" />
 
     <div v-else class="log-list">
-      <div v-for="log in logs" :key="log.id" class="log-item">
+      <div v-for="log in filteredLogs" :key="log.id" class="log-item">
         <div class="log-top">
           <el-tag :type="TYPE_TAG[log.entry_type]" effect="light" size="small">{{ TYPE_LABEL[log.entry_type] }}</el-tag>
           <span class="log-title">{{ log.title }}</span>
@@ -55,10 +55,10 @@
             >
               {{ SEVERITY_LABEL[log.severity] }}
             </el-tag>
-            <el-tag v-if="log.entry_type === 'todo' || log.entry_type === 'blocker'"
-              :type="log.status === 'done' ? 'success' : 'info'"
+            <el-tag v-if="derivedStatus(log) !== 'note'"
+              :type="derivedStatus(log) === 'done' ? 'success' : 'info'"
               effect="plain" size="small">
-              {{ log.status === 'done' ? '已完成' : '待处理' }}
+              {{ derivedStatus(log) === 'done' ? '已完成' : '进行中' }}
             </el-tag>
             <el-button
               v-if="log.entry_type === 'todo' || log.entry_type === 'blocker'"
@@ -144,6 +144,21 @@ const TYPE_OPTIONS = Object.entries(TYPE_LABEL).map(([value, label]) => ({ value
 
 const activeSession = computed(() => sessions.value.find((s) => !s.ended_at) ?? null)
 
+// status 仅对 todo/blocker 有意义；progress/decision/milestone 本质是已完成的工作记录。
+// 派生完成度：note 中性（仅「全部」显示），progress/decision/milestone 视为已完成。
+function derivedStatus(log: DevLog): 'open' | 'done' | 'note' {
+  if (log.entry_type === 'note') return 'note'
+  if (['progress', 'decision', 'milestone'].includes(log.entry_type)) return 'done'
+  return log.status === 'done' ? 'done' : 'open'
+}
+
+const filteredLogs = computed(() => {
+  let list = logs.value
+  if (filters.entry_type) list = list.filter((l) => l.entry_type === filters.entry_type)
+  if (filters.status) list = list.filter((l) => derivedStatus(l) === filters.status)
+  return list
+})
+
 function formatTime(iso: string) {
   return iso.replace('T', ' ').slice(0, 16)
 }
@@ -151,7 +166,6 @@ function formatTime(iso: string) {
 async function loadLogs() {
   const params: Record<string, string> = {}
   if (filters.entry_type) params.entry_type = filters.entry_type
-  if (filters.status) params.status = filters.status
   logs.value = await devLogApi.list(pid.value, params)
 }
 
