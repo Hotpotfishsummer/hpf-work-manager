@@ -94,7 +94,7 @@
       "problemMatcher": ["$tsc", "$eslint-compact"]
     },
     {
-      "label": "test: e2e 端到端验证 (33 项断言)",
+      "label": "test: e2e 端到端验证 (41 项断言)",
       "type": "shell",
       "command": "${workspaceFolder}/backend/.venv/bin/python ${workspaceFolder}/scripts/e2e_check.py",
       "cwd": "${workspaceFolder}",
@@ -105,7 +105,7 @@
       "label": "test: 全部（构建 + e2e + 迁移验证）",
       "dependsOn": [
         "frontend: 构建 (npm run build)",
-        "test: e2e 端到端验证 (33 项断言)",
+        "test: e2e 端到端验证 (41 项断言)",
         "test: 迁移 SQL 离线验证 (--sql)"
       ],
       "dependsOrder": "parallel",

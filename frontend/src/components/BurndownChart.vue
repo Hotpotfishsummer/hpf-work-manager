@@ -6,7 +6,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as echarts from 'echarts'
 import type { BurndownPoint } from '@/types'
-import { chartColors, onThemeChange } from '@/composables/useThemeColors'
+import { chartColors, cssVar, onThemeChange } from '@/composables/useThemeColors'
 
 const props = defineProps<{ data: BurndownPoint[] }>()
 
@@ -15,8 +15,10 @@ let chart: echarts.ECharts | null = null
 let ro: ResizeObserver | null = null
 
 function buildOption() {
-  const font = 'Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif'
+  const font = cssVar('--md-font') || 'Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif'
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   return {
+    animation: !reducedMotion,
     animationDuration: 300,
     tooltip: {
       trigger: 'axis',

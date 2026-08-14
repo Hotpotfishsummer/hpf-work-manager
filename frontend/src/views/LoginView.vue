@@ -168,13 +168,12 @@ async function submit() {
   padding: var(--md-space-5);
   border: 1px solid var(--md-outline-variant);
   border-radius: var(--md-radius-lg);
-  background-color: var(--md-surface);
-  box-shadow: var(--md-shadow-2);
+  background-color: var(--md-surface-container-low);
 }
 
 .login-tabs :deep(.el-tabs__item) {
   font-size: var(--md-text-title-sm);
-  font-weight: var(--md-weight-bold);
+  font-weight: var(--md-weight-semibold);
 }
 .login-tabs :deep(.el-tabs__active-bar) { background-color: var(--md-primary); }
 
@@ -188,6 +187,6 @@ async function submit() {
   margin: var(--md-space-5) 0 0;
   text-align: center;
   font-size: var(--md-text-label-md);
-  color: var(--md-outline-variant);
+  color: var(--md-on-surface-variant);
 }
 </style>

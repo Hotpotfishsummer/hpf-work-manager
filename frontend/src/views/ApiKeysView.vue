@@ -140,7 +140,7 @@ onMounted(load)
 }
 .page-title {
   font-size: var(--md-text-display-sm);
-  font-weight: var(--md-weight-bold);
+  font-weight: var(--md-weight-semibold);
   color: var(--md-on-surface);
 }
 .page-sub {
@@ -154,7 +154,7 @@ onMounted(load)
 .key-alert :deep(code) {
   font-family: var(--md-font-mono);
   background: var(--md-surface-container-high);
-  padding: 1px 6px;
+  padding: 1px var(--md-space-2);
   border-radius: var(--md-radius-sm);
 }
 </style>

@@ -4,7 +4,7 @@
     <div class="hero-band">
       <div class="page-container hero-inner">
         <div class="hero-info">
-          <p class="hero-eyebrow">PROJECT · {{ project?.status === 'archived' ? '已归档' : '进行中' }}</p>
+          <p class="hero-eyebrow">Project · {{ project?.status === 'archived' ? '已归档' : '进行中' }}</p>
           <h1 class="hero-title">{{ project?.name }}</h1>
           <p class="hero-desc">{{ project?.description || '暂无描述' }}</p>
           <div class="hero-actions">
@@ -64,7 +64,7 @@
         <!-- 燃尽图 -->
         <section class="bmw-card section-card">
           <h2 class="section-title">燃尽图</h2>
-          <p class="section-sub">BURNDOWN</p>
+          <p class="section-sub">Burndown</p>
           <BurndownChart v-if="burndown.length" :data="burndown" />
           <el-empty v-else description="暂无任务数据" :image-size="80" />
         </section>
@@ -72,7 +72,7 @@
         <!-- 延期预警 -->
         <section class="bmw-card section-card">
           <h2 class="section-title">延期预警</h2>
-          <p class="section-sub">OVERDUE</p>
+          <p class="section-sub">Overdue</p>
           <div v-if="overdueTasks.length === 0" class="ok-block">
             <span class="ok-dot" />没有延期任务，一切正常
           </div>
@@ -80,7 +80,7 @@
             <li v-for="t in overdueTasks" :key="t.id" class="overdue-item">
               <span class="od-name">{{ t.name }}</span>
               <el-tag
-                :type="t.priority === 'high' ? 'danger' : 'warning'"
+                :type="t.priority === 'high' ? 'warning' : 'info'"
                 effect="plain"
                 size="small"
               >
@@ -97,7 +97,7 @@
         <div class="milestone-head">
           <div>
             <h2 class="section-title">里程碑</h2>
-            <p class="section-sub">MILESTONES</p>
+            <p class="section-sub">Milestones</p>
           </div>
           <el-button size="large" @click="milestoneDialog = true">新建里程碑</el-button>
         </div>
@@ -267,12 +267,12 @@ onMounted(load)
   margin: 0 0 var(--md-space-1);
   font-size: var(--md-text-label-md);
   font-weight: var(--md-weight-medium);
-  letter-spacing: 1.5px;
+  letter-spacing: var(--md-track-caption);
   color: var(--md-on-surface-variant);
 }
 .hero-title {
   margin: 0;
-  font-size: var(--md-text-display-lg);
+  font-size: var(--md-text-display);
   color: var(--md-on-surface);
 }
 .hero-desc {
@@ -280,14 +280,13 @@ onMounted(load)
   font-size: var(--md-text-body-md);
   font-weight: var(--md-weight-regular);
   color: var(--md-on-surface-variant);
-  max-width: 640px;
+  max-width: var(--md-text-measure);
 }
 .hero-actions { display: flex; gap: var(--md-space-4); flex-wrap: wrap; }
 .hero-actions :deep(.el-button--primary) {
   background-color: var(--md-primary);
   border-color: var(--md-primary);
 }
-.hero-actions :deep(.el-button--primary:hover) { background-color: color-mix(in srgb, var(--md-primary) 92%, var(--md-on-primary)); }
 .hero-ghost-btn {
   background: transparent;
   border: 1px solid var(--md-outline);
@@ -308,10 +307,10 @@ onMounted(load)
   align-items: center;
 }
 .progress-num {
-  font-size: 26px;
-  font-weight: var(--md-weight-bold);
+  font-size: var(--md-text-display-sm);
+  font-weight: var(--md-weight-semibold);
   color: var(--md-on-surface);
-  line-height: 1.1;
+  line-height: 1.2;
 }
 .progress-label {
   font-size: var(--md-text-label-md);
@@ -330,9 +329,7 @@ onMounted(load)
 }
 .bmw-tabs :deep(.el-tabs__item) {
   font-size: var(--md-text-label-lg);
-  font-weight: var(--md-weight-bold);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+  font-weight: var(--md-weight-semibold);
   color: var(--md-on-surface-variant);
   padding: 0 var(--md-space-4);
 }
@@ -360,15 +357,14 @@ onMounted(load)
 .spec-value {
   display: block;
   font-size: var(--md-text-display-sm);
-  font-weight: var(--md-weight-bold);
+  font-weight: var(--md-weight-semibold);
   color: var(--md-on-surface);
 }
 .spec-label {
   display: block;
   margin-top: var(--md-space-1);
   font-size: var(--md-text-label-md);
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  letter-spacing: var(--md-track-caption);
   color: var(--md-on-surface-variant);
 }
 
@@ -380,6 +376,14 @@ onMounted(load)
 }
 @media (max-width: 1024px) { .two-col { grid-template-columns: 1fr; } }
 
+/* bmw-card：MD3 卡片（surface-container-low + lg 圆角 + hairline） */
+.bmw-card {
+  background-color: var(--md-surface-container-low);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-lg);
+  padding: var(--md-card-padding-lg);
+  color: var(--md-on-surface);
+}
 .section-card { margin-bottom: 0; }
 .section-title {
   margin: 0;
@@ -388,7 +392,7 @@ onMounted(load)
 .section-sub {
   margin: var(--md-space-1) 0 var(--md-space-4);
   font-size: var(--md-text-label-md);
-  letter-spacing: 1.5px;
+  letter-spacing: var(--md-track-caption);
   color: var(--md-on-surface-variant);
 }
 
@@ -419,8 +423,8 @@ onMounted(load)
   border-bottom: 1px solid var(--md-outline-variant);
 }
 .overdue-item:last-child { border-bottom: none; }
-.od-name { flex: 1; font-weight: var(--md-weight-bold); font-size: var(--md-text-body-sm); color: var(--md-on-surface); }
-.od-late { font-size: var(--md-text-label-md); color: var(--md-status-overdue); font-weight: 700; }
+.od-name { flex: 1; font-weight: var(--md-weight-semibold); font-size: var(--md-text-body-sm); color: var(--md-on-surface); }
+.od-late { font-size: var(--md-text-label-md); color: var(--md-status-overdue); font-weight: var(--md-weight-semibold); }
 
 .milestone-head {
   display: flex;
@@ -434,7 +438,7 @@ onMounted(load)
   gap: var(--md-space-2);
 }
 .milestone-name {
-  font-weight: var(--md-weight-bold);
+  font-weight: var(--md-weight-semibold);
   font-size: var(--md-text-body-md);
   color: var(--md-on-surface);
 }

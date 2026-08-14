@@ -4,12 +4,12 @@
     <div class="page-head">
       <div>
         <h1 class="page-title">{{ project?.name }}</h1>
-        <p class="page-sub">TASK BOARD · 按状态分组管理任务</p>
+        <p class="page-sub">Task Board · 按状态分组管理任务</p>
       </div>
       <div class="head-actions">
         <el-button size="large" @click="router.push(`/projects/${pid}`)">返回概览</el-button>
         <el-button type="primary" size="large" @click="openCreate">
-          <el-icon style="margin-right: 6px"><Plus /></el-icon>
+          <el-icon style="margin-right: var(--md-space-1)"><Plus /></el-icon>
           新建任务
         </el-button>
       </div>
@@ -50,9 +50,12 @@
             :key="t.id"
             class="task-card"
             :class="{ 'is-overdue': t.overdue }"
+            role="button"
+            tabindex="0"
             draggable="true"
             @dragstart="dragTask = t"
             @dblclick="openEdit(t)"
+            @keydown.enter.prevent="openEdit(t)"
           >
             <div class="tc-top">
               <span class="tc-name">{{ t.name }}</span>
@@ -227,8 +230,7 @@ const rules: FormRules = {
 }
 
 function priorityTagType(p: TaskPriority) {
-  if (p === 'high') return 'danger'
-  if (p === 'medium') return 'warning'
+  if (p === 'high') return 'warning'
   return 'info'
 }
 
@@ -357,7 +359,7 @@ onMounted(load)
   margin: var(--md-space-1) 0 0;
   font-size: var(--md-text-body-sm);
   color: var(--md-on-surface-variant);
-  letter-spacing: 1.5px;
+  letter-spacing: var(--md-track-caption);
 }
 .head-actions { display: flex; gap: var(--md-space-2); }
 
@@ -370,15 +372,20 @@ onMounted(load)
   flex-wrap: wrap;
 }
 .filter-chip {
-  background-color: var(--md-surface);
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--md-control-height);
+  background-color: var(--md-surface-container-highest);
   border: 1px solid var(--md-outline);
   color: var(--md-on-surface);
   font-size: var(--md-text-label-md);
   font-family: var(--md-font);
-  padding: var(--md-space-1) 16px;
+  padding: var(--md-space-1) var(--md-space-4);
   cursor: pointer;
   border-radius: var(--md-radius-full);
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background-color var(--md-duration-standard) var(--md-ease-standard),
+    color var(--md-duration-standard) var(--md-ease-standard),
+    border-color var(--md-duration-standard) var(--md-ease-standard);
 }
 .filter-chip:hover { border-color: var(--md-on-surface); }
 .filter-chip.active {
@@ -415,7 +422,7 @@ onMounted(load)
 .col-dot { width: 8px; height: 8px; border-radius: var(--md-radius-full); }
 .col-title {
   font-size: var(--md-text-title-sm);
-  font-weight: var(--md-weight-bold);
+  font-weight: var(--md-weight-semibold);
   color: var(--md-on-surface);
 }
 .col-count {
@@ -423,7 +430,7 @@ onMounted(load)
   font-size: var(--md-text-label-md);
   color: var(--md-on-surface-variant);
   background-color: var(--md-surface-container-high);
-  padding: 2px 8px;
+  padding: 0 var(--md-space-2);
   border-radius: var(--md-radius-sm);
 }
 .col-body {
@@ -442,17 +449,18 @@ onMounted(load)
   border-radius: var(--md-radius-lg);
   padding: var(--md-space-4);
   cursor: grab;
-  transition: box-shadow 0.18s ease, transform 0.18s ease;
+  transition: border-color var(--md-duration-standard) var(--md-ease-standard),
+    background-color var(--md-duration-standard) var(--md-ease-standard);
 }
 .task-card:hover {
-  box-shadow: var(--md-shadow-1);
-  transform: translateY(-1px);
+  border-color: var(--md-primary);
+  background-color: var(--md-surface-container-low);
 }
 .task-card.is-overdue { border-left-color: var(--md-status-overdue); }
 .task-card:active { cursor: grabbing; }
 
 .tc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--md-space-1); }
-.tc-name { font-size: var(--md-text-title-sm); font-weight: var(--md-weight-bold); color: var(--md-on-surface); }
+.tc-name { font-size: var(--md-text-title-sm); font-weight: var(--md-weight-semibold); color: var(--md-on-surface); }
 .tc-desc {
   margin: var(--md-space-1) 0;
   font-size: var(--md-text-body-sm);
@@ -464,13 +472,13 @@ onMounted(load)
 }
 .tc-meta { display: flex; align-items: center; justify-content: space-between; margin: var(--md-space-1) 0; }
 .tc-date { font-size: var(--md-text-label-md); color: var(--md-on-surface-variant); }
-.tc-date.is-overdue { color: var(--md-status-overdue); font-weight: 700; }
+.tc-date.is-overdue { color: var(--md-status-overdue); font-weight: var(--md-weight-semibold); }
 .tc-overdue {
   font-size: var(--md-text-label-md);
-  font-weight: 700;
-  color: var(--md-inverse-on-surface);
+  font-weight: var(--md-weight-semibold);
+  color: var(--md-on-error);
   background-color: var(--md-status-overdue);
-  padding: 1px 6px;
+  padding: 1px var(--md-space-2);
   border-radius: var(--md-radius-sm);
 }
 .tc-progress { margin: var(--md-space-1) 0; }
@@ -479,7 +487,7 @@ onMounted(load)
   align-items: center;
   justify-content: space-between;
 }
-.tc-progress-text { font-size: var(--md-text-label-md); color: var(--md-on-surface-variant); font-weight: 700; }
+.tc-progress-text { font-size: var(--md-text-label-md); color: var(--md-on-surface-variant); font-weight: var(--md-weight-semibold); }
 
 .form-grid {
   display: grid;

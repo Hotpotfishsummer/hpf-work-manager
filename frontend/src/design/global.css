@@ -89,7 +89,8 @@ a:hover { color: var(--md-primary); text-decoration: underline; }
 .status-text-success { color: var(--md-status-done); }
 .status-text-primary { color: var(--md-primary); }
 .status-text-muted { color: var(--md-status-todo); }
-.status-text-error { color: var(--md-status-overdue); font-weight: var(--md-weight-medium); }
+.status-text-error,
+.status-text-danger { color: var(--md-status-overdue); font-weight: var(--md-weight-medium); }
 
 /* 页面内容容器：最大 1440px 居中 */
 .page-container {

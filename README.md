@@ -2,7 +2,7 @@
 
 任务 / 项目管理与进度追踪 Web 应用。前后端分离架构，前端 Vue 3 + TypeScript，后端 Python FastAPI，全容器化部署（Docker Compose）。
 
-UI 遵循 **BMW 企业设计风格**（见根目录 [`DESIGN.md`](./DESIGN.md)，来自 awesome-design-md 设计系统库）。
+UI 遵循 **Apple × Material Design 3 设计系统**（见根目录 [`DESIGN.md`](./DESIGN.md)，支持浅色/深色双主题）。
 
 ## 技术栈
 
@@ -20,7 +20,7 @@ UI 遵循 **BMW 企业设计风格**（见根目录 [`DESIGN.md`](./DESIGN.md)�
 | 文档 | 内容 |
 |---|---|
 | [01 · 架构设计](./docs/01-架构设计.md) | 技术选型、系统架构、目录结构、核心设计决策 |
-| [02 · 数据模型](./docs/02-数据模型.md) | 六表结构、索引、级联策略、状态机、迁移管理 |
+| [02 · 数据模型](./docs/02-数据模型.md) | 八表结构、索引、级联策略、状态机、迁移管理 |
 | [03 · API 参考](./docs/03-API参考.md) | 全部端点、认证、状态流转规则、错误码 |
 | [04 · 前端指南](./docs/04-前端指南.md) | 前端架构、页面、组件、设计系统落地 |
 | [05 · 部署指南](./docs/05-部署指南.md) | Docker 部署、环境变量、排障 |
@@ -35,13 +35,13 @@ UI 遵循 **BMW 企业设计风格**（见根目录 [`DESIGN.md`](./DESIGN.md)�
 - **任务管理**：任务 CRUD、状态流转（待办/进行中/已完成）、优先级、进度百分比、预估工时（预留）、批量更新、依赖关系
 - **进度追踪**：
   - 项目进度 = 已完成任务数 / 总任务数（实时计算）
-  - 甘特图（frappe-gantt，BMW 样式定制，延期任务标红）
+  - 甘特图（frappe-gantt，MD3 样式定制，延期任务标红）
   - 燃尽图（ECharts：期望线 + 实际线，基于 completed_at 推导，无快照表）
   - 延期预警（后端派生，前端三处高亮：概览/看板/甘特图）
 - **认证**：注册/登录，JWT（7 天有效期，个人/小团队场景）
 - **AI 工具接入**：
   - **API Key**：长期有效、可撤销的机器凭证（创建 `/api/keys`，换 JWT `/api/keys/exchange`）
-  - **MCP Server**：AI 编码工具零适配接入（`{base}/mcp`，Streamable HTTP），19 个工具覆盖项目/里程碑/任务/依赖/统计
+  - **MCP Server**：AI 编码工具零适配接入（`{base}/mcp`，Streamable HTTP），34 个工具覆盖项目/里程碑/任务/依赖/统计/开发记录
   - **SSE 实时推送**：AI 更新后自动广播到前端，多工具/多机器进度实时一致（`/api/events/stream`）
 
 ## 目录结构
@@ -50,10 +50,10 @@ UI 遵循 **BMW 企业设计风格**（见根目录 [`DESIGN.md`](./DESIGN.md)�
 ├── docker-compose.yml           # 生产编排
 ├── docker-compose.override.yml  # 开发编排（热更新）
 ├── .env.example                 # 环境变量模板
-├── DESIGN.md                    # BMW 设计系统（UI 唯一设计源）
+├── DESIGN.md                    # Apple×MD3 设计系统（UI 唯一设计源）
 ├── docs/                        # 项目文档（架构/数据模型/API/前端/部署/开发）
 ├── skills/hpf-work-manager/     # AI 接入技能包（SKILL.md + 工具参考，分发到其他机器）
-├── scripts/e2e_check.py         # 端到端 API 验证（33 项断言）
+├── scripts/e2e_check.py         # 端到端 API 验证（41 项断言）
 ├── frontend/                    # Vue 3 前端
 └── backend/                     # FastAPI 后端
 ```
@@ -111,15 +111,15 @@ npm run dev            # http://localhost:8080，/api 自动代理到 :8000
 
 ## 设计系统
 
-UI 视觉规范由根目录 `DESIGN.md`（BMW 企业风格）约束，前端通过 `src/design/tokens.css` 落地为 CSS 变量，组件一律引用变量、禁止内联色值。要点：
+UI 视觉规范由根目录 `DESIGN.md`（Apple × Material Design 3）约束，前端通过 `src/design/tokens.css` 落地为 `--md-*` CSS 变量，组件一律引用变量、禁止内联 hex。要点：
 
-- **主色**：BMW Blue `#1c69d4`（唯一行动色）；**形状**：全局 0px 直角
-- **字体**：Inter 替代授权字体 BMW Type Next Latin，700 展示 / 300 正文对比
-- **无阴影**：深度来自色块对比（深海军蓝 hero `#1a2129`）+ hairline 分隔线
-- 状态色映射：done→绿 / 进行中→蓝 / 待办→灰 / **延期→红**
+- **主色**：Apple Action Blue `#0066cc`（唯一行动色，深色主题 `#4ea0ff`）；**形状**：MD3 圆角阶梯（控件 `sm`/pill，卡片 `lg`，弹窗 `xl`）
+- **字体**：系统字体栈（SF Pro Text / PingFang SC / Inter），400 正文 / 500 标签 / 600 标题
+- **无卡片阴影**：深度来自 surface-container 色阶 + hairline 分隔线，仅悬浮 chrome 用阴影
+- 状态色映射：done→success 绿 / 进行中→primary 蓝 / 待办→on-surface-variant 灰 / **延期→error 红**
 
 ## 说明与范围外
 
-- 本仓库 `DESIGN.md` 仅为设计风格参考，不含任何宝马商标图形资产
+- 本仓库 `DESIGN.md` 仅为设计风格参考，不含任何第三方商标图形资产
 - 当前范围不含：RBAC 权限、评论/附件/通知、工时加权进度（仅预留字段）、进度历史快照、K8s 部署
 - AI 写操作当前为**完整 CRUD** 权限（无细粒度分级），请仅向可信工具发放 API Key

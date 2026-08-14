@@ -22,6 +22,7 @@ import Gantt from 'frappe-gantt'
 import 'frappe-gantt/dist/frappe-gantt.css'
 import type { GanttTask as FGTask } from 'frappe-gantt'
 import type { GanttData } from '@/types'
+import { cssVar, onThemeChange } from '@/composables/useThemeColors'
 import './gantt.css'
 
 const props = defineProps<{ data: GanttData }>()
@@ -41,6 +42,7 @@ const ganttRef = ref<HTMLElement>()
 const viewMode = ref('Week')
 const today = new Date().toISOString().slice(0, 10)
 let chart: Gantt | null = null
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 
 function toFGTask(): FGTask[] {
   return props.data.tasks.map((t) => ({
@@ -51,6 +53,10 @@ function toFGTask(): FGTask[] {
     progress: t.progress,
     dependencies: t.dependencies,
   }))
+}
+
+function barRadius() {
+  return parseInt(cssVar('--md-radius-sm', '8px'), 10) || 8
 }
 
 function render() {
@@ -64,7 +70,7 @@ function render() {
       date_format: 'YYYY-MM-DD',
       header_height: 48,
       bar_height: 28,
-      bar_corner_radius: 6, // MD3 圆角
+      bar_corner_radius: barRadius(),
       padding: 16,
       on_date_change: (task, start, end) => {
         emit('date-change', task.id, fmt(start), fmt(end))
@@ -93,6 +99,19 @@ function markOverdue() {
   })
 }
 
+// 减少动态效果：frappe-gantt 用 SMIL <animate> 做宽度动画，摘除后条带直接呈最终宽度
+function stripAnimations() {
+  if (!prefersReducedMotion.matches) return
+  ganttRef.value?.querySelectorAll('animate').forEach((el) => el.remove())
+}
+
+function afterRender() {
+  nextTick(() => {
+    markOverdue()
+    stripAnimations()
+  })
+}
+
 function setViewMode(mode: string) {
   viewMode.value = mode
   chart?.change_view_mode(mode)
@@ -102,14 +121,20 @@ watch(
   () => props.data,
   () => {
     render()
-    nextTick(markOverdue)
+    afterRender()
   },
   { deep: true }
 )
 
 onMounted(() => {
   render()
-  nextTick(markOverdue)
+  afterRender()
+})
+
+// 主题切换后重绘（CSS 变量已更新的下一帧再读）
+onThemeChange(() => {
+  render()
+  afterRender()
 })
 </script>
 
@@ -128,12 +153,15 @@ onMounted(() => {
   margin-bottom: var(--md-space-4);
 }
 .view-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--md-control-height);
   background-color: var(--md-surface);
   border: 1px solid var(--md-outline);
   color: var(--md-on-surface);
   font-family: var(--md-font);
   font-size: var(--md-text-label-md);
-  padding: var(--md-space-1) 12px;
+  padding: var(--md-space-1) var(--md-space-3);
   cursor: pointer;
   border-radius: var(--md-radius-full);
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;

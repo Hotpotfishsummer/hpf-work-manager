@@ -58,6 +58,9 @@
   --md-status-done: var(--md-success);
   --md-status-overdue: var(--md-error);
 
+  /* 甘特图今日线（主色 10% 浅底，深浅各自取值） */
+  --md-today-highlight: rgba(0, 102, 204, 0.10);
+
   /* ---- 阴影：色阶提升为主，阴影仅悬浮 chrome ---- */
   --md-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.06);
   --md-shadow-2: 0 8px 16px rgba(0, 0, 0, 0.14), 0 4px 8px rgba(0, 0, 0, 0.10);
@@ -131,6 +134,7 @@
   --md-tag-padding: 3px 10px;
   --md-progress-height: 8px;
   --md-content-max: 1440px;
+  --md-text-measure: 68ch;
   --md-nav-height: 56px;
 
   /* ---- 动效 ---- */
@@ -185,6 +189,8 @@
 
   --md-inverse-surface: #f5f5f7;
   --md-inverse-on-surface: #1d1d1f;
+
+  --md-today-highlight: rgba(78, 160, 255, 0.16);
 
   --md-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
   --md-shadow-2: 0 8px 16px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.5);

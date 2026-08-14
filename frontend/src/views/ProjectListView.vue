@@ -4,17 +4,17 @@
     <div class="page-head">
       <div>
         <h1 class="page-title">项目</h1>
-        <p class="page-sub">PROJECTS · 管理你的全部项目与进度</p>
+        <p class="page-sub">Projects · 管理你的全部项目与进度</p>
       </div>
       <el-button type="primary" size="large" @click="openCreate">
-        <el-icon style="margin-right: 6px"><Plus /></el-icon>
+        <el-icon style="margin-right: var(--md-space-1)"><Plus /></el-icon>
         新建项目
       </el-button>
     </div>
 
     <!-- 项目卡片网格：4-up → 2-up → 1-up -->
     <div v-loading="loading" class="project-grid">
-      <div v-for="p in projects" :key="p.id" class="model-card" @click="goDetail(p.id)">
+      <div v-for="p in projects" :key="p.id" class="model-card" role="button" tabindex="0" @click="goDetail(p.id)" @keydown.enter.prevent="goDetail(p.id)">
         <!-- model-card-photo：surface-card 底板 -->
         <div class="model-card-photo">
           <span class="photo-badge">{{ p.name.slice(0, 1).toUpperCase() }}</span>
@@ -31,7 +31,7 @@
           </el-tag>
           <span class="meta-date">{{ fmtDate(p.end_date) }}</span>
         </div>
-        <button class="text-link-upper">
+        <button class="text-link-upper" tabindex="-1">
           查看项目<span class="chev">›</span>
         </button>
       </div>
@@ -159,15 +159,15 @@ onMounted(load)
 }
 .page-title {
   margin: 0;
-  font-size: var(--md-text-display-lg);
-  line-height: 1.1;
+  font-size: var(--md-text-display);
+  line-height: 1.2;
 }
 .page-sub {
   margin: var(--md-space-1) 0 0;
   font-size: var(--md-text-body-sm);
   font-weight: var(--md-weight-regular);
   color: var(--md-on-surface-variant);
-  letter-spacing: 1.5px;
+  letter-spacing: var(--md-track-caption);
 }
 
 .project-grid {
@@ -180,21 +180,21 @@ onMounted(load)
 @media (max-width: 1024px) { .project-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 640px) { .project-grid { grid-template-columns: 1fr; } }
 
-/* model-card：圆角卡片 */
+/* model-card：圆角卡片（surface-container-low，hover 色阶提升） */
 .model-card {
-  background-color: var(--md-surface);
+  background-color: var(--md-surface-container-low);
   border: 1px solid var(--md-outline-variant);
   border-radius: var(--md-radius-lg);
   padding: var(--md-space-5);
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  transition: border-color 0.15s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition: border-color var(--md-duration-standard) var(--md-ease-standard),
+    background-color var(--md-duration-standard) var(--md-ease-standard);
 }
 .model-card:hover {
   border-color: var(--md-primary);
-  box-shadow: var(--md-shadow-1);
-  transform: translateY(-2px);
+  background-color: var(--md-surface-container-high);
 }
 
 /* model-card-photo：底板 */
@@ -216,7 +216,7 @@ onMounted(load)
 .card-title {
   margin: 0;
   font-size: var(--md-text-title-md);
-  font-weight: var(--md-weight-bold);
+  font-weight: var(--md-weight-semibold);
   color: var(--md-on-surface);
 }
 .card-desc {
@@ -240,4 +240,24 @@ onMounted(load)
   font-size: var(--md-text-label-md);
   color: var(--md-on-surface-variant);
 }
+
+/* 文本按钮（查看项目）：MD3 text button */
+.text-link-upper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--md-space-1);
+  background: transparent;
+  border: none;
+  padding: var(--md-space-1) 0;
+  font-family: var(--md-font);
+  font-size: var(--md-text-label);
+  font-weight: var(--md-weight-medium);
+  letter-spacing: var(--md-track-small);
+  color: var(--md-primary);
+  cursor: pointer;
+  border-radius: var(--md-radius-sm);
+}
+.text-link-upper:hover,
+.text-link-upper:focus { color: var(--md-primary); background: var(--md-primary-hover); }
+.chev { font-size: var(--md-text-body-lg); line-height: 1; }
 </style>

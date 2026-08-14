@@ -3,7 +3,7 @@
     <div class="page-head">
       <div>
         <h1 class="page-title">{{ project?.name }}</h1>
-        <p class="page-sub">GANTT CHART · 时间线与依赖关系</p>
+        <p class="page-sub">Gantt Chart · 时间线与依赖关系</p>
       </div>
       <div class="head-actions">
         <el-button size="large" @click="router.push(`/projects/${pid}`)">返回概览</el-button>
@@ -20,7 +20,8 @@
     <el-empty v-else-if="!loading" description="暂无任务，先去任务看板创建任务" :image-size="100" />
 
     <p class="gantt-legend">
-      <span class="legend-item"><i class="legend-dot legend-blue" />进行中/待办</span>
+      <span class="legend-item"><i class="legend-dot legend-blue" />进行中</span>
+      <span class="legend-item"><i class="legend-dot legend-todo" />待办</span>
       <span class="legend-item"><i class="legend-dot legend-red" />已延期</span>
       <span class="legend-item"><i class="legend-line" />依赖关系</span>
       <span class="legend-item"><i class="legend-progress" />进度填充</span>
@@ -97,7 +98,7 @@ onMounted(load)
   margin: var(--md-space-1) 0 0;
   font-size: var(--md-text-body-sm);
   color: var(--md-on-surface-variant);
-  letter-spacing: 1.5px;
+  letter-spacing: var(--md-track-caption);
 }
 .head-actions { display: flex; gap: var(--md-space-2); }
 
@@ -110,9 +111,10 @@ onMounted(load)
   color: var(--md-on-surface);
   flex-wrap: wrap;
 }
-.legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.legend-item { display: inline-flex; align-items: center; gap: var(--md-space-1); }
 .legend-dot { width: 12px; height: 8px; display: inline-block; border-radius: var(--md-radius-sm); }
 .legend-blue { background-color: var(--md-primary); }
+.legend-todo { background-color: var(--md-status-todo); }
 .legend-red { background-color: var(--md-status-overdue); }
 .legend-line { width: 16px; height: 0; border-top: 2px dashed var(--md-outline-variant); }
 .legend-progress { width: 12px; height: 8px; display: inline-block; border-radius: var(--md-radius-sm); background: linear-gradient(90deg, var(--md-primary-container) 55%, var(--md-primary) 55%); }

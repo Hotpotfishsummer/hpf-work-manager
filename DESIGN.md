@@ -19,9 +19,9 @@ non-themeable (e.g. a brand SVG glyph) — and even then prefer a token.
 
 | Role | Light | Dark | Use |
 |---|---|---|---|
-| `--md-primary` | #0061a9 | #9ccaff | Buttons/links/focus/active states, in_progress status |
-| `--md-on-primary` | #ffffff | #00325f | Text/icon on primary |
-| `--md-primary-container` | #d2e5ff | #004a8f | Tonal buttons, selected chips, inspects |
+| `--md-primary` | #0066cc | #4ea0ff | Buttons/links/focus/active states, in_progress status |
+| `--md-on-primary` | #ffffff | #00305f | Text/icon on primary |
+| `--md-primary-container` | #cfe3ff | #004a8f | Tonal buttons, selected chips, inspects |
 | `--md-on-primary-container` | #001b3c | #d2e5ff | Text on primary-container |
 | `--md-surface` | #f8f9f9 | #141414 | Page canvas |
 | `--md-on-surface` | #1a1b1f | #e4e2e6 | Primary text (≈ Apple ink #1d1d1f in light) |
@@ -40,7 +40,7 @@ non-themeable (e.g. a brand SVG glyph) — and even then prefer a token.
 | `--md-on-error-container` | #410002 | #ffdad6 | Text on error-container |
 | `--md-success` | #2e7d32 | #a5d6a7 | done status |
 | `--md-success-container` | #a9e6a8 | #17631f | Success tag fill |
-| `--md-warning` | #8a5a00 | #f5c344 | Priority-medium / warning |
+| `--md-warning` | #8a5a00 | #f5c344 | Priority-high / warning |
 | `--md-warning-container` | #ffdfa8 | #543d00 | Warning tag fill |
 | `--md-ink` | #1d1d1f | #e4e2e6 | Apple near-black ink (headlines) |
 | `--md-parchment` | #f5f5f7 | #1a1a1c | Apple off-white alternate band / footer |
@@ -48,6 +48,9 @@ non-themeable (e.g. a brand SVG glyph) — and even then prefer a token.
 
 **Status mapping:** todo → `--md-on-surface-variant` · in_progress → `--md-primary` ·
 done → `--md-success` · overdue → `--md-error`.
+
+**Priority mapping:** high → `--md-warning`（唯一占用 warning 的语义）· medium / low → 中性
+`--md-on-surface-variant`。error 红仅保留给逾期/破坏性操作，不用于优先级。
 
 **Elevation:** flat chrome = surface-container-low + 1px outline-variant. Floating chrome
 (dialogs/dropdowns) = surface-container-high + `--md-shadow-2`. Prefer color-elevation over
@@ -57,7 +60,7 @@ shadow; Apple never shadows cards.
 
 Font stack: `system-ui, -apple-system, 'SF Pro Text', 'SF Pro Display', 'PingFang SC', 'Helvetica Neue', 'Inter', 'Segoe UI', Roboto, sans-serif`.
 
-Weights: **400 body / 500 labels / 600 titles**. Body 14px, minimum 12px.
+Weights: **400 body / 500 labels / 600 titles / 700 品牌与展示点缀**. Body 14px, minimum 12px.
 
 | Token | Size/Weight | Leading | Tracking | Use |
 |---|---|---|---|---|
@@ -103,7 +106,7 @@ Negative tracking ≥14px (Apple tight), 0 at/or below 12px.
 
 - No hardcoded hex in components; charts must read computed token values & re-render on theme change.
 - No second accent color; no violet/magenta status colors.
-- Don't use weight 700 — hierarchy tops at 600.
+- Don't use weight 700 for body/content — reserve it for brand & display accents only (hierarchy tops at 600).
 - Don't uppercase body text or use 1.5px letter-spacing links like the BMW "LEARN MORE" style.
 - Don't use `radius-none` (0px) rectangles; controls are `sm`/pill, cards `lg`.
 - Don't shadow cards/rows — raise via surface-container ladder.

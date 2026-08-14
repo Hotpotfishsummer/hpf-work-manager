@@ -3,7 +3,7 @@
     <div class="page-head">
       <div>
         <h1 class="page-title">开发记录</h1>
-        <p class="page-sub">{{ project?.name }} · DEV LOG · 进度/难点/待办/决策</p>
+        <p class="page-sub">{{ project?.name }} · Dev Log · 进度/难点/待办/决策</p>
       </div>
       <div class="head-actions">
         <el-button size="large" @click="router.push(`/projects/${pid}`)">返回概览</el-button>
@@ -56,7 +56,7 @@
               {{ SEVERITY_LABEL[log.severity] }}
             </el-tag>
             <el-tag v-if="log.entry_type === 'todo' || log.entry_type === 'blocker'"
-              :type="log.status === 'done' ? 'success' : 'primary'"
+              :type="log.status === 'done' ? 'success' : 'info'"
               effect="plain" size="small">
               {{ log.status === 'done' ? '已完成' : '待处理' }}
             </el-tag>
@@ -254,7 +254,7 @@ onMounted(load)
   margin: var(--md-space-1) 0 0;
   font-size: var(--md-text-body-sm);
   color: var(--md-on-surface-variant);
-  letter-spacing: 1.5px;
+  letter-spacing: var(--md-track-caption);
 }
 .head-actions { display: flex; gap: var(--md-space-2); }
 
@@ -275,15 +275,14 @@ onMounted(load)
 .spec-value {
   display: block;
   font-size: var(--md-text-display-sm);
-  font-weight: var(--md-weight-bold);
+  font-weight: var(--md-weight-semibold);
   color: var(--md-on-surface);
 }
 .spec-label {
   display: block;
   margin-top: var(--md-space-1);
   font-size: var(--md-text-label-md);
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  letter-spacing: var(--md-track-caption);
   color: var(--md-on-surface-variant);
 }
 
@@ -314,7 +313,7 @@ onMounted(load)
 }
 .log-title {
   flex: 1;
-  font-weight: var(--md-weight-bold);
+  font-weight: var(--md-weight-semibold);
   font-size: var(--md-text-body-md);
   color: var(--md-on-surface);
 }
@@ -333,6 +332,7 @@ onMounted(load)
   font-size: var(--md-text-body-sm);
   color: var(--md-on-surface-variant);
   white-space: pre-wrap;
+  max-width: var(--md-text-measure);
 }
 .log-tasks {
   display: flex;
@@ -345,6 +345,7 @@ onMounted(load)
 
 .report-text {
   max-height: 480px;
+  max-width: var(--md-text-measure);
   overflow: auto;
   white-space: pre-wrap;
   background-color: var(--md-surface-container-high);

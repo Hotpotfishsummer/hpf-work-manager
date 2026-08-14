@@ -134,8 +134,8 @@ function onUserCommand(cmd: string) {
   gap: var(--md-space-2);
 }
 .theme-toggle {
-  width: 36px;
-  height: 36px;
+  width: var(--md-control-height);
+  height: var(--md-control-height);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -156,9 +156,8 @@ function onUserCommand(cmd: string) {
   align-items: center;
   gap: var(--md-space-1);
   cursor: pointer;
-  outline: none;
 }
-.user-name { font-weight: 700; }
+.user-name { font-weight: var(--md-weight-medium); }
 
 .page-body {
   flex: 1;

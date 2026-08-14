@@ -28,7 +28,7 @@
 | 启动: 后端开发环境 | 只起 DB + 迁移 + uvicorn |
 | 启动: 前端开发环境 | 只起 vite dev server |
 | frontend: 构建 (npm run build) | 默认构建任务（`Cmd+Shift+B`） |
-| test: e2e 端到端验证 | 运行 33 项断言 |
+| test: e2e 端到端验证 | 运行 41 项断言 |
 | test: 全部 | 并行跑 构建 + e2e + 迁移验证 |
 
 > 后台服务器任务（uvicorn/vite）会持续运行在专用终端面板（panel: dedicated），关闭终端即停止。
