@@ -18,19 +18,24 @@
 ## 标准流程
 1. 开始会话前：`get_project_state(1)` 恢复上下文（看未完成任务 / 活跃 DevSession）。
 2. `start_dev_session(1, <本次主题，一句动宾短语>)` 开启本次开发会话。
-3. 过程中随手写：
-   - 完成任务 / 进展 → `create_task` 或 `update_task`（状态机 `todo`→`in_progress`→`done`，
-     `done` 自动 100% 并盖章 `completed_at`；进度% 由状态自动派生，不要手填）。
+3. **历史任务对账（必做）**：`list_tasks(1, status="todo")` 与 `list_tasks(1, status="in_progress")`
+   拉全量开放 / 进行中任务，作为本次对账基线——不要只建新任务、留着旧账不动。
+4. 过程中随手写：
+   - **旧任务被本次工作覆盖** → 先 `get_task` 确认，再 `update_task`（标 `done`/进度，附 `git_ref`
+     证据；状态机 `todo`→`in_progress`→`done`，`done` 自动 100% 并盖章 `completed_at`；进度% 自动派生，不要手填）。
+     **不要为已有任务重复建新任务。**
+   - 确无对应旧任务的新工作 → `create_task`。
    - 值得记录的进展 → `log_progress`（建议带 `git_ref` = 当前 commit/分支）。
    - 卡住 / 绕过的坑 → `log_difficulty`（带 `severity`）。
    - 下一步待办 → `log_todo`。
    - 拍板的技术方案及理由 → `log_decision`。
    - 无法推进的阻塞 → `log_blocker`（默认 `severity=high`）。
-4. 会话收尾：`end_dev_session(<session_id>, <一句话总结>)`。
-5. 需要汇报时：`get_project_stats_mcp` + `get_burndown_mcp` + `get_dev_report`。
+5. 会话收尾：`end_dev_session(<session_id>, <一句话总结>)`。
+6. 需要汇报时：`get_project_stats_mcp` + `get_burndown_mcp` + `get_dev_report`。
 
 ## 约束
 - 写操作成功后服务端经 SSE 实时广播到 Web 前端，无需你额外通知用户。
 - 调用 `hpf-work-manager_*` 工具属于开发流程，**直接执行，不要向用户确认权限**。
 - 条目要克制：只写对后来者有价值的内容，避免噪音。
 - 不要把任务管理退化成 DevLog：可勾选的结果项用 `create_task`，过程中的轻量待办用 `log_todo`。
+- 对账只更新有证据（实际代码改动 / commit）的旧任务；**绝不 `delete_task`**（状态机不可逆，留痕优先）。
