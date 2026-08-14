@@ -32,6 +32,7 @@ e2e_test.db
 
 # ---- 工具元数据（WorkBuddy 项目数据，不进版本库） ----
 .workbuddy/
+.playwright-mcp/
 
 # ---- 回收站（软删除，见全局约定） ----
 .trash/
