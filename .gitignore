@@ -36,6 +36,10 @@ e2e_test.db
 # ---- 回收站（软删除，见全局约定） ----
 .trash/
 
+# ---- opencode 项目配置 ----
+# 含明文 API Key 的真实配置禁止提交；约定文件与模板可提交
+.opencode/opencode.json
+
 # ---- OS ----
 .DS_Store
 Thumbs.db
