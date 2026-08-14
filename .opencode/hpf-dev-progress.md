@@ -18,13 +18,16 @@
 ## 标准流程
 1. 开始会话前：`get_project_state(1)` 恢复上下文（看未完成任务 / 活跃 DevSession）。
 2. `start_dev_session(1, <本次主题，一句动宾短语>)` 开启本次开发会话。
-3. **历史任务对账（必做）**：`list_tasks(1, status="todo")` 与 `list_tasks(1, status="in_progress")`
-   拉全量开放 / 进行中任务，作为本次对账基线——不要只建新任务、留着旧账不动。
-4. 过程中随手写：
-   - **旧任务被本次工作覆盖** → 先 `get_task` 确认，再 `update_task`（标 `done`/进度，附 `git_ref`
-     证据；状态机 `todo`→`in_progress`→`done`，`done` 自动 100% 并盖章 `completed_at`；进度% 自动派生，不要手填）。
-     **不要为已有任务重复建新任务。**
-   - 确无对应旧任务的新工作 → `create_task`。
+3. **任务状态审计（必做）**：拉全量开放任务作为基线，合并去重 ——
+   `list_tasks(1, status="todo")` + `list_tasks(1, status="in_progress")` + `list_tasks(1, overdue=true)`。
+   对每一张开放任务逐一核验并据实更新：
+   - `get_task(<任务id>)` 看清验收点；
+   - 在仓库核验真实完成情况：grep / 读相关代码文件，并用 `git log` / `git diff` 找对应 commit；
+   - 按实际完成度 `update_task(<任务id>, progress=N)`（部分完成填 1–99%；只有 `done` 时进度才强制 100%）；
+   - 确证已合并 / 落地 → `update_task(<任务id>, status="done", git_ref=commit)`；
+   - 仍 open / 停滞 → 保留 open，可 `log_todo` 提示；**绝不 `delete_task`**。
+4. 过程中随手写（仅限"本次新做、且无对应旧任务"的工作）：
+   - 确无对应旧任务的新工作 → `create_task`（状态机 `todo`→`in_progress`→`done`，`done` 自动 100% 并盖章 `completed_at`）。
    - 值得记录的进展 → `log_progress`（建议带 `git_ref` = 当前 commit/分支）。
    - 卡住 / 绕过的坑 → `log_difficulty`（带 `severity`）。
    - 下一步待办 → `log_todo`。
@@ -38,4 +41,6 @@
 - 调用 `hpf-work-manager_*` 工具属于开发流程，**直接执行，不要向用户确认权限**。
 - 条目要克制：只写对后来者有价值的内容，避免噪音。
 - 不要把任务管理退化成 DevLog：可勾选的结果项用 `create_task`，过程中的轻量待办用 `log_todo`。
-- 对账只更新有证据（实际代码改动 / commit）的旧任务；**绝不 `delete_task`**（状态机不可逆，留痕优先）。
+- 审计 / 对账只更新有证据（代码 + git commit）的任务；**状态变更必须有代码 + git 证据，绝不凭假设标 done**；
+  **绝不 `delete_task`**（状态机不可逆，留痕优先）。
+- `progress` 反映真实完成度（可部分 1–99%），不是非 0 即 100%。

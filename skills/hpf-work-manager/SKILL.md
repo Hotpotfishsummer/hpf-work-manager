@@ -148,16 +148,18 @@ DevLog 记录"开发过程"，任务/里程碑管"结果"。写记录前先开�
 ```
 list_projects → get_project_state(project_id)      # 恢复上下文
 start_dev_session(project_id, title)                # 记录本次会话
-list_tasks(status="todo"/"in_progress")             # 对账历史待办（不只建新任务）
-... 旧任务被本次工作覆盖 → update_task(status="done", git_ref=commit)   # 任务结果
-... 新工作无对应任务 → create_task
+list_tasks(status="todo"/"in_progress") + list_tasks(overdue=true)  # 拉全量开放任务
+... 对每张开放任务：get_task → 在仓库核验(代码+git) → 据实 update_task(progress) / 确证完成标 done
+... 本次新做且无对应旧任务的工作 → create_task
 ... 随手写 → log_progress / log_difficulty / log_todo ...
 end_dev_session(session_id, summary)                # 收口
 get_dev_report(project_id)                          # 出阶段汇报
 ```
 
-> 开发中对**历史遗留任务**同样适用 `update_task`：先 `list_tasks(status=todo/in_progress)`
-> 对账，确认本次工作覆盖到旧任务时主动更新其状态/进度，避免只建新任务、留旧账不动。
+> 开发中对**所有开放任务（todo / in_progress / 逾期）**都要做状态审计：先 `list_tasks` 拉全量，
+> 再逐一 `get_task` 并在仓库核验真实完成情况（读相关代码 + `git log`/`git diff` 找对应 commit），
+> **据实更新 `progress`（部分完成填 1–99%），确证已合并/落地才 `update_task(status="done", git_ref=commit)`**。
+> 状态变更必须有代码 + git 证据，绝不凭假设标 done，也绝不 `delete_task`。
 
 **汇报**：`get_project_stats_mcp`（进度）+ `get_burndown_mcp`（趋势）+ `get_dev_report`（过程）。
 
