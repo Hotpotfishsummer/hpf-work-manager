@@ -47,19 +47,19 @@
   fill: var(--md-today-highlight);
 }
 
-/* 条形：动态主色（覆盖默认渐变） */
-.gantt-container .gantt .bar-wrapper .bar .bar-fill {
+/* 条形：动态主色（覆盖 frappe-gantt 默认 fill） */
+.gantt-container .gantt .bar-wrapper .bar {
   fill: var(--md-primary);
 }
-.gantt-container .gantt .bar-wrapper .bar .bar-progress {
+.gantt-container .gantt .bar-wrapper .bar-progress {
   fill: var(--md-primary-active);
 }
 
 /* 延期任务标红 */
-.gantt-container .gantt .bar-wrapper[data-overdue='true'] .bar .bar-fill {
+.gantt-container .gantt .bar-wrapper[data-overdue='true'] .bar {
   fill: var(--md-status-overdue);
 }
-.gantt-container .gantt .bar-wrapper[data-overdue='true'] .bar .bar-progress {
+.gantt-container .gantt .bar-wrapper[data-overdue='true'] .bar-progress {
   fill: var(--md-status-overdue);
 }
 
