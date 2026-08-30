@@ -121,8 +121,22 @@
               <span class="tc-progress-text">{{ t.progress }}%</span>
               <div>
                 <el-button link size="small" @click.stop="openEdit(t)">编辑</el-button>
+                <el-button link size="small" @click.stop="openDeps(t)">依赖</el-button>
                 <el-button link type="danger" size="small" @click.stop="removeTask(t.id)">删除</el-button>
               </div>
+            </div>
+            <div v-if="t.depends_on?.length" class="tc-deps">
+              <el-tag
+                v-for="depId in t.depends_on"
+                :key="depId"
+                size="small"
+                type="info"
+                effect="plain"
+                class="tc-dep-tag"
+                :title="depName(depId)"
+              >
+                {{ depName(depId) }}
+              </el-tag>
             </div>
           </div>
 
@@ -228,6 +242,31 @@
         <el-button type="primary" @click="applyBulk">应用</el-button>
       </template>
     </el-dialog>
+    <!-- 依赖关系管理弹窗 -->
+    <el-dialog
+      v-model="depsDialog"
+      :title="depsTask ? `依赖关系 · ${depsTask.name}` : '依赖关系'"
+      width="480px"
+      destroy-on-close
+      @close="depsDialog = false"
+    >
+      <p class="deps-hint">勾选需要作为前置依赖的任务（可多选）。被依赖任务未完成时，会在卡片上提示。</p>
+      <el-input v-model="depsSearch" placeholder="搜索任务名" size="small" clearable class="deps-search" />
+      <el-checkbox-group v-model="depsSelected" class="deps-list">
+        <el-checkbox
+          v-for="opt in filteredDepsCandidates"
+          :key="opt.id"
+          :value="opt.id"
+          :label="opt.label"
+          class="deps-item"
+        />
+      </el-checkbox-group>
+      <p v-if="depsCandidates.length === 0" class="deps-empty">无其他可选任务</p>
+      <template #footer>
+        <el-button @click="depsDialog = false">取消</el-button>
+        <el-button type="primary" @click="saveDeps">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -248,7 +287,9 @@ const pid = computed(() => Number(props.id))
 
 const loading = ref(false)
 const project = ref<Project | null>(null)
-const tasks = ref<Task[]>([])
+// 扩展 Task 类型：依赖列表由 SSE 刷新时注入
+type TaskEx = Task & { depends_on?: number[] }
+const tasks = ref<TaskEx[]>([])
 const milestones = ref<Milestone[]>([])
 const filterForm = reactive({
   status: '',
@@ -315,7 +356,7 @@ const filteredTasks = computed(() => {
 })
 
 const grouped = computed(() => {
-  const map: Record<TaskStatus, Task[]> = { todo: [], in_progress: [], done: [] }
+  const map: Record<TaskStatus, TaskEx[]> = { todo: [], in_progress: [], done: [] }
   filteredTasks.value.forEach((t) => map[t.status].push(t))
   return map
 })
@@ -550,6 +591,51 @@ if (!Object.keys(data).length) {
     load()
   } catch {
     ElMessage.error('批量更新失败')
+  }
+}
+
+// ---- 依赖关系编辑 (P1-3) ----
+const depsDialog = ref(false)
+const depsTask = ref<TaskEx | null>(null)
+const depsCandidates = ref<{ id: number; label: string }[]>([])
+const depsSelected = ref<number[]>([])
+const depsSearch = ref('')
+
+function depName(id: number): string {
+  return tasks.value.find((t) => t.id === id)?.name ?? `#${id}`
+}
+
+async function openDeps(t: TaskEx) {
+  depsTask.value = t
+  const all = await taskApi.list(pid.value)
+  const excluded = new Set<number>([t.id, ...(t.depends_on ?? [])])
+  depsCandidates.value = all
+    .filter((x) => !excluded.has(x.id))
+    .map((x) => ({ id: x.id, label: `${x.name}${x.status === 'done' ? '（已完成）' : ''}` }))
+  depsSelected.value = [...(t.depends_on ?? [])]
+  depsSearch.value = ''
+  depsDialog.value = true
+}
+
+async function saveDeps() {
+  const task = depsTask.value
+  if (!task) return
+  const current = task.depends_on ?? []
+  const target = depsSelected.value
+  const toAdd = target.filter((id) => !current.includes(id))
+  const toRemove = current.filter((id) => !target.includes(id))
+  try {
+    await Promise.all([
+      ...toAdd.map((id) => taskApi.addDep(task.id, id)),
+      ...toRemove.map((id) => taskApi.removeDep(task.id, id)),
+    ])
+    // 乐观更新本地依赖列表
+    const idx = tasks.value.findIndex((t) => t.id === task.id)
+    if (idx >= 0) tasks.value[idx] = { ...tasks.value[idx], depends_on: [...target] }
+    ElMessage.success('依赖关系已更新')
+    depsDialog.value = false
+  } catch {
+    ElMessage.error('依赖关系更新失败')
   }
 }
 
