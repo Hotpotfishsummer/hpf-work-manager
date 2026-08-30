@@ -41,6 +41,10 @@ async def list_tasks(
     db: DbDep,
     status_filter: str | None = Query(default=None, alias="status"),
     overdue: bool | None = Query(default=None),
+    priority: str | None = Query(default=None, description="low/medium/high"),
+    milestone_id: int | None = Query(default=None),
+    search: str | None = Query(default=None, max_length=100, description="按名称/描述模糊搜索"),
+    sort: str | None = Query(default=None, description="created_desc / due_asc / due_desc / priority_desc"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ):
@@ -48,11 +52,36 @@ async def list_tasks(
     stmt = select(Task).where(Task.project_id == project_id)
     if status_filter:
         stmt = stmt.where(Task.status == status_filter)
-    tasks = (
-        (await db.execute(stmt.order_by(Task.created_at.desc()).offset(offset).limit(limit)))
-        .scalars()
-        .all()
-    )
+    if priority:
+        stmt = stmt.where(Task.priority == priority)
+    if milestone_id is not None:
+        stmt = stmt.where(Task.milestone_id == milestone_id)
+    if search:
+        from sqlalchemy import or_
+
+        pat = f"%{search.lower()}%"
+        stmt = stmt.where(
+            or_(func.lower(Task.name).like(pat), func.lower(Task.description).like(pat))
+        )
+    # 排序
+    if sort == "due_asc":
+        stmt = stmt.order_by(Task.due_date.asc().nulls_last())
+    elif sort == "due_desc":
+        stmt = stmt.order_by(Task.due_date.desc().nulls_last())
+    elif sort == "priority_desc":
+        # high > medium > low：用 CASE WHEN 排序
+        stmt = stmt.order_by(
+            case(
+                (Task.priority == "high", 0),
+                (Task.priority == "medium", 1),
+                (Task.priority == "low", 2),
+                else_=3,
+            ),
+            Task.created_at.desc(),
+        )
+    else:
+        stmt = stmt.order_by(Task.created_at.desc())
+    tasks = (await db.execute(stmt.offset(offset).limit(limit))).scalars().all()
     outs = [to_out(t) for t in tasks]
     if overdue:
         outs = [t for t in outs if t.overdue]

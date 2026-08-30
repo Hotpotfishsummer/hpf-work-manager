@@ -7,6 +7,17 @@
         <p class="page-sub">Task Board · 按状态分组管理任务</p>
       </div>
       <div class="head-actions">
+        <el-form inline size="small" :model="searchForm">
+          <el-form-item label="搜索" collapse-text>
+            <el-input v-model="searchForm.keyword" placeholder="输入任务名称..." />
+          </el-form-item>
+        </el-form>
+        <el-select v-model="sortBy" placeholder="排序" style="width: 120px">
+          <el-option label="最新创建" value="created_desc" />
+          <el-option label="最久远" value="due_asc" />
+          <el-option label="最晚截止" value="due_desc" />
+          <el-option label="优先级高->低" value="priority_desc" />
+        </el-select>
         <LiveIndicator :connected="connected" :is-reconnectable="reconnectable" @reconnect="reconnect" />
         <el-button size="large" @click="router.push(`/projects/${pid}`)">返回概览</el-button>
         <el-button size="large" @click="exportCsv">
@@ -22,16 +33,27 @@
 
     <!-- filter-chips：筛选 -->
     <div class="chips-row">
-      <button
-        v-for="c in FILTERS"
-        :key="c.value"
-        class="filter-chip"
-        :class="{ active: filter === c.value }"
-        @click="filter = c.value"
-      >
-        {{ c.label }}
-      </button>
-      <span class="chips-count">{{ tasks.length }} 个任务</span>
+      <el-form inline :model="filterForm" size="small">
+        <el-form-item label="状态" collapse-text>
+          <el-select v-model="filterForm.status" placeholder="全部">
+            <el-option label="全部" value="" />
+            <el-option label="进行中" value="in_progress" />
+            <el-option label="已完成" value="done" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="优先级" collapse-text>
+          <el-select v-model="filterForm.priority" placeholder="全部">
+            <el-option label="全部" value="" />
+            <el-option label="高" value="high" />
+            <el-option label="中" value="medium" />
+            <el-option label="低" value="low" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="逾期" collapse-text>
+          <el-switch v-model="filterForm.overdue" active-text="是" inactive-text="否" />
+        </el-form-item>
+      </el-form>
+      <span class="chips-count">{{ filteredTasks.length }} 个任务</span>
     </div>
 
     <!-- 三列看板 -->
@@ -54,7 +76,7 @@
             v-for="t in grouped[col.status]"
             :key="t.id"
             class="task-card"
-            :class="{ 'is-overdue': t.overdue }"
+            :class="{ 'is-overdue': t.overdue, 'is-selected': selectedTasks.includes(t.id) }"
             role="button"
             tabindex="0"
             draggable="true"
@@ -62,6 +84,13 @@
             @dblclick="openEdit(t)"
             @keydown.enter.prevent="openEdit(t)"
           >
+            <div class="tc-select">
+              <el-checkbox
+                :model-value="selectedTasks.includes(t.id)"
+                @update:model-value="(v: boolean) => toggleSelect(t.id, v)"
+                @click.stop
+              />
+            </div>
             <div class="tc-top">
               <span class="tc-name">{{ t.name }}</span>
               <el-tag
@@ -166,6 +195,39 @@
         <el-button type="primary" :loading="saving" @click="save">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 批量操作弹窗 -->
+    <el-dialog v-model="bulkDialog" title="批量操作" width="420px" destroy-on-close @close="bulkDialog = false">
+      <p style="margin: 0 0 var(--md-space-3)">
+        已选择 <strong>{{ selectedTasks.length }}</strong> 个任务，批量修改字段：
+      </p>
+      <el-form label-position="top" :model="bulkForm">
+        <el-form-item label="状态">
+          <el-select v-model="bulkForm.status" placeholder="不改" clearable>
+            <el-option label="待办" value="todo" />
+            <el-option label="进行中" value="in_progress" />
+            <el-option label="已完成" value="done" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="优先级">
+          <el-select v-model="bulkForm.priority" placeholder="不改" clearable>
+            <el-option label="高" value="high" />
+            <el-option label="中" value="medium" />
+            <el-option label="低" value="low" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="里程碑">
+          <el-select v-model="bulkForm.milestone_id" placeholder="不改" clearable>
+            <el-option label="（无里程碑）" :value="null" />
+            <el-option v-for="m in milestones" :key="m.id" :label="m.name" :value="m.id" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="bulkDialog = false">取消</el-button>
+        <el-button type="primary" @click="applyBulk">应用</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -175,7 +237,7 @@ import { useRouter } from 'vue-router'
 import { Plus, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { milestoneApi, projectApi, taskApi } from '@/api'
-import type { Milestone, Project, Task, TaskPriority, TaskStatus } from '@/types'
+import type { Milestone, Project, Task, TaskPriority, TaskStatus, TaskUpdate } from '@/types'
 import { generateCsv } from '@/utils/csv'
 import { useProjectEvents } from '@/composables/useProjectEvents'
 import LiveIndicator from '@/components/LiveIndicator.vue'
@@ -188,11 +250,26 @@ const loading = ref(false)
 const project = ref<Project | null>(null)
 const tasks = ref<Task[]>([])
 const milestones = ref<Milestone[]>([])
-const filter = ref('all')
+const filterForm = reactive({
+  status: '',
+  priority: '',
+  overdue: false,
+})
+const searchForm = reactive({
+  keyword: '',
+})
+const sortBy = ref('')
 const dragTask = ref<Task | null>(null)
+const selectedTasks = ref<number[]>([])
+const bulkDialog = ref(false)
+const bulkForm = reactive<{
+  status?: TaskStatus
+  priority?: TaskPriority
+  milestone_id?: number | null
+}>({ status: undefined, priority: undefined, milestone_id: null })
+const saving = ref(false)
 
 const dialogVisible = ref(false)
-const saving = ref(false)
 const editing = ref<Task | null>(null)
 const formRef = ref<FormInstance>()
 
@@ -210,10 +287,31 @@ const FILTERS = [
   { value: 'high', label: '高优先级' },
 ]
 
+/** 应用前端筛选 + 搜索 + 排序（响应式派生，不另行请求） */
 const filteredTasks = computed(() => {
-  if (filter.value === 'overdue') return tasks.value.filter((t) => t.overdue)
-  if (filter.value === 'high') return tasks.value.filter((t) => t.priority === 'high')
-  return tasks.value
+  let result = tasks.value
+  if (filterForm.status) result = result.filter((t) => t.status === filterForm.status)
+  if (filterForm.priority) result = result.filter((t) => t.priority === filterForm.priority)
+  if (filterForm.overdue) result = result.filter((t) => t.overdue)
+  const k = searchForm.keyword.trim().toLowerCase()
+  if (k) result = result.filter((t) => t.name.toLowerCase().includes(k) || (t.description ?? '').toLowerCase().includes(k))
+  if (sortBy.value) {
+    result = [...result].sort((a, b) => {
+      switch (sortBy.value) {
+        case 'due_asc':
+          return (a.due_date ?? '9999-99-99').localeCompare(b.due_date ?? '9999-99-99')
+        case 'due_desc':
+          return (b.due_date ?? '0000-00-00').localeCompare(a.due_date ?? '0000-00-00')
+        case 'priority_desc': {
+          const order = { high: 0, medium: 1, low: 2 }
+          return (order[a.priority] ?? 3) - (order[b.priority] ?? 3)
+        }
+        default:
+          return 0
+      }
+    })
+  }
+  return result
 })
 
 const grouped = computed(() => {
@@ -349,14 +447,21 @@ async function save() {
       due_date: form.date_range?.[1] ?? null,
     }
     if (editing.value) {
-      await taskApi.update(editing.value.id, payload)
-      ElMessage.success('已更新')
+      const prev = tasks.value.find((t) => t.id === editing.value!.id)
+      optimisticPatch(editing.value.id, payload as Partial<Task>, prev!)
+      try {
+        await taskApi.update(editing.value.id, payload)
+        ElMessage.success('已更新')
+      } catch {
+        rollback(prev)
+        return
+      }
     } else {
-      await taskApi.create(pid.value, payload)
+      const res = await taskApi.create(pid.value, payload)
+      tasks.value.unshift(res)
       ElMessage.success('已创建')
     }
     dialogVisible.value = false
-    load()
   } finally {
     saving.value = false
   }
@@ -372,19 +477,80 @@ async function removeTask(id: number) {
   } catch {
     return
   }
-  await taskApi.remove(id)
-  ElMessage.success('已删除')
-  load()
+  const prev = tasks.value.find((t) => t.id === id)
+  tasks.value = tasks.value.filter((t) => t.id !== id)
+  try {
+    await taskApi.remove(id)
+    ElMessage.success('已删除')
+  } catch {
+    rollback(prev)
+  }
+}
+
+// 乐观更新：本地应用 patch，失败时回滚
+function optimisticPatch(id: number, patch: Partial<Task>, fallback: Task) {
+  tasks.value = tasks.value.map((t) => (t.id === id ? { ...t, ...patch } : t))
+}
+function rollback(item: Task | undefined) {
+  if (item) {
+    tasks.value = tasks.value.filter((t) => t.id !== item.id)
+    tasks.value = [item, ...tasks.value]
+  }
 }
 
 function onDrop(e: DragEvent, status: TaskStatus) {
   const t = dragTask.value
   dragTask.value = null
   if (!t || t.status === status) return
+  // done → todo/in_progress 时重置 progress（计划 P1-2）
+  const progress = status === 'done' ? 100 : 0
+  const patch = { status, progress: progress < 100 ? progress : (t.progress < 100 ? 0 : t.progress) }
+  optimisticPatch(t.id, { ...patch, progress }, t)
   if (status === 'done' && t.progress < 100) {
     ElMessage.info('完成任务时进度将自动设为 100%')
   }
-  taskApi.update(t.id, { status, progress: status === 'done' ? 100 : t.progress }).then(() => load())
+  taskApi
+    .update(t.id, { status, progress })
+    .then(() => { /* SSE 会广播，无需 reload */ })
+    .catch(() => rollback(t))
+}
+
+function toggleSelect(id: number, checked: boolean) {
+  if (checked) {
+    selectedTasks.value = [...selectedTasks.value, id]
+  } else {
+    selectedTasks.value = selectedTasks.value.filter((sid) => sid !== id)
+  }
+}
+
+// ---- 批量操作 ----
+
+function openBulkDialog() {
+  bulkForm.status = undefined
+  bulkForm.priority = undefined
+  bulkForm.milestone_id = null
+  bulkDialog.value = true
+}
+
+async function applyBulk() {
+  if (!selectedTasks.value.length) return
+  const data: Record<string, unknown> = {}
+  if (bulkForm.status) data.status = bulkForm.status
+  if (bulkForm.priority) data.priority = bulkForm.priority
+  if (bulkForm.milestone_id !== null) data.milestone_id = bulkForm.milestone_id
+if (!Object.keys(data).length) {
+    ElMessage.info('请选择要批量修改的字段')
+    return
+  }
+  bulkDialog.value = false
+  try {
+    await taskApi.bulk({ ids: selectedTasks.value, data: data })
+    ElMessage.success('批量更新完成')
+    selectedTasks.value = []
+    load()
+  } catch {
+    ElMessage.error('批量更新失败')
+  }
 }
 
 onMounted(load)
@@ -538,4 +704,20 @@ onMounted(load)
   gap: 0 var(--md-space-4);
 }
 @media (max-width: 520px) { .form-grid { grid-template-columns: 1fr; } }
+
+/* 选择态 */
+.task-card.is-selected {
+  border-color: var(--md-primary);
+  background-color: var(--md-primary-container);
+}
+.tc-select {
+  position: absolute;
+  top: var(--md-space-2);
+  left: var(--md-space-2);
+  z-index: 1;
+}
+.task-card {
+  position: relative;
+  padding-left: var(--md-space-7);
+}
 </style>

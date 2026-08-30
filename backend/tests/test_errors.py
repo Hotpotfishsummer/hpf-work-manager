@@ -168,12 +168,7 @@ class Test401Errors:
     @pytest.mark.asyncio
     async def test_expired_jwt_token(self, auth_client, test_user):
         """Test expired JWT token returns 401."""
-        from app.core.security import create_access_token
-        import time
-
-        # Create token with very short expiry (manually craft one)
-        # For now, just test with a malformed token
-        resp = await client.get(
+        resp = await auth_client.get(
             "/api/auth/me",
             headers={"Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0dXNlciIsImV4cCI6MTAwMDAwMDAwMH0.invalid"},
         )

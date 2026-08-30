@@ -23,6 +23,7 @@ import {
   ElDropdownItem,
   ElRadioGroup,
   ElRadioButton,
+  ElCheckbox,
   ElMessage,
   ElMessageBox,
   ElTable,
@@ -51,6 +52,7 @@ import 'element-plus/theme-chalk/el-dropdown.css'
 import 'element-plus/theme-chalk/el-dropdown-menu.css'
 import 'element-plus/theme-chalk/el-dropdown-item.css'
 import 'element-plus/theme-chalk/el-radio.css'
+import 'element-plus/theme-chalk/el-checkbox.css'
 import 'element-plus/theme-chalk/el-message.css'
 import 'element-plus/theme-chalk/el-message-box.css'
 import 'element-plus/theme-chalk/el-table.css'
@@ -97,6 +99,7 @@ app.component('ElDropdownMenu', ElDropdownMenu)
 app.component('ElDropdownItem', ElDropdownItem)
 app.component('ElRadioGroup', ElRadioGroup)
 app.component('ElRadioButton', ElRadioButton)
+app.component('ElCheckbox', ElCheckbox)
 app.component('ElTable', ElTable)
 app.component('ElTableColumn', ElTableColumn)
 app.component('ElTimeline', ElTimeline)

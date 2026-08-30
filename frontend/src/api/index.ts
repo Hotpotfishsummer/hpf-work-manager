@@ -62,7 +62,7 @@ export const milestoneApi = {
 
 /* ---- 任务 ---- */
 export const taskApi = {
-  list: (pid: number, params?: { status?: string; overdue?: boolean }) =>
+  list: (pid: number, params?: { status?: string; overdue?: boolean; priority?: string; milestone_id?: number; search?: string; sort?: string }) =>
     http.get<Task[], Task[]>(`/projects/${pid}/tasks`, { params }),
   get: (id: number) => http.get<Task, Task>(`/tasks/${id}`),
   create: (pid: number, data: TaskCreate) =>
@@ -71,6 +71,16 @@ export const taskApi = {
     http.put<Task, Task>(`/tasks/${id}`, data),
   remove: (id: number) => http.delete<null, null>(`/tasks/${id}`),
   bulk: (data: TaskBulkUpdate) => http.post<null, null>('/tasks/bulk', data),
+  // ---- 依赖关系 ----
+  listDeps: (id: number) => http.get<number[], number[]>(`/tasks/${id}/dependencies`),
+  addDep: (id: number, dependsOn: number) =>
+    http.post<null, null>(`/tasks/${id}/dependencies`, { depends_on_task_id: dependsOn }),
+  removeDep: (id: number, dependsOn: number) =>
+    http.request<number[], null>({
+      method: 'DELETE',
+      url: `/tasks/${id}/dependencies`,
+      params: { depends_on_task_id: dependsOn },
+    }),
 }
 
 /* ---- 统计 / 进度 ---- */

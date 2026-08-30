@@ -3,6 +3,31 @@
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，
 版本号遵循语义化版本（SemVer）。
 
+## [Unreleased]
+
+### P0 · 修复损坏与半成品功能（核心卖点真正可用）
+- **SSE 实时同步修复**：新增 `POST /api/events/ticket`（JWT 换 30s 一次性 ticket），`/events/stream` 支持 `?ticket=` 认证；前端 `useProjectEvents` 改用 `addEventListener('project-update')` + 最大 8 次重试熔断，消除 401 无限重连
+- **REST publish 补齐**：`routers/projects.py` / `milestones.py` / `tasks.py` 全部写操作补齐事件广播；`projects.py` 新增 `?status=` 过滤
+- **项目编辑/归档/删除 UI**：`ProjectListView` 卡片加操作菜单（编辑/归档/删除）；`ProjectDetailView` hero 加编辑入口；归档筛选
+- **里程碑编辑/完成标记**：详情页里程碑时间轴加编辑弹窗 + 「标记完成/取消完成」切换，删除已捕获 cancel rejection
+- **小 bug 修复**：`dev_logs.py` no-op `resolved_at` 改 `utcnow()`；`http.ts` 422 array detail 正确渲染；所有 `el-date-picker` 加 `value-format="YYYY-MM-DD"`；Element Plus `zh-cn` locale；4 处 `ElMessageBox` cancel 加 try/catch；`ApiKeysView` 空状态/日期格式化/clipboard fallback/closable alert
+
+### P1 · 核心体验补强（进行中）
+#### P1-1 全局仪表盘 ✅
+- 后端 `GET /api/overview` 聚合接口（项目进度卡片 / 逾期汇总 / 近期 DevLog / 活跃会话 / 今日完成数），单次查询避免 N+1
+- 前端 `DashboardView.vue` + 路由 `/dashboard`；AppLayout「进度」导航死链修复 → 指向 `/dashboard`
+
+#### P1-2 任务看板增强（进行中，未完成）
+- 后端 `list_tasks` 新增 `priority` / `milestone_id` / `search`（ILIKE 模糊） / `sort`（created_desc / due_asc / due_desc / priority_desc）参数
+- 前端搜索框 + 状态/优先级/逾期筛选表单 + 排序下拉（客户端派生，无需重新请求）
+- 任务卡片多选框 + 批量操作弹窗（批量改状态/优先级/里程碑）；API 依赖关系 `listDeps/addDep/removeDep` 接线
+- 乐观更新（本地 patch + 失败回滚）；拖拽 done→todo 重置 progress
+- `ElCheckbox` / `ElSwitch` / `ElSelect` 组件注册
+
+#### P1-3 依赖关系编辑 UI（待启动）
+#### P1-4 DevLog 页补强（待启动）
+#### P1-5 全局设施（待启动）
+
 ## [0.2.0] - 2026-08-26
 
 ### 安全加固
