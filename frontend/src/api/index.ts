@@ -4,6 +4,7 @@ import type {
   ApiKeyCreated,
   AuthResponse,
   BurndownPoint,
+  DashboardOverview,
   DevLog,
   DevLogCreate,
   DevLogStats,
@@ -78,6 +79,7 @@ export const statsApi = {
   burndown: (pid: number) =>
     http.get<BurndownPoint[], BurndownPoint[]>(`/projects/${pid}/burndown`),
   gantt: (pid: number) => http.get<GanttData, GanttData>(`/projects/${pid}/gantt`),
+  overview: () => http.get<DashboardOverview, DashboardOverview>('/overview'),
 }
 
 /* ---- API Key（AI 工具接入凭证） ---- */

@@ -130,6 +130,55 @@ export interface BurndownPoint {
   actual_remaining: number
 }
 
+export interface DashboardOverview {
+  total_projects: number
+  active_projects: number
+  projects: DashboardProjectCard[]
+  overdue_tasks: DashboardOverdueItem[]
+  recent_logs: DashboardRecentLog[]
+  active_sessions: DashboardSession[]
+  today_completed: number
+}
+
+export interface DashboardProjectCard {
+  project_id: number
+  name: string
+  status: ProjectStatus
+  progress: number
+  total_tasks: number
+  done_tasks: number
+  overdue_count: number
+}
+
+export interface DashboardOverdueItem {
+  id: number
+  name: string
+  project_id: number
+  project_name: string | null
+  due_date: string | null
+  days_late: number
+  priority: TaskPriority
+}
+
+export interface DashboardRecentLog {
+  id: number
+  project_id: number
+  project_name: string | null
+  entry_type: DevLogType
+  title: string | null
+  author: string | null
+  created_at: string
+}
+
+export interface DashboardSession {
+  id: number
+  project_id: number
+  project_name: string | null
+  title: string | null
+  log_count: number
+  started_at: string
+}
+
 export interface GanttDependency {
   task_id: number
   depends_on_task_id: number

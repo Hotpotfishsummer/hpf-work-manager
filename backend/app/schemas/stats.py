@@ -68,3 +68,52 @@ class DevReportRequest(BaseModel):
 
 class DevReport(BaseModel):
     text: str
+
+
+class DashboardProjectCard(BaseModel):
+    project_id: int
+    name: str
+    status: str
+    progress: float
+    total_tasks: int
+    done_tasks: int
+    overdue_count: int
+
+
+class DashboardOverdueItem(BaseModel):
+    id: int
+    name: str
+    project_id: int
+    project_name: str
+    due_date: date | None
+    days_late: int
+    priority: str
+
+
+class DashboardRecentLog(BaseModel):
+    id: int
+    project_id: int
+    project_name: str
+    entry_type: str
+    title: str
+    author: str
+    created_at: str
+
+
+class DashboardSession(BaseModel):
+    id: int
+    project_id: int
+    project_name: str
+    title: str | None
+    log_count: int
+    started_at: str
+
+
+class DashboardOverview(BaseModel):
+    total_projects: int
+    active_projects: int
+    projects: list[DashboardProjectCard]
+    overdue_tasks: list[DashboardOverdueItem]
+    recent_logs: list[DashboardRecentLog]
+    active_sessions: list[DashboardSession]
+    today_completed: int

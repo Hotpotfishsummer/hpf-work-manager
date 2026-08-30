@@ -14,7 +14,7 @@
 
         <nav class="nav-menu">
           <router-link to="/projects" class="nav-item">项目</router-link>
-          <router-link to="/projects" class="nav-item">进度</router-link>
+          <router-link to="/dashboard" class="nav-item">进度</router-link>
           <router-link to="/keys" class="nav-item">API Keys</router-link>
         </nav>
 

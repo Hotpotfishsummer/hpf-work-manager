@@ -12,15 +12,24 @@ const router = createRouter({
       component: () => import('@/views/LoginView.vue'),
       meta: { public: true },
     },
-    {
-      path: '/',
-      component: AppLayout,
-      children: [
-        {
-          path: 'projects',
-          name: 'projects',
-          component: () => import('@/views/ProjectListView.vue'),
-        },
+{
+          path: '/',
+          component: AppLayout,
+          children: [
+            {
+              path: '',
+              redirect: 'projects',
+            },
+            {
+              path: 'dashboard',
+              name: 'dashboard',
+              component: () => import('@/views/DashboardView.vue'),
+            },
+            {
+              path: 'projects',
+              name: 'projects',
+              component: () => import('@/views/ProjectListView.vue'),
+            },
         {
           path: 'projects/:id',
           name: 'project-detail',

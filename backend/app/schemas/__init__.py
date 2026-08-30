@@ -24,6 +24,11 @@ from app.schemas.stats import (
     DevLogStats,
     DevReportRequest,
     DevReport,
+    DashboardOverview,
+    DashboardProjectCard,
+    DashboardOverdueItem,
+    DashboardRecentLog,
+    DashboardSession,
 )
 from app.schemas.dev_log import (
     DevLogBase,
@@ -78,4 +83,9 @@ __all__ = [
     "DevSessionCreate",
     "DevSessionEnd",
     "DevSessionOut",
+    "DashboardOverview",
+    "DashboardProjectCard",
+    "DashboardOverdueItem",
+    "DashboardRecentLog",
+    "DashboardSession",
 ]

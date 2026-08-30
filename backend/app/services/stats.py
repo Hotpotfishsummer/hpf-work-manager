@@ -1,18 +1,24 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Task, TaskDependency
+from app.models import DevLog, DevSession, Project, Task
+from app.models.task_dependency import TaskDependency
 from app.schemas.stats import (
     BurndownPoint,
+    DashboardOverview,
+    DashboardOverdueItem,
+    DashboardProjectCard,
+    DashboardRecentLog,
+    DashboardSession,
     GanttData,
     GanttDependency,
     GanttTask,
     OverdueTask,
     ProjectStats,
 )
-from app.utils.time import today_utc
+from app.utils.time import today_utc, utcnow
 
 
 def is_overdue(task: Task, today: date | None = None) -> bool:
@@ -170,4 +176,152 @@ async def get_gantt_data(db: AsyncSession, project_id: int, start: date, end: da
         tasks=gantt_tasks,
         project_start=start.isoformat(),
         project_end=end.isoformat(),
+    )
+
+
+async def get_overview(db: AsyncSession, user_id: int) -> DashboardOverview:
+    """仪表盘聚合：当前用户全量项目的进度卡片、跨项目逾期、近期 DevLog、活跃会话、今日完成数。
+
+    单次查询返回，避免前端 N+1 并发请求。
+    """
+    today = today_utc()
+
+    # 用户全部项目
+    projects = (
+        (
+            await db.execute(
+                select(Project).where(Project.owner_id == user_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    project_ids = [p.id for p in projects]
+    pid_to_name = {p.id: p.name for p in projects}
+
+    # 项目进度统计（一次聚合）
+    project_stats_rows = (
+        await db.execute(
+            select(
+                Task.project_id,
+                func.count(Task.id),
+                func.count().filter(Task.status == "done"),
+                func.count().filter(
+                    (Task.status != "done") & (Task.due_date.is_not(None)) & (Task.due_date < today)
+                ),
+            ).where(Task.project_id.in_(project_ids) if project_ids else False)
+            .group_by(Task.project_id)
+        )
+    ).all() if project_ids else []
+    stats_by_pid: dict[int, tuple[int, int, int]] = {
+        pid: (total, done, overdue) for pid, total, done, overdue in project_stats_rows
+    }
+
+    cards = [
+        DashboardProjectCard(
+            project_id=p.id,
+            name=p.name,
+            status=p.status,
+            progress=round(done / total * 100, 1) if (total := stats_by_pid.get(p.id, (0, 0, 0))[0]) else 0.0,
+            total_tasks=total,
+            done_tasks=done,
+            overdue_count=overdue,
+        )
+        for p in projects
+    ]
+
+    # 跨项目逾期任务
+    overdue_query = (
+        await db.execute(
+            select(Task).where(
+                Task.project_id.in_(project_ids) if project_ids else False,
+                Task.status != "done",
+                Task.due_date.is_not(None),
+                Task.due_date < today,
+            )
+        )
+    ).scalars().all() if project_ids else []
+    overdue_items = [
+        DashboardOverdueItem(
+            id=t.id,
+            name=t.name,
+            project_id=t.project_id,
+            project_name=pid_to_name.get(t.project_id, ""),
+            due_date=t.due_date,
+            days_late=(today - t.due_date).days,
+            priority=t.priority,
+        )
+        for t in overdue_query
+    ]
+    overdue_items.sort(key=lambda x: x.days_late, reverse=True)
+
+    # 近期 DevLog（按创建时间倒序取 12 条）
+    recent_logs = []
+    if project_ids:
+        log_rows = (
+            await db.execute(
+                select(DevLog)
+                .where(DevLog.project_id.in_(project_ids))
+                .order_by(DevLog.created_at.desc())
+                .limit(12)
+            )
+        ).scalars().all()
+        recent_logs = [
+            DashboardRecentLog(
+                id=lg.id,
+                project_id=lg.project_id,
+                project_name=pid_to_name.get(lg.project_id, ""),
+                entry_type=lg.entry_type,
+                title=lg.title,
+                author=lg.author,
+                created_at=lg.created_at.isoformat(),
+            )
+            for lg in log_rows
+        ]
+
+    # 活跃会话（未结束）
+    active_sessions = []
+    if project_ids:
+        session_rows = (
+            await db.execute(
+                select(DevSession, func.count(DevLog.id))
+                .outerjoin(DevLog, DevLog.session_id == DevSession.id)
+                .where(DevSession.project_id.in_(project_ids), DevSession.ended_at.is_(None))
+                .group_by(DevSession.id)
+            )
+        ).all()
+        active_sessions = [
+            DashboardSession(
+                id=s.id,
+                project_id=s.project_id,
+                project_name=pid_to_name.get(s.project_id, ""),
+                title=s.title,
+                log_count=count,
+                started_at=s.started_at.isoformat(),
+            )
+            for s, count in session_rows
+        ]
+
+    # 今日完成数（按本地完成日期判定）
+    today_completed = 0
+    if project_ids:
+        today_completed = (
+            await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.project_id.in_(project_ids),
+                    Task.status == "done",
+                    Task.completed_at.is_not(None),
+                    func.date(Task.completed_at) == today.isoformat(),
+                )
+            )
+        ).scalar_one()
+
+    return DashboardOverview(
+        total_projects=len(projects),
+        active_projects=sum(1 for p in projects if p.status == "active"),
+        projects=cards,
+        overdue_tasks=overdue_items,
+        recent_logs=recent_logs,
+        active_sessions=active_sessions,
+        today_completed=today_completed or 0,
     )
