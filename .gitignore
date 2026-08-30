@@ -37,6 +37,9 @@ e2e_test.db
 # ---- 回收站（软删除，见全局约定） ----
 .trash/
 
+# ---- 备份文件（自动 pg_dump 产物） ----
+backups/
+
 # ---- opencode 项目配置 ----
 # 含明文 API Key 的真实配置禁止提交；约定文件与模板可提交
 .opencode/opencode.json

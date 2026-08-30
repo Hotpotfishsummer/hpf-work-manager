@@ -112,7 +112,7 @@ async def create_log(
         **data,
     )
     if log.status == "done":
-        log.resolved_at = log.resolved_at
+        log.resolved_at = utcnow()
     db.add(log)
     await db.commit()
     await db.refresh(log)

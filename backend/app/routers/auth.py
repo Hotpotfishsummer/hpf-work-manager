@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+from app.core.ratelimit import limiter
 from app.core.security import create_access_token, hash_password, verify_password
 from app.deps import CurrentUser, DbDep
 from app.models import User
@@ -16,7 +17,8 @@ class LoginRequest(BaseModel):
 
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
-async def register(payload: UserRegister, db: DbDep):
+@limiter.limit("5/minute")
+async def register(request: Request, payload: UserRegister, db: DbDep):
     exists = (
         await db.execute(
             select(User).where(
@@ -43,7 +45,8 @@ async def register(payload: UserRegister, db: DbDep):
 
 
 @router.post("/login", response_model=Token)
-async def login(payload: LoginRequest, db: DbDep):
+@limiter.limit("5/minute")
+async def login(request: Request, payload: LoginRequest, db: DbDep):
     user = (
         await db.execute(select(User).where(User.username == payload.username))
     ).scalar_one_or_none()

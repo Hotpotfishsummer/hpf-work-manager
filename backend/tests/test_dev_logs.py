@@ -4,13 +4,18 @@
 汇报生成、关联任务越权校验，以及 MCP 的 log_*/get_dev_report/get_project_state 链路。
 """
 
-import asyncio
-import json
 import os
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import pytest
+
+_mcp_disabled = os.environ.get("MCP_ENABLED", "true").lower() == "false"
+_requires_mcp = pytest.mark.skipif(_mcp_disabled, reason="MCP_ENABLED=false in this test run")
+
+import json
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
 def parse_sse_text(txt: str) -> dict | None:
@@ -20,57 +25,11 @@ def parse_sse_text(txt: str) -> dict | None:
     return None
 
 
-async def main():
-    os.environ.setdefault("MCP_ALLOWED_HOSTS", "testserver,localhost")
-
-    import app.database as database
-    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-    from app.database import Base
-
-    test_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    database.engine = test_engine
-    database.AsyncSessionLocal = async_sessionmaker(
-        test_engine, class_=database.AsyncSession, expire_on_commit=False
-    )
-    from app.database import AsyncSessionLocal
-
-    async def get_db_override():
-        async with AsyncSessionLocal() as session:
-            yield session
-
-    import app.deps as deps
-    deps.get_db = get_db_override
-    for mod in ["projects", "tasks", "keys", "events", "dev_logs"]:
-        import importlib
-
-        m = importlib.import_module(f"app.routers.{mod}")
-        m.get_db = get_db_override
-
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    from app.models import ApiKey, Project, Task, User
-    from app.core.apikey import generate_api_key
-    from app.core.security import hash_password
-
-    async with AsyncSessionLocal() as db:
-        u = User(username="alice", email="a@b.c", hashed_password=hash_password("pw123456"))
-        db.add(u)
-        await db.commit()
-        await db.refresh(u)
-        raw, prefix, h = generate_api_key(u.id)
-        db.add(ApiKey(user_id=u.id, name="claude", prefix=prefix, key_hash=h))
-        proj = Project(owner_id=u.id, name="P1")
-        db.add(proj)
-        await db.commit()
-        await db.refresh(proj)
-        task = Task(project_id=proj.id, name="T1")
-        db.add(task)
-        await db.commit()
-        await db.refresh(task)
-        project_id, task_id = proj.id, task.id
-
-    # ---- 服务层验证 ----
+@pytest.mark.asyncio
+async def test_dev_log_service_layer(db_session, test_project, test_task):
+    """Test DevLog service layer operations."""
+    from app.models import DevLog, DevSession
+    from app.schemas.dev_log import DevLogCreate
     from app.services.dev_logs import (
         apply_log_update,
         get_dev_log_stats,
@@ -78,184 +37,335 @@ async def main():
         get_project_state,
         to_dict,
     )
-    from app.models import DevLog, DevSession
-    from app.schemas.dev_log import DevLogCreate
 
-    async with AsyncSessionLocal() as db:
-        # 1. 创建各类型条目
-        log = DevLog(
-            project_id=project_id,
-            entry_type="progress",
-            title="完成登录模块",
-            content="实现 JWT 签发与校验",
-            git_ref="abc1234",
-            related_task_ids=[task_id],
-            author="claude",
-        )
-        db.add(log)
-        await db.commit()
-        await db.refresh(log)
-        assert log.id is not None
-        d = to_dict(log)
-        assert d["entry_type"] == "progress" and d["git_ref"] == "abc1234"
-        assert d["related_task_ids"] == [task_id]
+    # 1. Create various entry types
+    log = DevLog(
+        project_id=test_project.id,
+        entry_type="progress",
+        title="完成登录模块",
+        content="实现 JWT 签发与校验",
+        git_ref="abc1234",
+        related_task_ids=[test_task.id],
+        author="claude",
+    )
+    db_session.add(log)
+    await db_session.commit()
+    await db_session.refresh(log)
 
-        # 2. severity 校验（Pydantic 层）
-        try:
-            DevLogCreate(entry_type="progress", title="x", severity="high")
-            raise AssertionError("severity 不应允许用于 progress")
-        except ValueError:
-            pass
-        # 3. todo 条目 + resolve
-        todo = DevLog(project_id=project_id, entry_type="todo", title="待办 A", author="claude")
-        db.add(todo)
-        await db.commit()
-        await db.refresh(todo)
-        apply_log_update(todo, {"status": "done"})
-        assert todo.resolved_at is not None
-        await db.commit()
+    assert log.id is not None
+    d = to_dict(log)
+    assert d["entry_type"] == "progress"
+    assert d["git_ref"] == "abc1234"
+    assert d["related_task_ids"] == [test_task.id]
 
-        # 4. 会话
-        s = DevSession(project_id=project_id, title="会话1", author="claude")
-        db.add(s)
-        await db.commit()
-        await db.refresh(s)
-        sid = s.id
-        s.ended_at = s.started_at  # 结束
-        await db.commit()
+    # 2. Severity validation (Pydantic layer)
+    with pytest.raises(ValueError, match="severity 仅可用于"):
+        DevLogCreate(entry_type="progress", title="x", severity="high")
 
-        # 5. 统计
-        stats = await get_dev_log_stats(db, project_id)
-        assert stats.total >= 2
-        assert stats.type_counts["progress"] >= 1
-        assert stats.type_counts["todo"] >= 1
+    # 3. Todo entry + resolve
+    todo = DevLog(project_id=test_project.id, entry_type="todo", title="待办 A", author="claude")
+    db_session.add(todo)
+    await db_session.commit()
+    await db_session.refresh(todo)
 
-        # 6. 汇报生成
-        report = await get_dev_report(db, project_id, None, None)
-        assert "开发汇报" in report and "完成登录模块" in report
+    apply_log_update(todo, {"status": "done"})
+    assert todo.resolved_at is not None
+    await db_session.commit()
 
-        # 7. 上下文聚合
-        state = await get_project_state(db, project_id)
-        assert state["project"]["name"] == "P1"
-        assert len(state["recent_progress"]) >= 1
+    # 4. Session
+    s = DevSession(project_id=test_project.id, title="会话1", author="claude")
+    db_session.add(s)
+    await db_session.commit()
+    await db_session.refresh(s)
+    sid = s.id
+    s.ended_at = s.started_at
+    await db_session.commit()
 
-    # ---- REST API + MCP 验证 ----
-    from fastapi.testclient import TestClient
-    from app.main import app
-    from app.core.security import create_access_token
+    # 5. Statistics
+    stats = await get_dev_log_stats(db_session, test_project.id)
+    assert stats.total >= 2
+    assert stats.type_counts["progress"] >= 1
+    assert stats.type_counts["todo"] >= 1
 
-    with TestClient(app) as c:
-        jwt = create_access_token("alice")
-        H = {"Authorization": f"Bearer {jwt}"}
-        # 创建 todo 条目（可 resolve）
-        r = c.post(
-            f"/api/projects/{project_id}/logs",
-            headers=H,
-            json={"entry_type": "todo", "title": "待办 REST"},
-        )
-        assert r.status_code == 201, r.text
-        todo_id = r.json()["id"]
-        # 列表
-        r = c.get(f"/api/projects/{project_id}/logs", headers=H)
-        assert r.status_code == 200 and any(x["id"] == todo_id for x in r.json())
-        # 过滤
-        r = c.get(f"/api/projects/{project_id}/logs", headers=H, params={"entry_type": "todo"})
-        assert all(x["entry_type"] == "todo" for x in r.json())
-        # 统计
-        r = c.get(f"/api/projects/{project_id}/logs/stats", headers=H)
-        assert r.status_code == 200 and "type_counts" in r.json()
-        # 更新 + resolve
-        r = c.put(f"/api/logs/{todo_id}", headers=H, json={"content": "更新后的内容"})
-        assert r.status_code == 200 and r.json()["content"] == "更新后的内容"
-        r = c.post(f"/api/logs/{todo_id}/resolve", headers=H)
-        assert r.status_code == 200 and r.json()["status"] == "done"
-        # 非 todo/blocker 不可 resolve
-        r = c.post(
-            f"/api/projects/{project_id}/logs",
-            headers=H,
-            json={"entry_type": "decision", "title": "决策 REST"},
-        )
-        decision_id = r.json()["id"]
-        r = c.post(f"/api/logs/{decision_id}/resolve", headers=H)
-        assert r.status_code == 400, r.text
-        # 关联任务越权校验
-        r = c.post(
-            f"/api/projects/{project_id}/logs",
-            headers=H,
-            json={"entry_type": "progress", "title": "x", "related_task_ids": [99999]},
-        )
-        assert r.status_code == 400, r.text
-        # 会话 start/end/list
-        r = c.post(f"/api/projects/{project_id}/sessions", headers=H, json={"title": "REST 会话"})
-        assert r.status_code == 201, r.text
-        sess_id = r.json()["id"]
-        r = c.post(f"/api/sessions/{sess_id}/end", headers=H, json={"summary": "收口总结"})
-        assert r.status_code == 200 and r.json()["summary"] == "收口总结"
-        r = c.get(f"/api/projects/{project_id}/sessions", headers=H)
-        assert any(x["id"] == sess_id for x in r.json())
-        # 汇报
-        r = c.post(
-            f"/api/projects/{project_id}/logs/report", headers=H, json={"start": None, "end": None}
-        )
-        assert r.status_code == 200 and "开发汇报" in r.json()["text"]
-        # 删除
-        r = c.delete(f"/api/logs/{decision_id}", headers=H)
-        assert r.status_code == 204
+    # 6. Report generation
+    report = await get_dev_report(db_session, test_project.id, None, None)
+    assert "开发汇报" in report
+    assert "完成登录模块" in report
 
-        # ---- MCP 工具验证 ----
-        HDR = {"Authorization": f"Bearer {raw}", "Accept": "application/json, text/event-stream"}
-        r = c.post(
-            "/mcp/",
-            headers=HDR,
-            json={"jsonrpc": "2.0", "id": 1, "method": "initialize",
-                  "params": {"protocolVersion": "2025-06-18", "capabilities": {},
-                             "clientInfo": {"name": "t", "version": "1"}}},
-        )
-        assert r.status_code == 200
-        SHDR = {**HDR, "mcp-session-id": r.headers.get("mcp-session-id")}
-
-        r = c.post("/mcp/", headers=SHDR, json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
-        names = [t["name"] for t in parse_sse_text(r.text)["result"]["tools"]]
-        for expect in ["log_progress", "log_difficulty", "log_todo", "log_decision",
-                       "log_blocker", "log_note", "start_dev_session", "end_dev_session",
-                       "list_dev_logs", "get_dev_log_stats_mcp", "get_project_state",
-                       "get_dev_report", "update_dev_log", "delete_dev_log", "resolve_dev_log"]:
-            assert expect in names, f"缺少 MCP 工具 {expect}"
-
-        # 会话 + 条目链路
-        r = c.post("/mcp/", headers=SHDR, json={"jsonrpc": "2.0", "id": 3, "method": "tools/call",
-                                                "params": {"name": "start_dev_session",
-                                                           "arguments": {"project_id": project_id, "title": "MCP 会话"}}})
-        sid = int(parse_sse_text(r.text)["result"]["content"][0]["text"].split('"id": ')[1].split(",")[0])
-        r = c.post("/mcp/", headers=SHDR, json={"jsonrpc": "2.0", "id": 4, "method": "tools/call",
-                                                "params": {"name": "log_progress",
-                                                           "arguments": {"project_id": project_id, "title": "MCP 进展",
-                                                                        "git_ref": "abc"}}})
-        assert '"entry_type": "progress"' in parse_sse_text(r.text)["result"]["content"][0]["text"]
-        r = c.post("/mcp/", headers=SHDR, json={"jsonrpc": "2.0", "id": 5, "method": "tools/call",
-                                                "params": {"name": "log_difficulty",
-                                                           "arguments": {"project_id": project_id, "title": "异步坑",
-                                                                        "severity": "high"}}})
-        assert '"severity": "high"' in parse_sse_text(r.text)["result"]["content"][0]["text"]
-        r = c.post("/mcp/", headers=SHDR, json={"jsonrpc": "2.0", "id": 6, "method": "tools/call",
-                                                "params": {"name": "end_dev_session",
-                                                           "arguments": {"session_id": sid, "summary": "结束"}}})
-        assert '"ended_at"' in parse_sse_text(r.text)["result"]["content"][0]["text"]
-        r = c.post("/mcp/", headers=SHDR, json={"jsonrpc": "2.0", "id": 7, "method": "tools/call",
-                                                "params": {"name": "get_dev_log_stats_mcp",
-                                                           "arguments": {"project_id": project_id}}})
-        assert '"open_difficulties"' in parse_sse_text(r.text)["result"]["content"][0]["text"]
-        r = c.post("/mcp/", headers=SHDR, json={"jsonrpc": "2.0", "id": 8, "method": "tools/call",
-                                                "params": {"name": "get_project_state",
-                                                           "arguments": {"project_id": project_id}}})
-        assert "open_todos" in parse_sse_text(r.text)["result"]["content"][0]["text"]
-        r = c.post("/mcp/", headers=SHDR, json={"jsonrpc": "2.0", "id": 9, "method": "tools/call",
-                                                "params": {"name": "get_dev_report",
-                                                           "arguments": {"project_id": project_id}}})
-        assert "开发汇报" in parse_sse_text(r.text)["result"]["content"][0]["text"]
-
-        print("DEV LOGS CHECKS PASSED: service/rest/mcp")
+    # 7. Context aggregation
+    state = await get_project_state(db_session, test_project.id)
+    assert state["project"]["name"] == "Test Project"
+    assert len(state["recent_progress"]) >= 1
 
 
-if __name__ == "__main__":
-    asyncio.run(main())
+@pytest.mark.asyncio
+async def test_dev_log_rest_api(auth_client, test_project, test_task):
+    """Test DevLog REST API endpoints."""
+    # Create todo entry (resolvable)
+    resp = await auth_client.post(
+        f"/api/projects/{test_project.id}/logs",
+        json={"entry_type": "todo", "title": "待办 REST"},
+    )
+    assert resp.status_code == 201
+    todo_id = resp.json()["id"]
+
+    # List logs
+    resp = await auth_client.get(f"/api/projects/{test_project.id}/logs")
+    assert resp.status_code == 200
+    assert any(x["id"] == todo_id for x in resp.json())
+
+    # Filter by entry_type
+    resp = await auth_client.get(
+        f"/api/projects/{test_project.id}/logs", params={"entry_type": "todo"}
+    )
+    assert resp.status_code == 200
+    assert all(x["entry_type"] == "todo" for x in resp.json())
+
+    # Statistics
+    resp = await auth_client.get(f"/api/projects/{test_project.id}/logs/stats")
+    assert resp.status_code == 200
+    assert "type_counts" in resp.json()
+
+    # Update log
+    resp = await auth_client.put(
+        f"/api/logs/{todo_id}", json={"content": "更新后的内容"}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["content"] == "更新后的内容"
+
+    # Resolve todo
+    resp = await auth_client.post(f"/api/logs/{todo_id}/resolve")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "done"
+
+    # Non todo/blocker cannot be resolved
+    resp = await auth_client.post(
+        f"/api/projects/{test_project.id}/logs",
+        json={"entry_type": "decision", "title": "决策 REST"},
+    )
+    assert resp.status_code == 201
+    decision_id = resp.json()["id"]
+
+    resp = await auth_client.post(f"/api/logs/{decision_id}/resolve")
+    assert resp.status_code == 400
+
+    # Related task authorization check
+    resp = await auth_client.post(
+        f"/api/projects/{test_project.id}/logs",
+        json={"entry_type": "progress", "title": "x", "related_task_ids": [99999]},
+    )
+    assert resp.status_code == 400
+
+    # Session start/end/list
+    resp = await auth_client.post(
+        f"/api/projects/{test_project.id}/sessions", json={"title": "REST 会话"}
+    )
+    assert resp.status_code == 201
+    sess_id = resp.json()["id"]
+
+    resp = await auth_client.post(
+        f"/api/sessions/{sess_id}/end", json={"summary": "收口总结"}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["summary"] == "收口总结"
+
+    resp = await auth_client.get(f"/api/projects/{test_project.id}/sessions")
+    assert resp.status_code == 200
+    assert any(x["id"] == sess_id for x in resp.json())
+
+    # Report
+    resp = await auth_client.post(
+        f"/api/projects/{test_project.id}/logs/report",
+        json={"start": None, "end": None},
+    )
+    assert resp.status_code == 200
+    assert "开发汇报" in resp.json()["text"]
+
+    # Delete
+    resp = await auth_client.delete(f"/api/logs/{decision_id}")
+    assert resp.status_code == 204
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(os.environ.get("MCP_ENABLED","true").lower()=="false", reason="no MCP")
+async def test_dev_log_mcp_tools(mcp_client, test_project, test_task):
+    """Test DevLog MCP tools."""
+    # Initialize MCP session
+    resp = await mcp_client.post(
+        "/mcp/",
+        json={
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2025-06-18",
+                "capabilities": {},
+                "clientInfo": {"name": "t", "version": "1"},
+            },
+        },
+    )
+    assert resp.status_code == 200
+    sid = resp.headers.get("mcp-session-id")
+    assert sid
+
+    headers = {**mcp_client.headers, "mcp-session-id": sid}
+
+    # List tools
+    resp = await mcp_client.post(
+        "/mcp/", headers=headers, json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
+    )
+    data = parse_sse_text(resp.text)
+    names = [t["name"] for t in data["result"]["tools"]]
+
+    expected_tools = [
+        "log_progress",
+        "log_difficulty",
+        "log_todo",
+        "log_decision",
+        "log_blocker",
+        "log_note",
+        "start_dev_session",
+        "end_dev_session",
+        "list_dev_logs",
+        "get_dev_log_stats_mcp",
+        "get_project_state",
+        "get_dev_report",
+        "update_dev_log",
+        "delete_dev_log",
+        "resolve_dev_log",
+    ]
+    for expect in expected_tools:
+        assert expect in names, f"缺少 MCP 工具 {expect}"
+
+    # Session + entry chain
+    resp = await mcp_client.post(
+        "/mcp/",
+        headers=headers,
+        json={
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "tools/call",
+            "params": {"name": "start_dev_session", "arguments": {"project_id": test_project.id, "title": "MCP 会话"}},
+        },
+    )
+    content = parse_sse_text(resp.text)["result"]["content"][0]["text"]
+    sid = int(content.split('"id": ')[1].split(",")[0])
+
+    resp = await mcp_client.post(
+        "/mcp/",
+        headers=headers,
+        json={
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "tools/call",
+            "params": {
+                "name": "log_progress",
+                "arguments": {"project_id": test_project.id, "title": "MCP 进展", "git_ref": "abc"},
+            },
+        },
+    )
+    assert '"entry_type": "progress"' in parse_sse_text(resp.text)["result"]["content"][0]["text"]
+
+    resp = await mcp_client.post(
+        "/mcp/",
+        headers=headers,
+        json={
+            "jsonrpc": "2.0",
+            "id": 5,
+            "method": "tools/call",
+            "params": {
+                "name": "log_difficulty",
+                "arguments": {"project_id": test_project.id, "title": "异步坑", "severity": "high"},
+            },
+        },
+    )
+    assert '"severity": "high"' in parse_sse_text(resp.text)["result"]["content"][0]["text"]
+
+    resp = await mcp_client.post(
+        "/mcp/",
+        headers=headers,
+        json={
+            "jsonrpc": "2.0",
+            "id": 6,
+            "method": "tools/call",
+            "params": {"name": "end_dev_session", "arguments": {"session_id": sid, "summary": "结束"}},
+        },
+    )
+    assert '"ended_at"' in parse_sse_text(resp.text)["result"]["content"][0]["text"]
+
+    resp = await mcp_client.post(
+        "/mcp/",
+        headers=headers,
+        json={
+            "jsonrpc": "2.0",
+            "id": 7,
+            "method": "tools/call",
+            "params": {"name": "get_dev_log_stats_mcp", "arguments": {"project_id": test_project.id}},
+        },
+    )
+    assert '"open_difficulties"' in parse_sse_text(resp.text)["result"]["content"][0]["text"]
+
+    resp = await mcp_client.post(
+        "/mcp/",
+        headers=headers,
+        json={
+            "jsonrpc": "2.0",
+            "id": 8,
+            "method": "tools/call",
+            "params": {"name": "get_project_state", "arguments": {"project_id": test_project.id}},
+        },
+    )
+    assert "open_todos" in parse_sse_text(resp.text)["result"]["content"][0]["text"]
+
+    resp = await mcp_client.post(
+        "/mcp/",
+        headers=headers,
+        json={
+            "jsonrpc": "2.0",
+            "id": 9,
+            "method": "tools/call",
+            "params": {"name": "get_dev_report", "arguments": {"project_id": test_project.id}},
+        },
+    )
+    assert "开发汇报" in parse_sse_text(resp.text)["result"]["content"][0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_dev_log_enum_validation():
+    """Test DevLog enum validation."""
+    from app.schemas.dev_log import DevLogCreate, DEV_LOG_TYPES, DEV_LOG_STATUS, SEVERITY
+
+    # Valid entry types
+    for et in DEV_LOG_TYPES:
+        log = DevLogCreate(entry_type=et, title="test")
+        assert log.entry_type == et
+
+    # Invalid entry type
+    with pytest.raises(ValueError, match="entry_type 必须为"):
+        DevLogCreate(entry_type="invalid", title="test")
+
+    # Valid status
+    for st in DEV_LOG_STATUS:
+        log = DevLogCreate(entry_type="todo", title="test", status=st)
+        assert log.status == st
+
+    # Invalid status
+    with pytest.raises(ValueError, match="status 必须为"):
+        DevLogCreate(entry_type="todo", title="test", status="invalid")
+
+    # Valid severity
+    for sev in SEVERITY:
+        log = DevLogCreate(entry_type="difficulty", title="test", severity=sev)
+        assert log.severity == sev
+
+    # Invalid severity
+    with pytest.raises(ValueError, match="severity 必须为"):
+        DevLogCreate(entry_type="difficulty", title="test", severity="invalid")
+
+    # Severity only for difficulty/blocker
+    with pytest.raises(ValueError, match="severity 仅可用于"):
+        DevLogCreate(entry_type="progress", title="test", severity="high")
+
+    # Status done only for todo/blocker
+    with pytest.raises(ValueError, match="status 仅可用于"):
+        DevLogCreate(entry_type="progress", title="test", status="done")

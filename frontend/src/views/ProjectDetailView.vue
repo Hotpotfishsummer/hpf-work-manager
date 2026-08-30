@@ -8,6 +8,10 @@
           <h1 class="hero-title">{{ project?.name }}</h1>
           <p class="hero-desc">{{ project?.description || '暂无描述' }}</p>
           <div class="hero-actions">
+            <el-button size="large" @click="openEditProject">编辑项目</el-button>
+            <el-button size="large" @click="toggleProjectStatus">
+              {{ project?.status === 'archived' ? '取消归档' : '归档项目' }}
+            </el-button>
             <el-button type="primary" size="large" @click="router.push(`/projects/${pid}/tasks`)">
               管理任务
             </el-button>
@@ -48,6 +52,7 @@
           <el-tab-pane label="甘特图" name="gantt" />
           <el-tab-pane label="开发记录" name="logs" />
         </el-tabs>
+        <LiveIndicator :connected="connected" :is-reconnectable="reconnectable" @reconnect="reconnect" />
       </div>
     </div>
 
@@ -99,7 +104,7 @@
             <h2 class="section-title">里程碑</h2>
             <p class="section-sub">Milestones</p>
           </div>
-          <el-button size="large" @click="milestoneDialog = true">新建里程碑</el-button>
+          <el-button size="large" @click="openCreateMilestone">新建里程碑</el-button>
         </div>
 
         <el-timeline v-if="milestones.length">
@@ -115,6 +120,10 @@
               <el-tag :type="m.status === 'done' ? 'success' : 'primary'" effect="plain" size="small">
                 {{ m.status === 'done' ? '已完成' : '进行中' }}
               </el-tag>
+              <el-button link size="small" @click="openEditMilestone(m)">编辑</el-button>
+              <el-button link size="small" @click="toggleMilestone(m)">
+                {{ m.status === 'done' ? '取消完成' : '标记完成' }}
+              </el-button>
               <el-button link type="danger" size="small" @click="removeMilestone(m.id)">删除</el-button>
             </div>
           </el-timeline-item>
@@ -123,19 +132,45 @@
       </section>
     </div>
 
-    <!-- 新建里程碑弹窗 -->
-    <el-dialog v-model="milestoneDialog" title="新建里程碑" width="420px" destroy-on-close>
+    <!-- 新建/编辑里程碑弹窗 -->
+    <el-dialog v-model="milestoneDialog" :title="editingMilestone ? '编辑里程碑' : '新建里程碑'" width="420px" destroy-on-close>
       <el-form label-position="top">
         <el-form-item label="名称">
           <el-input v-model="milestoneForm.name" placeholder="如：完成数据模型" />
         </el-form-item>
         <el-form-item label="截止日期">
-          <el-date-picker v-model="milestoneForm.due_date" type="date" style="width: 100%" />
+          <el-date-picker v-model="milestoneForm.due_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="milestoneDialog = false">取消</el-button>
         <el-button type="primary" :loading="savingMilestone" @click="saveMilestone">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑项目弹窗 -->
+    <el-dialog v-model="projectDialog" title="编辑项目" width="480px" destroy-on-close>
+      <el-form label-position="top">
+        <el-form-item label="项目名称">
+          <el-input v-model="projectForm.name" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="projectForm.description" type="textarea" :rows="3" />
+        </el-form-item>
+        <el-form-item label="起止日期">
+          <el-date-picker
+            v-model="projectForm.dateRange"
+            type="daterange"
+            value-format="YYYY-MM-DD"
+            start-placeholder="开始日期"
+            end-placeholder="截止日期"
+            style="width: 100%"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="projectDialog = false">取消</el-button>
+        <el-button type="primary" :loading="savingProject" @click="saveProject">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -148,6 +183,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { milestoneApi, projectApi, statsApi } from '@/api'
 import type { Milestone, Project, ProjectStats, BurndownPoint } from '@/types'
 import BurndownChart from '@/components/BurndownChart.vue'
+import LiveIndicator from '@/components/LiveIndicator.vue'
 import { useProjectEvents } from '@/composables/useProjectEvents'
 
 const props = defineProps<{ id: string }>()
@@ -163,7 +199,16 @@ const activeTab = ref('overview')
 
 const milestoneDialog = ref(false)
 const savingMilestone = ref(false)
+const editingMilestone = ref<Milestone | null>(null)
 const milestoneForm = reactive<{ name: string; due_date: string | null }>({ name: '', due_date: null })
+
+const projectDialog = ref(false)
+const savingProject = ref(false)
+const projectForm = reactive<{
+  name: string
+  description: string
+  dateRange: [string, string] | null
+}>({ name: '', description: '', dateRange: null })
 
 const PRIORITY_LABEL: Record<string, string> = { high: '高', medium: '中', low: '低' }
 
@@ -188,7 +233,7 @@ function scheduleReload() {
   if (reloadTimer) clearTimeout(reloadTimer)
   reloadTimer = setTimeout(load, 400)
 }
-useProjectEvents(() => pid.value, scheduleReload)
+const { connected, reconnectable, reconnect } = useProjectEvents(() => pid.value, scheduleReload)
 
 async function load() {
   loading.value = true
@@ -208,6 +253,27 @@ async function load() {
   }
 }
 
+function openCreateMilestone() {
+  editingMilestone.value = null
+  milestoneForm.name = ''
+  milestoneForm.due_date = null
+  milestoneDialog.value = true
+}
+
+function openEditMilestone(m: Milestone) {
+  editingMilestone.value = m
+  milestoneForm.name = m.name
+  milestoneForm.due_date = m.due_date ? m.due_date.slice(0, 10) : null
+  milestoneDialog.value = true
+}
+
+async function toggleMilestone(m: Milestone) {
+  const next = m.status === 'done' ? 'active' : 'done'
+  await milestoneApi.update(m.id, { status: next })
+  ElMessage.success(next === 'done' ? '已标记完成' : '已取消完成')
+  milestones.value = await milestoneApi.list(pid.value)
+}
+
 async function saveMilestone() {
   if (!milestoneForm.name.trim()) {
     ElMessage.warning('请输入名称')
@@ -219,14 +285,21 @@ async function saveMilestone() {
   }
   savingMilestone.value = true
   try {
-    await milestoneApi.create(pid.value, {
+    const payload = {
       name: milestoneForm.name,
       due_date: milestoneForm.due_date ?? null,
-    })
-    ElMessage.success('已创建')
+    }
+    if (editingMilestone.value) {
+      await milestoneApi.update(editingMilestone.value.id, payload)
+      ElMessage.success('已更新')
+    } else {
+      await milestoneApi.create(pid.value, payload)
+      ElMessage.success('已创建')
+    }
     milestoneDialog.value = false
     milestoneForm.name = ''
     milestoneForm.due_date = null
+    editingMilestone.value = null
     milestones.value = await milestoneApi.list(pid.value)
   } finally {
     savingMilestone.value = false
@@ -234,14 +307,69 @@ async function saveMilestone() {
 }
 
 async function removeMilestone(id: number) {
-  await ElMessageBox.confirm('删除里程碑后其下任务将保留（解除关联），确定删除？', '删除确认', {
-    type: 'warning',
-    confirmButtonText: '删除',
-    cancelButtonText: '取消',
-  })
+  try {
+    await ElMessageBox.confirm('删除里程碑后其下任务将保留（解除关联），确定删除？', '删除确认', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
   await milestoneApi.remove(id)
   ElMessage.success('已删除')
   milestones.value = await milestoneApi.list(pid.value)
+}
+
+function openEditProject() {
+  if (!project.value) return
+  projectForm.name = project.value.name
+  projectForm.description = project.value.description ?? ''
+  projectForm.dateRange = [
+    project.value.start_date ? project.value.start_date.slice(0, 10) : '',
+    project.value.end_date ? project.value.end_date.slice(0, 10) : '',
+  ]
+  projectDialog.value = true
+}
+
+async function toggleProjectStatus() {
+  if (!project.value) return
+  const next = project.value.status === 'archived' ? 'active' : 'archived'
+  if (next === 'archived') {
+    try {
+      await ElMessageBox.confirm('归档后项目仍在「已归档」中可查看，确定归档？', '归档项目', {
+        type: 'warning',
+        confirmButtonText: '归档',
+        cancelButtonText: '取消',
+      })
+    } catch {
+      return
+    }
+  }
+  await projectApi.update(project.value.id, { status: next })
+  ElMessage.success(next === 'archived' ? '已归档' : '已取消归档')
+  await load()
+}
+
+async function saveProject() {
+  if (!projectForm.name.trim()) {
+    ElMessage.warning('请输入项目名称')
+    return
+  }
+  savingProject.value = true
+  try {
+    await projectApi.update(pid.value, {
+      name: projectForm.name,
+      description: projectForm.description || null,
+      start_date: projectForm.dateRange?.[0] ? projectForm.dateRange[0] : null,
+      end_date: projectForm.dateRange?.[1] ? projectForm.dateRange[1] : null,
+    })
+    ElMessage.success('已更新')
+    projectDialog.value = false
+    await load()
+  } finally {
+    savingProject.value = false
+  }
 }
 
 onMounted(load)

@@ -7,7 +7,12 @@
         <p class="page-sub">Task Board · 按状态分组管理任务</p>
       </div>
       <div class="head-actions">
+        <LiveIndicator :connected="connected" :is-reconnectable="reconnectable" @reconnect="reconnect" />
         <el-button size="large" @click="router.push(`/projects/${pid}`)">返回概览</el-button>
+        <el-button size="large" @click="exportCsv">
+          <el-icon style="margin-right: var(--md-space-1)"><Download /></el-icon>
+          导出 CSV
+        </el-button>
         <el-button type="primary" size="large" @click="openCreate">
           <el-icon style="margin-right: var(--md-space-1)"><Plus /></el-icon>
           新建任务
@@ -148,6 +153,7 @@
             <el-date-picker
               v-model="form.date_range"
               type="daterange"
+              value-format="YYYY-MM-DD"
               start-placeholder="开始"
               end-placeholder="截止"
               style="width: 100%"
@@ -166,11 +172,13 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { milestoneApi, projectApi, taskApi } from '@/api'
 import type { Milestone, Project, Task, TaskPriority, TaskStatus } from '@/types'
+import { generateCsv } from '@/utils/csv'
 import { useProjectEvents } from '@/composables/useProjectEvents'
+import LiveIndicator from '@/components/LiveIndicator.vue'
 
 const props = defineProps<{ id: string }>()
 const router = useRouter()
@@ -257,13 +265,44 @@ async function load() {
   }
 }
 
+function sanitizeFilename(name: string): string {
+  const cleaned = name.replace(/[/\\]/g, '_').replace(/[\x00-\x1f\x7f]/g, '')
+  return (cleaned.slice(0, 80) || 'tasks').trim()
+}
+
+function exportCsv() {
+  if (!tasks.value.length) {
+    ElMessage.info('暂无任务可导出')
+    return
+  }
+  const headers = ['ID', '名称', '状态', '优先级', '进度', '开始日期', '截止日期']
+  const statusLabel: Record<string, string> = { todo: '待办', in_progress: '进行中', done: '已完成' }
+  const rows = tasks.value.map((t) => [
+    t.id,
+    t.name,
+    statusLabel[t.status] ?? t.status,
+    t.priority,
+    `${t.progress}%`,
+    t.start_date ?? '',
+    t.due_date ?? '',
+  ])
+  const csv = '\uFEFF' + generateCsv(headers, rows)
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${sanitizeFilename(project.value?.name ?? 'project')}_tasks_${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 // 实时同步：AI 工具更新任务后自动刷新
 let reloadTimer: ReturnType<typeof setTimeout> | null = null
 function scheduleReload() {
   if (reloadTimer) clearTimeout(reloadTimer)
   reloadTimer = setTimeout(load, 400)
 }
-useProjectEvents(() => pid.value, scheduleReload)
+const { connected, reconnectable, reconnect } = useProjectEvents(() => pid.value, scheduleReload)
 
 function openCreate() {
   editing.value = null
@@ -324,11 +363,15 @@ async function save() {
 }
 
 async function removeTask(id: number) {
-  await ElMessageBox.confirm('删除后不可恢复，确定删除该任务？', '删除确认', {
-    type: 'warning',
-    confirmButtonText: '删除',
-    cancelButtonText: '取消',
-  })
+  try {
+    await ElMessageBox.confirm('删除后不可恢复，确定删除该任务？', '删除确认', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
   await taskApi.remove(id)
   ElMessage.success('已删除')
   load()

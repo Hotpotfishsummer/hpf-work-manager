@@ -8,7 +8,7 @@ TASK_PRIORITY = {"low", "medium", "high"}
 
 class TaskBase(BaseModel):
     name: str = Field(min_length=1, max_length=200)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=1000)
     milestone_id: int | None = None
     priority: str = "medium"
     status: str = "todo"
@@ -32,7 +32,7 @@ class TaskCreate(TaskBase):
 
 class TaskUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=1000)
     milestone_id: int | None = None
     priority: str | None = None
     status: str | None = None
@@ -47,11 +47,13 @@ class TaskUpdate(BaseModel):
             raise ValueError(f"status 必须为 {sorted(TASK_STATUS)} 之一")
         if self.priority is not None and self.priority not in TASK_PRIORITY:
             raise ValueError(f"priority 必须为 {sorted(TASK_PRIORITY)} 之一")
+        if "name" in self.model_fields_set and self.name is None:
+            raise ValueError("name 不能为空")
         return self
 
 
 class TaskBulkUpdate(BaseModel):
-    ids: list[int] = Field(min_length=1)
+    ids: list[int] = Field(min_length=1, max_length=100)
     data: TaskUpdate
 
 

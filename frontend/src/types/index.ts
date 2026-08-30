@@ -247,3 +247,28 @@ export interface DevSessionCreate {
 export interface DevReport {
   text: string
 }
+
+/* ---- 搜索 ---- */
+
+export interface SearchResultItem {
+  type: 'project' | 'task' | 'milestone'
+  id: number
+  name: string
+  description: string | null
+  project_id: number | null
+  project_name: string | null
+  status: string | null
+  due_date: string | null
+}
+
+export interface SearchRequest {
+  q: string
+  project_id?: number | null
+  limit?: number
+  offset?: number
+}
+
+export interface SearchResponse {
+  items: SearchResultItem[]
+  total: number
+}

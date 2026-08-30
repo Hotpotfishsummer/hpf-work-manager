@@ -1,0 +1,71 @@
+# Pre-commit hooks configuration
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Python: Ruff (linting + formatting)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  # TypeScript/JavaScript: ESLint
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.17.0
+    hooks:
+      - id: eslint
+        files: \.(ts|tsx|js|jsx|vue)$
+        types_or: [javascript, typescript, vue]
+        args: [--fix, --max-warnings=0]
+        additional_dependencies:
+          - eslint@9.17.0
+          - @eslint/js@9.17.0
+          - typescript-eslint@8.18.0
+          - eslint-plugin-vue@9.32.0
+          - vue-eslint-parser@9.4.3
+          - globals@15.14.0
+
+  # TypeScript: Type checking (no emit)
+  - repo: local
+    hooks:
+      - id: tsc-frontend
+        name: TypeScript Check (Frontend)
+        entry: bash -c 'cd frontend && npx tsc --noEmit'
+        language: system
+        types_or: [typescript, tsx, vue]
+        pass_filenames: false
+        always_run: true
+
+      - id: tsc-backend
+        name: TypeScript Check (Backend - if applicable)
+        entry: bash -c 'cd backend && python -m py_compile $(find . -name "*.py" -not -path "./.venv/*" -not -path "./__pycache__/*") 2>/dev/null || true'
+        language: system
+        types_or: [python]
+        pass_filenames: false
+        always_run: true
+
+  # General: Trailing whitespace, end-of-file, etc.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^frontend/dist/
+      - id: end-of-file-fixer
+        exclude: ^frontend/dist/
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # Secrets detection
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.0
+    hooks:
+      - id: gitleaks

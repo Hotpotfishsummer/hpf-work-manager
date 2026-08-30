@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend (Python 3.12)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install ruff pytest pytest-asyncio httpx
+
+      - name: Run ruff check
+        run: ruff check .
+
+      - name: Run pytest
+        run: pytest -q
+
+      - name: Verify alembic migrations (offline SQL)
+        run: alembic upgrade head --sql
+
+  frontend:
+    name: Frontend (Node 22)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run vue-tsc type check
+        run: npx vue-tsc --noEmit -p tsconfig.app.json
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Check bundle size
+        run: |
+          SIZE=$(du -sh dist | cut -f1)
+          echo "Bundle size: $SIZE"
+          # Fail if > 5MB
+          BYTES=$(du -sb dist | cut -f1)
+          if [ "$BYTES" -gt 5242880 ]; then
+            echo "::error::Bundle size exceeds 5MB limit ($SIZE)"
+            exit 1
+          fi

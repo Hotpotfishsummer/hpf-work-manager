@@ -217,11 +217,16 @@ async def update_project(
     if description is not None:
         updates["description"] = description
     if status is not None:
+        if status not in ("active", "archived"):
+            raise ValueError("status 必须为 active 或 archived")
         updates["status"] = status
-    if start_date is not None:
-        updates["start_date"] = date.fromisoformat(start_date)
-    if end_date is not None:
-        updates["end_date"] = date.fromisoformat(end_date)
+    try:
+        if start_date is not None:
+            updates["start_date"] = date.fromisoformat(start_date)
+        if end_date is not None:
+            updates["end_date"] = date.fromisoformat(end_date)
+    except ValueError as e:
+        raise ValueError(f"日期格式不合法（应为 YYYY-MM-DD）：{e}") from None
     async with AsyncSessionLocal() as db:
         p = await _require_project(db, username, project_id)
         for key, value in updates.items():
@@ -306,9 +311,14 @@ async def update_milestone(
             raise ValueError(f"里程碑 {milestone_id} 不存在")
         if name is not None:
             ms.name = name
-        if due_date is not None:
-            ms.due_date = date.fromisoformat(due_date)
+        try:
+            if due_date is not None:
+                ms.due_date = date.fromisoformat(due_date)
+        except ValueError as e:
+            raise ValueError(f"日期格式不合法（应为 YYYY-MM-DD）：{e}") from None
         if status is not None:
+            if status not in ("active", "done"):
+                raise ValueError("status 必须为 active 或 done")
             ms.status = status
         await db.commit()
         await db.refresh(ms)
@@ -392,6 +402,10 @@ async def create_task(
     )
     async with AsyncSessionLocal() as db:
         await _require_project(db, username, project_id)
+        if milestone_id is not None:
+            ms = await db.get(Milestone, milestone_id)
+            if ms is None or ms.project_id != project_id:
+                raise ValueError("里程碑不存在或不属于该项目")
         data = payload.model_dump()
         if data["status"] == "done":
             data["progress"] = 100
@@ -424,19 +438,30 @@ async def update_task(
     if milestone_id is not None:
         updates["milestone_id"] = milestone_id
     if priority is not None:
+        if priority not in ("low", "medium", "high"):
+            raise ValueError("priority 必须为 low、medium 或 high")
         updates["priority"] = priority
     if status is not None:
+        if status not in ("todo", "in_progress", "done"):
+            raise ValueError("status 必须为 todo、in_progress 或 done")
         updates["status"] = status
     if progress is not None:
         updates["progress"] = progress
-    if start_date is not None:
-        updates["start_date"] = date.fromisoformat(start_date)
-    if due_date is not None:
-        updates["due_date"] = date.fromisoformat(due_date)
+    try:
+        if start_date is not None:
+            updates["start_date"] = date.fromisoformat(start_date)
+        if due_date is not None:
+            updates["due_date"] = date.fromisoformat(due_date)
+    except ValueError as e:
+        raise ValueError(f"日期格式不合法（应为 YYYY-MM-DD）：{e}") from None
     if estimated_hours is not None:
         updates["estimated_hours"] = estimated_hours
     async with AsyncSessionLocal() as db:
         task = await _require_task(db, username, task_id)
+        if "milestone_id" in updates:
+            ms = await db.get(Milestone, updates["milestone_id"])
+            if ms is None or ms.project_id != task.project_id:
+                raise ValueError("里程碑不存在或不属于该项目")
         apply_task_update(task, updates)
         await db.commit()
         await db.refresh(task)

@@ -6,6 +6,7 @@
         <p class="page-sub">Gantt Chart · 时间线与依赖关系</p>
       </div>
       <div class="head-actions">
+        <LiveIndicator :connected="connected" :is-reconnectable="reconnectable" @reconnect="reconnect" />
         <el-button size="large" @click="router.push(`/projects/${pid}`)">返回概览</el-button>
         <el-button size="large" @click="router.push(`/projects/${pid}/tasks`)">任务看板</el-button>
       </div>
@@ -37,6 +38,7 @@ import { projectApi, statsApi, taskApi } from '@/api'
 import type { GanttData, Project } from '@/types'
 import GanttChart from '@/components/GanttChart.vue'
 import { useProjectEvents } from '@/composables/useProjectEvents'
+import LiveIndicator from '@/components/LiveIndicator.vue'
 
 const props = defineProps<{ id: string }>()
 const router = useRouter()
@@ -81,7 +83,7 @@ function scheduleReload() {
   if (reloadTimer) clearTimeout(reloadTimer)
   reloadTimer = setTimeout(load, 400)
 }
-useProjectEvents(() => pid.value, scheduleReload)
+const { connected, reconnectable, reconnect } = useProjectEvents(() => pid.value, scheduleReload)
 
 onMounted(load)
 </script>

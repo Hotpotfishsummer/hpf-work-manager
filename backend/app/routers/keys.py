@@ -1,10 +1,11 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import Request, APIRouter, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.core.apikey import generate_api_key, validate_api_key
+from app.core.ratelimit import limiter
 from app.core.security import create_access_token
 from app.database import AsyncSessionLocal
 from app.deps import CurrentUser, DbDep
@@ -63,7 +64,8 @@ async def revoke_key(key_id: int, user: CurrentUser, db: DbDep):
 
 
 @router.post("/exchange", response_model=ApiKeyIssueToken)
-async def exchange_for_token(payload: ExchangeRequest):
+@limiter.limit("5/minute")
+async def exchange_for_token(request: Request, payload: ExchangeRequest):
     """用 API Key 换取短期 JWT，供工具以 Bearer JWT 调用既有 /api 接口。
 
     校验通过后用独立会话查找用户并签发 JWT。

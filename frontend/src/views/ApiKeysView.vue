@@ -11,15 +11,16 @@
     <el-alert
       v-if="visibleKey"
       type="success"
-      :closable="false"
+      :closable="true"
       show-icon
       class="key-alert"
+      @close="visibleKey = ''"
     >
       <template #title>
         已生成 Key <code>{{ visibleKey }}</code> — <strong>仅此一次显示</strong>，请立即复制保存。
       </template>
       <template #default>
-        <el-button size="small" @click="copyKey">复制</el-button>
+        <el-button size="small" @click="copyKey(visibleKey)">复制</el-button>
       </template>
     </el-alert>
 
@@ -37,10 +38,10 @@
         </template>
       </el-table-column>
       <el-table-column label="最近使用" min-width="160">
-        <template #default="{ row }">{{ row.last_used_at || '—' }}</template>
+        <template #default="{ row }">{{ row.last_used_at ? fmtDate(row.last_used_at) : '—' }}</template>
       </el-table-column>
       <el-table-column label="创建时间" min-width="160">
-        <template #default="{ row }">{{ row.created_at }}</template>
+        <template #default="{ row }">{{ fmtDate(row.created_at) }}</template>
       </el-table-column>
       <el-table-column label="操作" width="110" align="right">
         <template #default="{ row }">
@@ -53,6 +54,7 @@
         </template>
       </el-table-column>
     </el-table>
+    <el-empty v-if="!loading && keys.length === 0" description="还没有 API Key，点击右上角创建" :image-size="80" />
 
     <el-dialog v-model="createVisible" title="新建 API Key" width="420px">
       <el-form label-position="top" @submit.prevent>
@@ -109,17 +111,44 @@ async function create() {
   }
 }
 
-function copyKey() {
-  navigator.clipboard.writeText(visibleKey.value)
+function fmtDate(d: string | null) {
+  if (!d) return ''
+  return d.slice(0, 10)
+}
+
+async function copyKey(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    // 非安全上下文（http）或剪贴板不可用时退回传统方案
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    try {
+      document.execCommand('copy')
+    } catch {
+      ElMessage.error('复制失败，请手动复制')
+      document.body.removeChild(ta)
+      return
+    }
+    document.body.removeChild(ta)
+  }
   ElMessage.success('已复制')
 }
 
 async function revoke(row: ApiKey) {
-  await ElMessageBox.confirm(
-    `撤销后该 Key 立即失效，且无法恢复。确认撤销「${row.name}」？`,
-    '撤销确认',
-    { type: 'warning' }
-  )
+  try {
+    await ElMessageBox.confirm(
+      `撤销后该 Key 立即失效，且无法恢复。确认撤销「${row.name}」？`,
+      '撤销确认',
+      { type: 'warning' }
+    )
+  } catch {
+    return
+  }
   await keyApi.revoke(row.id)
   ElMessage.success('已撤销')
   await load()

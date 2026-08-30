@@ -12,9 +12,32 @@
       </el-button>
     </div>
 
+    <!-- 状态筛选 -->
+    <div class="list-toolbar">
+      <el-radio-group v-model="statusFilter" size="large" @change="load">
+        <el-radio-button value="active">进行中</el-radio-button>
+        <el-radio-button value="archived">已归档</el-radio-button>
+      </el-radio-group>
+    </div>
+
     <!-- 项目卡片网格：4-up → 2-up → 1-up -->
     <div v-loading="loading" class="project-grid">
       <div v-for="p in projects" :key="p.id" class="model-card" role="button" tabindex="0" @click="goDetail(p.id)" @keydown.enter.prevent="goDetail(p.id)">
+        <!-- 卡片操作菜单 -->
+        <el-dropdown trigger="click" class="card-menu" @command="(cmd: string) => onCardCommand(cmd, p)" @click.stop>
+          <span class="card-menu-trigger" @click.stop>
+            <el-icon><MoreFilled /></el-icon>
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="edit">编辑</el-dropdown-item>
+              <el-dropdown-item v-if="p.status === 'active'" command="archive">归档</el-dropdown-item>
+              <el-dropdown-item v-else command="restore">取消归档</el-dropdown-item>
+              <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+
         <!-- model-card-photo：surface-card 底板 -->
         <div class="model-card-photo">
           <span class="photo-badge">{{ p.name.slice(0, 1).toUpperCase() }}</span>
@@ -57,6 +80,7 @@
           <el-date-picker
             v-model="dateRange"
             type="daterange"
+            value-format="YYYY-MM-DD"
             start-placeholder="开始日期"
             end-placeholder="截止日期"
             style="width: 100%"
@@ -74,8 +98,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus } from '@element-plus/icons-vue'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { Plus, MoreFilled } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { projectApi } from '@/api'
 import type { Project } from '@/types'
 
@@ -85,6 +109,7 @@ const loading = ref(false)
 const saving = ref(false)
 const dialogVisible = ref(false)
 const editing = ref<Project | null>(null)
+const statusFilter = ref<'active' | 'archived'>('active')
 const formRef = ref<FormInstance>()
 
 const form = reactive({ name: '', description: '' })
@@ -102,7 +127,7 @@ function fmtDate(d: string | null) {
 async function load() {
   loading.value = true
   try {
-    projects.value = await projectApi.list()
+    projects.value = await projectApi.list(statusFilter.value)
   } finally {
     loading.value = false
   }
@@ -114,6 +139,45 @@ function openCreate() {
   form.description = ''
   dateRange.value = null
   dialogVisible.value = true
+}
+
+function openEdit(p: Project) {
+  editing.value = p
+  form.name = p.name
+  form.description = p.description ?? ''
+  dateRange.value = [
+    p.start_date ? p.start_date.slice(0, 10) : '',
+    p.end_date ? p.end_date.slice(0, 10) : '',
+  ]
+  dialogVisible.value = true
+}
+
+async function onCardCommand(cmd: string, p: Project) {
+  if (cmd === 'edit') openEdit(p)
+  else if (cmd === 'archive') await setStatus(p, 'archived')
+  else if (cmd === 'restore') await setStatus(p, 'active')
+  else if (cmd === 'delete') await removeProject(p)
+}
+
+async function setStatus(p: Project, status: 'active' | 'archived') {
+  await projectApi.update(p.id, { status })
+  ElMessage.success(status === 'archived' ? '已归档' : '已取消归档')
+  load()
+}
+
+async function removeProject(p: Project) {
+  try {
+    await ElMessageBox.confirm(`确定删除项目「${p.name}」吗？相关任务与里程碑将一并删除，且不可恢复。`, '删除项目', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+  await projectApi.remove(p.id)
+  ElMessage.success('已删除')
+  load()
 }
 
 function goDetail(id: number) {
@@ -130,8 +194,8 @@ async function save() {
     const payload = {
       name: form.name,
       description: form.description || null,
-      start_date: dateRange.value?.[0] ?? null,
-      end_date: dateRange.value?.[1] ?? null,
+      start_date: dateRange.value?.[0] ? dateRange.value[0] : null,
+      end_date: dateRange.value?.[1] ? dateRange.value[1] : null,
     }
     if (editing.value) {
       await projectApi.update(editing.value.id, payload)
@@ -260,4 +324,35 @@ onMounted(load)
 .text-link-upper:hover,
 .text-link-upper:focus { color: var(--md-primary); background: var(--md-primary-hover); }
 .chev { font-size: var(--md-text-body-lg); line-height: 1; }
+
+/* 状态筛选条 */
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--md-space-4);
+  padding: var(--md-space-2) 0 var(--md-space-5);
+}
+
+/* 卡片右上角操作菜单 */
+.card-menu {
+  position: absolute;
+  top: var(--md-space-3);
+  right: var(--md-space-3);
+}
+.model-card { position: relative; }
+.card-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--md-radius-full);
+  color: var(--md-on-surface-variant);
+  cursor: pointer;
+  transition: background-color var(--md-duration-standard) var(--md-ease-standard);
+}
+.card-menu-trigger:hover {
+  background-color: var(--md-surface-container-high);
+  color: var(--md-on-surface);
+}
 </style>

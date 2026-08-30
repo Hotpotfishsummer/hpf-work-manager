@@ -1,14 +1,24 @@
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import select
 
+from app.core.events import publish
 from app.deps import CurrentUser, DbDep
-from app.models import Project, Task, TaskDependency
+from app.models import Milestone, Project, Task, TaskDependency
 from app.routers.projects import _get_owned_project
 from app.schemas import TaskBulkUpdate, TaskCreate, TaskOut, TaskUpdate
 from app.services.tasks import apply_task_update, to_out
 from app.utils.time import utcnow
 
 router = APIRouter(tags=["tasks"])
+
+
+async def _ensure_milestone_in_project(db: DbDep, project_id: int, milestone_id: int | None):
+    """校验里程碑归属：不存在或跨项目一律 400。"""
+    if milestone_id is None:
+        return
+    ms = await db.get(Milestone, milestone_id)
+    if ms is None or ms.project_id != project_id:
+        raise HTTPException(status_code=400, detail="里程碑不存在或不属于该项目")
 
 
 async def _get_task(db: DbDep, user: CurrentUser, task_id: int) -> Task:
@@ -31,12 +41,18 @@ async def list_tasks(
     db: DbDep,
     status_filter: str | None = Query(default=None, alias="status"),
     overdue: bool | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
 ):
     await _get_owned_project(db, user, project_id)
     stmt = select(Task).where(Task.project_id == project_id)
     if status_filter:
         stmt = stmt.where(Task.status == status_filter)
-    tasks = (await db.execute(stmt.order_by(Task.created_at.desc()))).scalars().all()
+    tasks = (
+        (await db.execute(stmt.order_by(Task.created_at.desc()).offset(offset).limit(limit)))
+        .scalars()
+        .all()
+    )
     outs = [to_out(t) for t in tasks]
     if overdue:
         outs = [t for t in outs if t.overdue]
@@ -52,6 +68,7 @@ async def create_task(
     project_id: int, payload: TaskCreate, user: CurrentUser, db: DbDep
 ):
     await _get_owned_project(db, user, project_id)
+    await _ensure_milestone_in_project(db, project_id, payload.milestone_id)
 
     data = payload.model_dump()
     status_ = data.get("status", "todo")
@@ -66,6 +83,7 @@ async def create_task(
     db.add(task)
     await db.commit()
     await db.refresh(task)
+    await publish(project_id, "created", "task", task.id)
     return to_out(task)
 
 
@@ -80,17 +98,22 @@ async def update_task(
 ):
     task = await _get_task(db, user, task_id)
     data = payload.model_dump(exclude_unset=True)
+    if "milestone_id" in data:
+        await _ensure_milestone_in_project(db, task.project_id, data["milestone_id"])
     apply_task_update(task, data)
     await db.commit()
     await db.refresh(task)
+    await publish(task.project_id, "updated", "task", task.id)
     return to_out(task)
 
 
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(task_id: int, user: CurrentUser, db: DbDep):
     task = await _get_task(db, user, task_id)
+    pid, tid = task.project_id, task.id
     await db.delete(task)
     await db.commit()
+    await publish(pid, "deleted", "task", tid)
 
 
 @router.post("/tasks/bulk", status_code=status.HTTP_204_NO_CONTENT)
@@ -107,9 +130,14 @@ async def bulk_update(payload: TaskBulkUpdate, user: CurrentUser, db: DbDep):
         .all()
     )
     data = payload.data.model_dump(exclude_unset=True)
+    if "milestone_id" in data:
+        for task in tasks:
+            await _ensure_milestone_in_project(db, task.project_id, data["milestone_id"])
     for task in tasks:
         apply_task_update(task, data)
     await db.commit()
+    for task in tasks:
+        publish(task.project_id, "updated", "task", task.id)
 
 
 # ---- 依赖关系管理 ----
@@ -150,6 +178,7 @@ async def add_dependency(task_id: int, depends_on: dict, user: CurrentUser, db: 
 
     db.add(TaskDependency(task_id=task_id, depends_on_task_id=dep_id))
     await db.commit()
+    await publish(task.project_id, "updated", "task", task_id)
 
 
 @router.delete("/tasks/{task_id}/dependencies", status_code=status.HTTP_204_NO_CONTENT)
@@ -157,7 +186,7 @@ async def remove_dependency(task_id: int, depends_on: dict, user: CurrentUser, d
     dep_id = depends_on.get("depends_on_task_id")
     if not dep_id:
         raise HTTPException(status_code=422, detail="缺少 depends_on_task_id")
-    await _get_task(db, user, task_id)
+    task = await _get_task(db, user, task_id)
     row = (
         await db.execute(
             select(TaskDependency).where(
@@ -170,3 +199,4 @@ async def remove_dependency(task_id: int, depends_on: dict, user: CurrentUser, d
         raise HTTPException(status_code=404, detail="依赖关系不存在")
     await db.delete(row)
     await db.commit()
+    await publish(task.project_id, "updated", "task", task_id)

@@ -12,14 +12,20 @@ class Base(DeclarativeBase):
     pass
 
 
-# 连接池：pool_pre_ping 防止断连后继续使用失效连接
-engine = create_async_engine(
-    settings.database_url,
-    pool_size=5,
-    max_overflow=5,
-    pool_pre_ping=True,
-    echo=False,
-)
+def _build_engine(url: str):
+    # SQLite（测试/内存库）不接受连接池参数
+    if url.startswith("sqlite"):
+        return create_async_engine(url, pool_pre_ping=True, echo=False)
+    return create_async_engine(
+        url,
+        pool_size=5,
+        max_overflow=5,
+        pool_pre_ping=True,
+        echo=False,
+    )
+
+
+engine = _build_engine(settings.database_url)
 
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 

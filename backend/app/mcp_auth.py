@@ -12,7 +12,7 @@ from app.core.apikey import validate_api_key
 from app.core.security import decode_token
 from app.mcp_server import current_username
 from sqlalchemy import select
-from app.database import AsyncSessionLocal
+import app.mcp_auth as mcp_auth_module
 from app.models import ApiKey, User
 
 
@@ -31,7 +31,7 @@ class MCPAuthMiddleware(BaseHTTPMiddleware):
                 # 2) API Key
                 key_hash = validate_api_key(token)
                 if key_hash is not None:
-                    async with AsyncSessionLocal() as db:
+                    async with mcp_auth_module.AsyncSessionLocal() as db:
                         row = (
                             await db.execute(
                                 select(ApiKey).where(

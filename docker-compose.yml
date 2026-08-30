@@ -1,9 +1,9 @@
-# 生产编排：frontend(nginx) + backend(uvicorn) + postgres
+# 生产编排：frontend(nginx) + backend(uvicorn) + postgres + backup
 # 用法：cp .env.example .env 并修改密钥后 docker compose up -d --build
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.6-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-hpf}
@@ -19,15 +19,47 @@ services:
     networks:
       - app
 
+  backup:
+    image: postgres:16.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hpf}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hpf}
+      POSTGRES_DB: ${POSTGRES_DB:-hpf_work}
+    volumes:
+      - pgdata:/var/lib/postgresql/data:ro
+      - ./backups:/backups
+    command: >
+      sh -c "
+        while true; do
+          pg_dump -h postgres -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\" | gzip > /backups/hpf_$$(date +%F_%H-%M-%S).sql.gz &&
+          find /backups -type f -name 'hpf_*.sql.gz' -mtime +7 -delete;
+          sleep 86400;
+        done
+      "
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app
+
   backend:
     build: ./backend
+    image: hpf-work-manager-backend:${TAG:-dev}
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-hpf}:${POSTGRES_PASSWORD:-hpf}@postgres:5432/${POSTGRES_DB:-hpf_work}
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-10080}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
       MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
     depends_on:
       postgres:
         condition: service_healthy
@@ -43,9 +75,17 @@ services:
 
   frontend:
     build: ./frontend
+    image: hpf-work-manager-frontend:${TAG:-dev}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "${FRONTEND_PORT:-8080}:80"
     networks:

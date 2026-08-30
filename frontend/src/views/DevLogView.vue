@@ -6,6 +6,7 @@
         <p class="page-sub">{{ project?.name }} · Dev Log · 进度/难点/待办/决策</p>
       </div>
       <div class="head-actions">
+        <LiveIndicator :connected="connected" :is-reconnectable="reconnectable" @reconnect="reconnect" />
         <el-button size="large" @click="router.push(`/projects/${pid}`)">返回概览</el-button>
         <el-button size="large" type="primary" @click="openReport">生成开发汇报</el-button>
       </div>
@@ -103,6 +104,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { devLogApi, devSessionApi, projectApi } from '@/api'
 import type { DevLog, DevLogStats, DevSession, Project } from '@/types'
 import { useProjectEvents } from '@/composables/useProjectEvents'
+import LiveIndicator from '@/components/LiveIndicator.vue'
 
 const props = defineProps<{ id: string }>()
 const router = useRouter()
@@ -188,11 +190,17 @@ async function load() {
 }
 
 async function startSession() {
-  const { value } = await ElMessageBox.prompt('给本次会话起个名字（可选）', '开始开发会话', {
-    confirmButtonText: '开始',
-    cancelButtonText: '取消',
-    inputPlaceholder: '如：实现登录模块',
-  })
+  let result
+  try {
+    result = await ElMessageBox.prompt('给本次会话起个名字（可选）', '开始开发会话', {
+      confirmButtonText: '开始',
+      cancelButtonText: '取消',
+      inputPlaceholder: '如：实现登录模块',
+    })
+  } catch {
+    return
+  }
+  const { value } = result
   await devSessionApi.start(pid.value, { title: value || null })
   ElMessage.success('会话已开始，AI 写入的记录会自动归入')
   sessions.value = await devSessionApi.list(pid.value)
@@ -201,11 +209,17 @@ async function startSession() {
 async function endSession() {
   const s = activeSession.value
   if (!s) return
-  const { value } = await ElMessageBox.prompt('总结本次会话（可选，会写入记录）', '结束会话', {
-    confirmButtonText: '结束',
-    cancelButtonText: '取消',
-    inputPlaceholder: '如：完成认证流程与单元测试',
-  })
+  let result
+  try {
+    result = await ElMessageBox.prompt('总结本次会话（可选，会写入记录）', '结束会话', {
+      confirmButtonText: '结束',
+      cancelButtonText: '取消',
+      inputPlaceholder: '如：完成认证流程与单元测试',
+    })
+  } catch {
+    return
+  }
+  const { value } = result
   await devSessionApi.end(s.id, { summary: value || null })
   ElMessage.success('会话已结束')
   sessions.value = await devSessionApi.list(pid.value)
@@ -213,17 +227,30 @@ async function endSession() {
 }
 
 async function resolveLog(log: DevLog) {
+  try {
+    await ElMessageBox.confirm('仅 todo / blocker 条目可标记完成，确认标记？', '标记完成', {
+      type: 'warning',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
   await devLogApi.resolve(log.id)
   ElMessage.success('已标记完成')
   await Promise.all([loadLogs(), loadStats()])
 }
 
 async function removeLog(log: DevLog) {
-  await ElMessageBox.confirm(`确定删除「${log.title}」？`, '删除确认', {
-    type: 'warning',
-    confirmButtonText: '删除',
-    cancelButtonText: '取消',
-  })
+  try {
+    await ElMessageBox.confirm(`确定删除「${log.title}」？`, '删除确认', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
   await devLogApi.remove(log.id)
   ElMessage.success('已删除')
   await Promise.all([loadLogs(), loadStats()])
@@ -251,7 +278,7 @@ function scheduleReload() {
   if (reloadTimer) clearTimeout(reloadTimer)
   reloadTimer = setTimeout(load, 400)
 }
-useProjectEvents(() => pid.value, scheduleReload)
+const { connected, reconnectable, reconnect } = useProjectEvents(() => pid.value, scheduleReload)
 
 onMounted(load)
 </script>

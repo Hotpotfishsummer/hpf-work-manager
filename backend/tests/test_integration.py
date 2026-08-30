@@ -4,118 +4,141 @@
 """
 
 import asyncio
-import sys
-from pathlib import Path
+import json
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-
-class _URL:
-    def __init__(self, s):
-        self.raw = s
+import pytest
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
-def setup_sqlite():
-    """将全局 async engine 指向 SQLite 内存库，并建表。"""
-    import app.database as database
-    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-    from app.database import Base
+@pytest.mark.asyncio
+async def test_api_key_generation_and_validation():
+    """Test API key generation and validation."""
+    from app.core.apikey import generate_api_key, validate_api_key, API_KEY_PREFIX
 
-    test_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    database.engine = test_engine
-    database.AsyncSessionLocal = async_sessionmaker(
-        test_engine, class_=database.AsyncSession, expire_on_commit=False
+    raw, prefix, key_hash = generate_api_key(1)
+    assert validate_api_key(raw) == key_hash
+    assert validate_api_key("bad") is None
+    assert raw.startswith(f"{API_KEY_PREFIX}_")
+    assert len(prefix) == 6  # 3 bytes = 6 hex chars
+
+
+@pytest.mark.asyncio
+async def test_user_creation_and_auth(db_session):
+    """Test user creation and password hashing."""
+    from app.core.security import hash_password, verify_password
+    from app.models import User
+
+    user = User(
+        username="alice",
+        email="a@b.co",
+        hashed_password=hash_password("password123"),
     )
-    # 让 get_db 使用新 session 工厂
-    from app.database import AsyncSessionLocal
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
 
-    async def get_db_override():
-        async with AsyncSessionLocal() as session:
-            yield session
-
-    import app.deps as deps
-    deps.get_db = get_db_override
-    import app.routers.projects as projects
-    projects.get_db = get_db_override
-    import app.routers.tasks as tasks
-    tasks.get_db = get_db_override
-    import app.routers.keys as keys
-    keys.get_db = get_db_override
-    import app.routers.events as events
-    events.get_db = get_db_override
-
-    async def _init():
-        async with test_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
-    return _init
+    assert user.id is not None
+    assert verify_password("password123", user.hashed_password)
+    assert not verify_password("wrong", user.hashed_password)
 
 
-async def main():
-    init = setup_sqlite()
-    await init()
+@pytest.mark.asyncio
+async def test_project_creation(db_session, test_user):
+    """Test project creation."""
+    from app.models import Project
 
-    from app.database import AsyncSessionLocal
-    from app.models import User, ApiKey, Project, Task
-    from app.core import apikey
-    from app.core.events import subscribe, publish
-    from app.services.tasks import apply_task_update, to_out
+    proj = Project(owner_id=test_user.id, name="P1")
+    db_session.add(proj)
+    await db_session.commit()
+    await db_session.refresh(proj)
+
+    assert proj.id is not None
+    assert proj.name == "P1"
+    assert proj.owner_id == test_user.id
+
+
+@pytest.mark.asyncio
+async def test_task_state_machine(db_session, test_project):
+    """Test task state machine: done -> progress=100, completed_at."""
+    from app.models import Task
+    from app.services.tasks import apply_task_update
     from app.utils.time import utcnow
-    from sqlalchemy import select
 
-    async with AsyncSessionLocal() as db:
-        # 1. 建用户
-        user = User(
-            username="alice",
-            email="a@b.co",
-            hashed_password="x",
-        )
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
+    task = Task(project_id=test_project.id, name="T1", status="todo", progress=0)
+    db_session.add(task)
+    await db_session.commit()
+    await db_session.refresh(task)
 
-        # 2. API Key 生成 + 校验
-        raw, prefix, key_hash = apikey.generate_api_key(user.id)
-        assert apikey.validate_api_key(raw) == key_hash
-        assert apikey.validate_api_key("bad") is None
+    # Transition to done
+    apply_task_update(task, {"status": "done"})
+    assert task.progress == 100
+    assert task.completed_at is not None
 
-        key = ApiKey(user_id=user.id, name="claude", prefix=prefix, key_hash=key_hash)
-        db.add(key)
-        await db.commit()
-        await db.refresh(key)
-        assert key.id is not None
-
-        # 3. 建项目
-        proj = Project(owner_id=user.id, name="P1")
-        db.add(proj)
-        await db.commit()
-        await db.refresh(proj)
-
-        # 4. 任务状态机：done -> progress=100, completed_at
-        task = Task(project_id=proj.id, name="T1", status="todo", progress=0)
-        db.add(task)
-        await db.commit()
-        await db.refresh(task)
-        apply_task_update(task, {"status": "done"})
-        assert task.progress == 100
-        assert task.completed_at is not None
-        # 非 done 清空 completed_at
-        apply_task_update(task, {"status": "in_progress"})
-        assert task.completed_at is None
-        await db.commit()
-
-        # 5. SSE 事件发布/订阅
-        q = asyncio.Queue(maxsize=10)
-        await subscribe(proj.id, q)
-        await publish(proj.id, "updated", "task", task.id)
-        msg = await asyncio.wait_for(q.get(), timeout=2)
-        import json
-
-        data = json.loads(msg)
-        assert data["entity"] == "task" and data["project_id"] == proj.id
-
-        print("ALL INTEGRATION CHECKS PASSED")
+    # Transition away from done
+    apply_task_update(task, {"status": "in_progress"})
+    assert task.completed_at is None
+    await db_session.commit()
 
 
-if __name__ == "__main__":
-    asyncio.run(main())
+@pytest.mark.asyncio
+async def test_sse_event_publish_subscribe(db_session, test_project):
+    """Test SSE event publish/subscribe."""
+    from app.core.events import publish, subscribe
+    from app.models import Task
+    from app.services.tasks import apply_task_update
+
+    task = Task(project_id=test_project.id, name="T1", status="todo", progress=0)
+    db_session.add(task)
+    await db_session.commit()
+    await db_session.refresh(task)
+
+    q = asyncio.Queue(maxsize=10)
+    await subscribe(test_project.id, q)
+    await publish(test_project.id, "updated", "task", task.id)
+
+    msg = await asyncio.wait_for(q.get(), timeout=2)
+    data = json.loads(msg)
+    assert data["entity"] == "task"
+    assert data["project_id"] == test_project.id
+    assert data["entity_id"] == task.id
+
+
+@pytest.mark.asyncio
+async def test_api_key_auth_flow(client, test_user, db_session):
+    """Test API key creation and exchange for JWT."""
+    from app.core.apikey import generate_api_key
+    from app.models import ApiKey
+
+    # Create API key via REST
+    raw, prefix, key_hash = generate_api_key(test_user.id)
+    key = ApiKey(user_id=test_user.id, name="claude", prefix=prefix, key_hash=key_hash)
+    db_session.add(key)
+    await db_session.commit()
+
+    # Exchange API key for JWT
+    resp = await client.post("/api/keys/exchange", json={"key": raw})
+    assert resp.status_code == 200
+    assert "access_token" in resp.json()
+
+
+@pytest.mark.asyncio
+async def test_invalid_api_key_rejected(client):
+    """Test that invalid API key is rejected."""
+    resp = await client.post("/api/keys/exchange", json={"key": "invalid_key"})
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_jwt_auth_me_endpoint(auth_client):
+    """Test /auth/me endpoint with valid JWT."""
+    resp = await auth_client.get("/api/auth/me")
+    assert resp.status_code == 200
+    assert resp.json()["username"] == "testuser"
+
+
+@pytest.mark.asyncio
+async def test_unauthorized_access_rejected(client):
+    """Test that unauthenticated requests are rejected."""
+    resp = await client.get("/api/auth/me")
+    assert resp.status_code == 401

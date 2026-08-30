@@ -19,6 +19,9 @@ import type {
   ProjectCreate,
   ProjectStats,
   ProjectUpdate,
+  SearchRequest,
+  SearchResponse,
+  SearchResultItem,
   Task,
   TaskBulkUpdate,
   TaskCreate,
@@ -37,7 +40,8 @@ export const authApi = {
 
 /* ---- 项目 ---- */
 export const projectApi = {
-  list: () => http.get<Project[], Project[]>('/projects'),
+  list: (status?: 'active' | 'archived') =>
+    http.get<Project[], Project[]>('/projects', status ? { params: { status } } : undefined),
   get: (id: number) => http.get<Project, Project>(`/projects/${id}`),
   create: (data: ProjectCreate) => http.post<Project, Project>('/projects', data),
   update: (id: number, data: ProjectUpdate) =>
@@ -101,6 +105,14 @@ export const devLogApi = {
   resolve: (id: number) =>
     http.post<DevLog, DevLog>(`/logs/${id}/resolve`),
   remove: (id: number) => http.delete<null, null>(`/logs/${id}`),
+}
+
+/* ---- 搜索 ---- */
+export const searchApi = {
+  global: (q: string, projectId?: number) =>
+    http.get<SearchResponse, SearchResponse>('/search', {
+      params: { q, project_id: projectId },
+    }),
 }
 
 /* ---- 开发会话 ---- */
