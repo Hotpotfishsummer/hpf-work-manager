@@ -601,6 +601,12 @@ const depsCandidates = ref<{ id: number; label: string }[]>([])
 const depsSelected = ref<number[]>([])
 const depsSearch = ref('')
 
+// 过滤后的候选列表（包含搜索词匹配）
+const filteredDepsCandidates = computed(() => {
+  const search = depsSearch.value?.trim().toLowerCase() ?? ''
+  return depsCandidates.value.filter((c) => c.label.toLowerCase().includes(search))
+})
+
 function depName(id: number): string {
   return tasks.value.find((t) => t.id === id)?.name ?? `#${id}`
 }
