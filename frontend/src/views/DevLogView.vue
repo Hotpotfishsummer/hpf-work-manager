@@ -8,6 +8,7 @@
       <div class="head-actions">
         <LiveIndicator :connected="connected" :is-reconnectable="reconnectable" @reconnect="reconnect" />
         <el-button size="large" @click="router.push(`/projects/${pid}`)">返回概览</el-button>
+        <el-button size="large" @click="openCreate">新建记录</el-button>
         <el-button size="large" type="primary" @click="openReport">生成开发汇报</el-button>
       </div>
     </div>
@@ -70,6 +71,7 @@
             >
               标记完成
             </el-button>
+            <el-button link size="small" @click="openEdit(log)">编辑</el-button>
             <el-button link type="danger" size="small" @click="removeLog(log)">删除</el-button>
           </span>
         </div>
@@ -81,17 +83,94 @@
         </div>
         <p v-if="log.content" class="log-content">{{ log.content }}</p>
         <div v-if="log.related_task_ids?.length" class="log-tasks">
-          关联任务：<el-tag v-for="t in log.related_task_ids" :key="t" size="small" effect="plain">#{{ t }}</el-tag>
+          关联任务：
+          <el-tag
+            v-for="t in log.related_task_ids"
+            :key="t"
+            size="small"
+            effect="plain"
+            class="log-task-tag"
+            @click="goToTask(t)"
+          >
+            #{{ t }}
+          </el-tag>
         </div>
       </div>
     </div>
 
     <!-- 开发汇报弹窗 -->
     <el-dialog v-model="reportDialog" title="开发汇报" width="720px" destroy-on-close>
+      <div class="report-range">
+        <el-date-picker
+          v-model="reportStart"
+          type="date"
+          value-format="YYYY-MM-DD"
+          placeholder="开始日期"
+          style="width: 160px"
+        />
+        <span class="range-sep">至</span>
+        <el-date-picker
+          v-model="reportEnd"
+          type="date"
+          value-format="YYYY-MM-DD"
+          placeholder="结束日期"
+          style="width: 160px"
+        />
+        <el-button :disabled="!reportStart && !reportEnd" @click="regenerateReport">
+          应用范围
+        </el-button>
+      </div>
       <pre class="report-text">{{ reportText || '生成中…' }}</pre>
       <template #footer>
         <el-button @click="reportDialog = false">关闭</el-button>
+        <el-button @click="downloadReport">下载 .md</el-button>
         <el-button type="primary" @click="copyReport">复制 Markdown</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 创建/编辑 DevLog 弹窗 -->
+    <el-dialog
+      v-model="createDialog"
+      :title="editingLog ? '编辑记录' : '新建记录'"
+      width="560px"
+      destroy-on-close
+    >
+      <el-form label-position="top">
+        <el-form-item label="类型" required>
+          <el-select v-model="form.entry_type" style="width: 100%">
+            <el-option v-for="t in TYPE_OPTIONS" :key="t.value" :label="t.label" :value="t.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="标题" required>
+          <el-input v-model="form.title" placeholder="如：完成登录接口联调" />
+        </el-form-item>
+        <el-form-item label="内容">
+          <el-input v-model="form.content" type="textarea" :rows="4" placeholder="详细说明（可选）" />
+        </el-form-item>
+        <div class="form-grid">
+          <el-form-item v-if="['todo', 'blocker'].includes(form.entry_type)" label="状态">
+            <el-select v-model="form.status" style="width: 100%">
+              <el-option v-for="s in STATUS_OPTIONS" :key="s" :label="s === 'done' ? '已完成' : '进行中'" :value="s" />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="['difficulty', 'blocker'].includes(form.entry_type)" label="严重度">
+            <el-select v-model="form.severity" clearable placeholder="无" style="width: 100%">
+              <el-option v-for="s in SEVERITY_OPTIONS" :key="s" :label="SEVERITY_LABEL[s]" :value="s" />
+            </el-select>
+          </el-form-item>
+        </div>
+        <el-form-item label="关联任务">
+          <el-select v-model="form.related_task_ids" multiple clearable filterable placeholder="选择关联任务（可选）" style="width: 100%">
+            <el-option v-for="t in taskOptions" :key="t.id" :label="t.name" :value="t.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="Git 引用">
+          <el-input v-model="form.git_ref" placeholder="如：abc1234 / feature/login" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="createDialog = false">取消</el-button>
+        <el-button type="primary" :loading="logSaving" @click="saveLog">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -101,8 +180,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { devLogApi, devSessionApi, projectApi } from '@/api'
-import type { DevLog, DevLogStats, DevSession, Project } from '@/types'
+import { devLogApi, devSessionApi, projectApi, taskApi } from '@/api'
+import type { DevLog, DevLogStats, DevLogType, DevSession, Project } from '@/types'
 import { useProjectEvents } from '@/composables/useProjectEvents'
 import LiveIndicator from '@/components/LiveIndicator.vue'
 
@@ -123,6 +202,28 @@ const filters = reactive<{ entry_type: string | null; status: string | null }>({
 const reportDialog = ref(false)
 const reportText = ref('')
 
+// P1-4: 创建/编辑 DevLog 弹窗
+const createDialog = ref(false)
+const editingLog = ref<DevLog | null>(null)
+const logSaving = ref(false)
+const form = reactive<{
+  entry_type: DevLogType
+  status: string
+  severity: string | null
+  title: string
+  content: string | null
+  related_task_ids: number[] | null
+  git_ref: string | null
+}>({
+  entry_type: 'note',
+  status: 'open',
+  severity: null,
+  title: '',
+  content: null,
+  related_task_ids: null,
+  git_ref: null,
+})
+
 const TYPE_LABEL: Record<string, string> = {
   progress: '进展',
   difficulty: '难点',
@@ -132,6 +233,7 @@ const TYPE_LABEL: Record<string, string> = {
   milestone: '里程碑',
   note: '备注',
 }
+const TYPE_OPTIONS = Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))
 const TYPE_TAG: Record<string, 'primary' | 'warning' | 'success' | 'info' | 'danger'> = {
   progress: 'primary',
   difficulty: 'warning',
@@ -142,9 +244,83 @@ const TYPE_TAG: Record<string, 'primary' | 'warning' | 'success' | 'info' | 'dan
   note: 'info',
 }
 const SEVERITY_LABEL: Record<string, string> = { low: '低', medium: '中', high: '高' }
-const TYPE_OPTIONS = Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))
+const STATUS_OPTIONS = ['open', 'done']
+const SEVERITY_OPTIONS = ['low', 'medium', 'high']
+
+// P1-4: 分页
+const PAGE_SIZE = 20
+const pagination = reactive({ page: 1, size: PAGE_SIZE, total: 0 })
+const hasMore = computed(() => pagination.total > pagination.page * pagination.size)
+const showingCount = computed(() => Math.min(pagination.page * pagination.size, pagination.total))
 
 const activeSession = computed(() => sessions.value.find((s) => !s.ended_at) ?? null)
+
+// P1-4: 任务选项（用于关联任务选择器与跳转）
+const taskOptions = ref<{ id: number; name: string }[]>([])
+
+async function loadTaskOptions() {
+  try {
+    taskOptions.value = (await taskApi.list(pid.value)).map((t) => ({ id: t.id, name: t.name }))
+  } catch {
+    /* ignore */
+  }
+}
+
+function openCreate() {
+  editingLog.value = null
+  form.entry_type = 'note'
+  form.status = 'open'
+  form.severity = null
+  form.title = ''
+  form.content = null
+  form.related_task_ids = null
+  form.git_ref = null
+  createDialog.value = true
+}
+
+function openEdit(log: DevLog) {
+  editingLog.value = log
+  form.entry_type = log.entry_type
+  form.status = log.status
+  form.severity = log.severity
+  form.title = log.title
+  form.content = log.content
+  form.related_task_ids = log.related_task_ids?.length ? [...log.related_task_ids] : null
+  form.git_ref = log.git_ref
+  createDialog.value = true
+}
+
+async function saveLog() {
+  if (!form.title.trim()) {
+    ElMessage.warning('请输入标题')
+    return
+  }
+  logSaving.value = true
+  try {
+    const payload = {
+      entry_type: form.entry_type,
+      status: form.status,
+      severity: form.severity,
+      title: form.title,
+      content: form.content,
+      related_task_ids: form.related_task_ids,
+      git_ref: form.git_ref,
+    }
+    if (editingLog.value) {
+      await devLogApi.update(editingLog.value.id, payload)
+      ElMessage.success('已更新')
+    } else {
+      await devLogApi.create(pid.value, payload)
+      ElMessage.success('已创建')
+    }
+    createDialog.value = false
+    await load()
+  } catch {
+    ElMessage.error('保存失败')
+  } finally {
+    logSaving.value = false
+  }
+}
 
 // status 仅对 todo/blocker 有意义；progress/decision/milestone 本质是已完成的工作记录。
 // 派生完成度：note 中性（仅「全部」显示），progress/decision/milestone 视为已完成。
@@ -158,17 +334,54 @@ const filteredLogs = computed(() => {
   let list = logs.value
   if (filters.entry_type) list = list.filter((l) => l.entry_type === filters.entry_type)
   if (filters.status) list = list.filter((l) => derivedStatus(l) === filters.status)
-  return list
+  // 当前页 slice
+  return list.slice(0, pagination.page * pagination.size)
 })
+
+// P1-4: 分页加载更多
+async function loadMore() {
+  if (loading.value) return
+  loading.value = true
+  try {
+    const offset = pagination.page * pagination.size
+    const params: Record<string, string | number> = {
+      limit: pagination.size,
+      offset,
+    }
+    if (filters.entry_type) params.entry_type = filters.entry_type
+    const page = await devLogApi.list(pid.value, params)
+    if (page.length === 0) {
+      pagination.total = logs.value.length
+    } else {
+      // 追加（去重）
+      const existingIds = new Set(logs.value.map((l) => l.id))
+      const newItems = page.filter((l) => !existingIds.has(l.id))
+      logs.value = [...logs.value, ...newItems]
+      pagination.page += 1
+      pagination.total = logs.value.length + (page.length < pagination.size ? 0 : 1)
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+// related_task_ids 点击跳转
+function goToTask(taskId: number) {
+  router.push(`/projects/${pid.value}/tasks?task=${taskId}`)
+}
 
 function formatTime(iso: string) {
   return iso.replace('T', ' ').slice(0, 16)
 }
 
-async function loadLogs() {
+async function loadLogs(reset = true) {
   const params: Record<string, string> = {}
   if (filters.entry_type) params.entry_type = filters.entry_type
   logs.value = await devLogApi.list(pid.value, params)
+  if (reset) {
+    pagination.page = 1
+    pagination.total = logs.value.length
+  }
 }
 
 async function load() {
@@ -184,6 +397,8 @@ async function load() {
     stats.value = s
     logs.value = ls
     sessions.value = ss
+    pagination.page = 1
+    pagination.total = ls.length
   } finally {
     loading.value = false
   }
@@ -228,7 +443,7 @@ async function endSession() {
 
 async function resolveLog(log: DevLog) {
   try {
-    await ElMessageBox.confirm('仅 todo / blocker 条目可标记完成，确认标记？', '标记完成', {
+    await ElMessageBox.confirm(`「${log.title}」标记为已完成？`, '标记完成', {
       type: 'warning',
       confirmButtonText: '确定',
       cancelButtonText: '取消',
@@ -236,9 +451,13 @@ async function resolveLog(log: DevLog) {
   } catch {
     return
   }
-  await devLogApi.resolve(log.id)
-  ElMessage.success('已标记完成')
-  await Promise.all([loadLogs(), loadStats()])
+  try {
+    await devLogApi.resolve(log.id)
+    ElMessage.success('已标记完成')
+    await Promise.all([loadLogs(), loadStats()])
+  } catch {
+    ElMessage.error('标记完成失败')
+  }
 }
 
 async function removeLog(log: DevLog) {
@@ -263,8 +482,34 @@ async function loadStats() {
 async function openReport() {
   reportDialog.value = true
   reportText.value = ''
+  reportStart.value = ''
+  reportEnd.value = ''
   const r = await devLogApi.report(pid.value, null, null)
   reportText.value = r.text
+}
+
+const reportStart = ref('')
+const reportEnd = ref('')
+async function regenerateReport() {
+  reportText.value = '生成中…'
+  const r = await devLogApi.report(
+    pid.value,
+    reportStart.value || null,
+    reportEnd.value || null,
+  )
+  reportText.value = r.text
+}
+
+function downloadReport() {
+  if (!reportText.value) return
+  const blob = new Blob(['\uFEFF' + reportText.value], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${project.value?.name ?? 'project'}_report_${new Date().toISOString().slice(0, 10)}.md`
+  a.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('已下载 Markdown')
 }
 
 async function copyReport() {
@@ -280,7 +525,10 @@ function scheduleReload() {
 }
 const { connected, reconnectable, reconnect } = useProjectEvents(() => pid.value, scheduleReload)
 
-onMounted(load)
+onMounted(() => {
+  load()
+  loadTaskOptions()
+})
 </script>
 
 <style scoped>
