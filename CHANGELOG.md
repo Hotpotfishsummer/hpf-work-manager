@@ -43,6 +43,12 @@
 - DevLog 列表接入 `el-pagination`
 - TaskBoard 新增任务清单 Markdown 导出（按状态分节 + 勾选框）
 
+### P2 · 后端健壮性与安全加固 ✅
+- **P2-1 MCP 补齐 `list_task_dependencies`**（34→35 个工具）：返回前置依赖 id/名称/状态/进度，AI 工具可判断任务可否开工；e2e 测试覆盖；skills 文档同步
+- **P2-2 MCP list 工具分页与搜索对齐 REST**：`list_projects` +status 过滤与 offset/limit；`list_tasks` +search（ILIKE）与 SQL 级 overdue 过滤（与 `is_overdue` 派生口径一致）；`list_dev_logs` +offset；均带上限防全表拉取
+- **P2-3 JWT sub 改 user id**：签发 `sub=user_id + username`，decode 兼容层使旧 token（sub=username）继续有效，下游零改动；SSE ticket 同步；typ 隔离保持
+- **已在 0.2.0 覆盖的 P2 原始项**（审计确认）：登录/API Key 限流、注册 IntegrityError→409、MCP 枚举校验一致化、API Key 哈希存储、请求耗时日志
+
 ### 测试基建修复
 - 修复全量 `pytest` 挂死：pytest-asyncio 1.4 函数级测试循环与会话级 MCP 会话管理器（anyio task group 绑定单循环、`run()` 仅允许一次）冲突 → `asyncio_default_fixture/test_loop_scope = "session"` 全套共享会话循环；移除废弃的 `event_loop` fixture
 - MCP 工具执行错误以 200 + `result.isError` 返回而非 JSON-RPC error，修正 5 处断言；`test_unauthorized_mcp` 改用无凭证 client（MCP 认证层接受 JWT）
