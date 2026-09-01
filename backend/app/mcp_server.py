@@ -529,6 +529,38 @@ async def remove_task_dependency(task_id: int, depends_on_task_id: int) -> str:
         return f"任务 {task_id} 的依赖已移除"
 
 
+@mcp.tool()
+async def list_task_dependencies(task_id: int) -> list[dict]:
+    """列出任务的前置依赖（含依赖任务的名称与状态，便于判断是否可开工）。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        task = await _require_task(db, username, task_id)
+        rows = (
+            (
+                await db.execute(
+                    select(Task.id, Task.name, Task.status, Task.progress)
+                    .join(
+                        TaskDependency,
+                        TaskDependency.depends_on_task_id == Task.id,
+                    )
+                    .where(TaskDependency.task_id == task_id)
+                    .order_by(Task.id)
+                )
+            )
+            .all()
+        )
+        return [
+            {
+                "task_id": task.id,
+                "depends_on_task_id": rid,
+                "name": name,
+                "status": status,
+                "progress": progress,
+            }
+            for rid, name, status, progress in rows
+        ]
+
+
 # ---------- 统计 ----------
 
 

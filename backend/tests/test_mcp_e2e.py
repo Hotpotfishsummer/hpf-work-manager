@@ -268,3 +268,38 @@ async def test_mcp_task_status_filter(mcp_client, test_project):
     tasks = data["result"]["content"][0]["text"]
     assert "Task done" in tasks
     assert "Task todo" not in tasks
+
+@pytest.mark.asyncio
+async def test_mcp_list_task_dependencies(mcp_client, test_project, test_task):
+    """Test MCP list_task_dependencies tool (P2-1 补齐)."""
+    from app.database import AsyncSessionLocal
+    from app.models import Task, TaskDependency
+
+    async with AsyncSessionLocal() as db:
+        dep = Task(project_id=test_project.id, name="前置任务", status="todo", progress=0)
+        db.add(dep)
+        await db.flush()
+        dep_id = dep.id
+        db.add(TaskDependency(task_id=test_task.id, depends_on_task_id=dep_id))
+        await db.commit()
+
+    sid = await test_mcp_auth_initialize(mcp_client)
+    headers = {**mcp_client.headers, "mcp-session-id": sid}
+
+    resp = await mcp_client.post(
+        "/mcp/",
+        headers=headers,
+        json={
+            "jsonrpc": "2.0",
+            "id": 30,
+            "method": "tools/call",
+            "params": {"name": "list_task_dependencies", "arguments": {"task_id": test_task.id}},
+        },
+    )
+    data = parse_sse_text(resp.text)
+    assert resp.status_code == 200
+    result = data["result"]
+    assert result.get("isError") is not True
+    content = result["content"][0]["text"]
+    assert "前置任务" in content
+    assert str(dep_id) in content

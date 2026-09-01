@@ -75,7 +75,7 @@ create_project(name="HPF 官网", start_date="2026-08-01", end_date="2026-09-30"
 
 ---
 
-## 三、任务（7）
+## 三、任务（8）
 
 `Task` 结构：`id, project_id, milestone_id, name, description, status, priority, progress,
 start_date, due_date, completed_at, estimated_hours, created_at`。
@@ -141,11 +141,16 @@ update_task(task_id=42, status="done")
 - 返回：`str`
 - 约束：依赖不存在报错。
 
+### 17. `list_task_dependencies` — 列出任务的前置依赖
+- 参数：`task_id: int`
+- 返回：`list[dict]`，每项含 `task_id` / `depends_on_task_id` / `name` / `status` / `progress`
+- 用途：开工前判断前置任务是否已完成（`status != "done"` 即存在未完成前置）。
+
 ---
 
 ## 四、统计（3）
 
-### 17. `get_project_stats_mcp` — 项目进度统计
+### 18. `get_project_stats_mcp` — 项目进度统计
 - 参数：`project_id`
 - 返回：
 
@@ -162,12 +167,12 @@ update_task(task_id=42, status="done")
 - `progress` = 已完成任务数 / 总任务数 × 100（1 位小数）。
 - `overdue_tasks` 按延期天数倒序；无延期返回空数组。
 
-### 18. `get_burndown_mcp` — 燃尽图数据
+### 19. `get_burndown_mcp` — 燃尽图数据
 - 参数：`project_id`
 - 返回：`[{ "date": "2026-08-01", "ideal_remaining": 20, "actual_remaining": 18 }, ...]`
 - 区间为项目起止日期（缺省回退到今日）；期望线从总任务数线性降到 0，实际线基于 `completed_at` 按日推导。
 
-### 19. `get_gantt_mcp` — 甘特图数据
+### 20. `get_gantt_mcp` — 甘特图数据
 - 参数：`project_id`
 - 返回：
 
@@ -194,16 +199,16 @@ related_task_ids, git_ref, author, created_at, updated_at, resolved_at`。
 
 `DevSession` 结构：`id, project_id, title, started_at, ended_at, summary, author, created_at, log_count`。
 
-### 20. `start_dev_session` — 开始一次开发会话
+### 21. `start_dev_session` — 开始一次开发会话
 - 参数：`project_id`（必填）、`title: str | None`
 - 返回：`DevSession`（`ended_at=null`）
 - 作用：后续 `log_*` 若未指定 session 会**自动归入最近的未结束会话**。
 
-### 21. `end_dev_session` — 结束开发会话
+### 22. `end_dev_session` — 结束开发会话
 - 参数：`session_id`（必填）、`summary: str | None`
 - 返回：`DevSession`（`ended_at` 盖章、含 `log_count`）
 
-### 22. `log_progress` — 记录一次开发进展
+### 23. `log_progress` — 记录一次开发进展
 - 参数：`project_id`、`title`（必填）、`content`、`related_task_ids`、`git_ref`
 - 返回：`DevLog`
 
@@ -211,27 +216,27 @@ related_task_ids, git_ref, author, created_at, updated_at, resolved_at`。
 log_progress(project_id=1, title="完成 JWT 签发与校验", git_ref="a1b2c3d")
 ```
 
-### 23. `log_difficulty` — 记录难点
+### 24. `log_difficulty` — 记录难点
 - 参数：`project_id`、`title`（必填）、`content`、`severity="medium"`（low/medium/high）、`related_task_ids`
 - 返回：`DevLog`
 
-### 24. `log_todo` — 记录下一步待办（开发过程 TODO，比任务轻量）
+### 25. `log_todo` — 记录下一步待办（开发过程 TODO，比任务轻量）
 - 参数：`project_id`、`title`（必填）、`content`、`related_task_ids`、`git_ref`
 - 返回：`DevLog`
 
-### 25. `log_decision` — 记录技术决策及理由
+### 26. `log_decision` — 记录技术决策及理由
 - 参数：`project_id`、`title`（必填）、`content`、`related_task_ids`
 - 返回：`DevLog`
 
-### 26. `log_blocker` — 记录阻塞项
+### 27. `log_blocker` — 记录阻塞项
 - 参数：`project_id`、`title`（必填）、`content`、`severity="high"`（low/medium/high）
 - 返回：`DevLog`
 
-### 27. `log_note` — 记录通用备注
+### 28. `log_note` — 记录通用备注
 - 参数：`project_id`、`title`（必填）、`content`
 - 返回：`DevLog`
 
-### 28. `list_dev_logs` — 查询开发记录
+### 29. `list_dev_logs` — 查询开发记录
 - 参数：
   - `project_id`（必填）
   - `entry_type: str | None`（progress/difficulty/todo/decision/blocker/milestone/note）
@@ -240,7 +245,7 @@ log_progress(project_id=1, title="完成 JWT 签发与校验", git_ref="a1b2c3d"
   - `limit: int = 50`
 - 返回：`DevLog[]`（按 created_at 倒序）
 
-### 29. `get_dev_log_stats_mcp` — 开发记录统计
+### 30. `get_dev_log_stats_mcp` — 开发记录统计
 - 参数：`project_id`
 - 返回：
 
@@ -254,7 +259,7 @@ log_progress(project_id=1, title="完成 JWT 签发与校验", git_ref="a1b2c3d"
 }
 ```
 
-### 30. `get_project_state` — 项目状态聚合包（新会话恢复上下文）
+### 31. `get_project_state` — 项目状态聚合包（新会话恢复上下文）
 - 参数：`project_id`
 - 返回：
 
@@ -274,21 +279,21 @@ log_progress(project_id=1, title="完成 JWT 签发与校验", git_ref="a1b2c3d"
 
 - **新会话开始前先调它**，一次拉全上下文。
 
-### 31. `get_dev_report` — 生成阶段开发汇报
+### 32. `get_dev_report` — 生成阶段开发汇报
 - 参数：`project_id`（必填）、`start: str | None`、`end: str | None`（ISO 日期，省略表示全部时间）
 - 返回：`str`（Markdown 文本，按进展/里程碑/难点/阻塞/待办/决策/备注分组）
 
-### 32. `update_dev_log` — 更新一条记录
+### 33. `update_dev_log` — 更新一条记录
 - 参数：`log_id`（必填）+ 任选 `title` / `content` / `severity` / `status` / `related_task_ids`
 - 返回：`DevLog`
 - 注意：`related_task_ids` 必须属于本项目；修改 `entry_type` 时服务端会强制校正
   status/severity 组合约束。
 
-### 33. `delete_dev_log` — 删除一条记录
+### 34. `delete_dev_log` — 删除一条记录
 - 参数：`log_id`
 - 返回：`str`
 
-### 34. `resolve_dev_log` — 将记录标记为完成
+### 35. `resolve_dev_log` — 将记录标记为完成
 - 参数：`log_id`
 - 返回：`DevLog`（`status="done"`、`resolved_at` 盖章）
 - 约束：**仅 `todo` / `blocker`** 条目可用，其他类型报错。
