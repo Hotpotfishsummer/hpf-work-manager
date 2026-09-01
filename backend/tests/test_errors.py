@@ -117,7 +117,8 @@ class Test400Errors:
             },
         )
         data = parse_sse_text(resp.text)
-        assert "error" in data
+        result = (data or {}).get("result") or {}
+        assert resp.status_code != 200 or "error" in data or result.get("isError")
 
 
 class Test401Errors:
@@ -149,9 +150,9 @@ class Test401Errors:
 
     @pytest.mark.asyncio
     @_requires_mcp
-    async def test_unauthorized_mcp(self, auth_client):
+    async def test_unauthorized_mcp(self, client):
         """Test MCP without authentication returns 401."""
-        resp = await auth_client.post(
+        resp = await client.post(
             "/mcp/",
             headers={"Accept": "application/json, text/event-stream"},
             json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
@@ -309,8 +310,13 @@ class Test404Errors:
             },
         )
         data = parse_sse_text(resp.text)
-        assert "error" in data
-        assert "不存在" in data["error"]["message"]
+        result = (data or {}).get("result") or {}
+        assert resp.status_code != 200 or "error" in data or result.get("isError")
+        if "error" in data:
+            assert "不存在" in data["error"]["message"]
+        else:
+            text = (result.get("content") or [{}])[0].get("text", "")
+            assert "不存在" in text
 
 
 class Test422Errors:

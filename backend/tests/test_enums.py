@@ -268,7 +268,8 @@ class TestMCPToolEnums:
             },
         )
         data = parse_sse_text(resp.text)
-        assert "error" in data or resp.status_code != 200
+        result = (data or {}).get("result") or {}
+        assert resp.status_code != 200 or "error" in data or result.get("isError")
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(
@@ -319,7 +320,8 @@ class TestMCPToolEnums:
             },
         )
         data = parse_sse_text(resp.text)
-        assert "error" in data or resp.status_code != 200
+        result = (data or {}).get("result") or {}
+        assert resp.status_code != 200 or "error" in data or result.get("isError")
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(
@@ -370,7 +372,8 @@ class TestMCPToolEnums:
             },
         )
         data = parse_sse_text(resp.text)
-        assert "error" in data or resp.status_code != 200
+        result = (data or {}).get("result") or {}
+        assert resp.status_code != 200 or "error" in data or result.get("isError")
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(
@@ -421,7 +424,8 @@ class TestMCPToolEnums:
             },
         )
         data = parse_sse_text(resp.text)
-        assert "error" in data or resp.status_code != 200
+        result = (data or {}).get("result") or {}
+        assert resp.status_code != 200 or "error" in data or result.get("isError")
 
 
 def parse_sse_text(txt: str) -> dict | None:

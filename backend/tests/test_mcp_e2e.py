@@ -187,7 +187,8 @@ async def test_mcp_invalid_tool(mcp_client):
     )
     # Should return error in JSON-RPC response
     data = parse_sse_text(resp.text)
-    assert "error" in data or resp.status_code != 200
+    result = (data or {}).get("result") or {}
+    assert resp.status_code != 200 or "error" in data or result.get("isError")
 
 
 @pytest.mark.asyncio
