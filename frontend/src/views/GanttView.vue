@@ -120,4 +120,20 @@ onMounted(load)
 .legend-red { background-color: var(--md-status-overdue); }
 .legend-line { width: 16px; height: 0; border-top: 2px dashed var(--md-outline-variant); }
 .legend-progress { width: 12px; height: 8px; display: inline-block; border-radius: var(--md-radius-sm); background: linear-gradient(90deg, var(--md-primary-container) 55%, var(--md-primary) 55%); }
+
+
+/* P4-2 移动端：页头纵排，操作区换行 */
+@media (max-width: 768px) {
+  .page-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--md-space-3);
+  }
+  .head-actions {
+    flex-wrap: wrap;
+  }
+  .head-actions .el-form--inline .el-form-item {
+    margin-right: var(--md-space-2);
+  }
+}
 </style>

@@ -302,4 +302,20 @@ onMounted(load)
   font-weight: var(--md-weight-medium);
   color: var(--md-on-surface);
 }
+
+
+/* P4-2 移动端：页头纵排，操作区换行 */
+@media (max-width: 768px) {
+  .page-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--md-space-3);
+  }
+  .head-actions {
+    flex-wrap: wrap;
+  }
+  .head-actions .el-form--inline .el-form-item {
+    margin-right: var(--md-space-2);
+  }
+}
 </style>

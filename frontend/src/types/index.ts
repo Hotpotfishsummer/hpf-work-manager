@@ -121,6 +121,8 @@ export interface ProjectStats {
   in_progress_tasks: number
   todo_tasks: number
   progress: number
+  weighted_progress: number
+  estimated_hours_total: number | null
   overdue_tasks: OverdueTask[]
 }
 
@@ -145,6 +147,7 @@ export interface DashboardProjectCard {
   name: string
   status: ProjectStatus
   progress: number
+  weighted_progress: number
   total_tasks: number
   done_tasks: number
   overdue_count: number

@@ -225,4 +225,20 @@ function onUserCommand(cmd: string) {
   flex: 1;
   padding-bottom: var(--md-space-7);
 }
+
+/* ---- 移动端适配（P4-2）---- */
+@media (max-width: 900px) {
+  .nav-inner { gap: var(--md-space-3); }
+  .brand-name { display: none; }        /* 保留 logo，省 ~150px */
+  .nav-menu { margin-left: 0; gap: var(--md-space-3); }
+  .search-btn span:not(.search-kbd) { display: none; }
+  .search-kbd { display: none; }
+  .search-btn { padding: var(--md-space-1); }
+  .global-search { width: 170px; }
+}
+@media (max-width: 560px) {
+  .global-search, .search-btn { display: none; }  /* 极小屏收起搜索，保导航可读 */
+  .nav-menu { gap: var(--md-space-4); }
+  .nav-item { font-size: var(--md-text-label-md); }
+}
 </style>

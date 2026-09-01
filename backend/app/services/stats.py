@@ -41,7 +41,7 @@ def compute_overdue(task: Task) -> OverdueTask | None:
 
 
 async def get_project_stats(db: AsyncSession, project_id: int) -> ProjectStats:
-    """项目进度汇总：总数/完成/进行中/待办 + 进度%（完成任务数/总任务数）+ 延期列表。"""
+    """项目进度汇总：总数/完成/进行中/待办 + 进度%（数量与工时加权）+ 延期列表。"""
     row = (
         await db.execute(
             select(
@@ -49,12 +49,18 @@ async def get_project_stats(db: AsyncSession, project_id: int) -> ProjectStats:
                 func.count().filter(Task.status == "done"),
                 func.count().filter(Task.status == "in_progress"),
                 func.count().filter(Task.status == "todo"),
+                # 工时加权：权重=预估工时（未填按 1），任务进度即权重占比
+                func.coalesce(func.sum(func.coalesce(Task.estimated_hours, 1) * Task.progress), 0),
+                func.coalesce(func.sum(func.coalesce(Task.estimated_hours, 1)), 0),
+                func.sum(Task.estimated_hours),  # 已填工时的总量（None=无任务填工时）
             ).where(Task.project_id == project_id)
         )
     ).one()
-    total, done, in_progress, todo = row
+    total, done, in_progress, todo, weighted_num, weighted_den, hours_total = row
 
     progress = round(done / total * 100, 1) if total else 0.0
+    weighted_progress = round(float(weighted_num) / float(weighted_den), 1) if weighted_den else 0.0
+    estimated_hours_total = float(hours_total) if hours_total is not None else None
 
     tasks = (
         (
@@ -78,6 +84,8 @@ async def get_project_stats(db: AsyncSession, project_id: int) -> ProjectStats:
         in_progress_tasks=in_progress,
         todo_tasks=todo,
         progress=progress,
+        weighted_progress=weighted_progress,
+        estimated_hours_total=estimated_hours_total,
         overdue_tasks=overdue,
     )
 
@@ -199,7 +207,7 @@ async def get_overview(db: AsyncSession, user_id: int) -> DashboardOverview:
     project_ids = [p.id for p in projects]
     pid_to_name = {p.id: p.name for p in projects}
 
-    # 项目进度统计（一次聚合）
+    # 项目进度统计（一次聚合，含工时加权）
     project_stats_rows = (
         await db.execute(
             select(
@@ -209,23 +217,27 @@ async def get_overview(db: AsyncSession, user_id: int) -> DashboardOverview:
                 func.count().filter(
                     (Task.status != "done") & (Task.due_date.is_not(None)) & (Task.due_date < today)
                 ),
+                func.coalesce(func.sum(func.coalesce(Task.estimated_hours, 1) * Task.progress), 0),
+                func.coalesce(func.sum(func.coalesce(Task.estimated_hours, 1)), 0),
             ).where(Task.project_id.in_(project_ids) if project_ids else False)
             .group_by(Task.project_id)
         )
     ).all() if project_ids else []
-    stats_by_pid: dict[int, tuple[int, int, int]] = {
-        pid: (total, done, overdue) for pid, total, done, overdue in project_stats_rows
+    stats_by_pid: dict[int, tuple[int, int, int, float, float]] = {
+        pid: (total, done, overdue, weighted_num, weighted_den)
+        for pid, total, done, overdue, weighted_num, weighted_den in project_stats_rows
     }
 
     cards = []
     for p in projects:
-        total, done, overdue = stats_by_pid.get(p.id, (0, 0, 0))
+        total, done, overdue, weighted_num, weighted_den = stats_by_pid.get(p.id, (0, 0, 0, 0, 0))
         cards.append(
             DashboardProjectCard(
                 project_id=p.id,
                 name=p.name,
                 status=p.status,
                 progress=round(done / total * 100, 1) if total else 0.0,
+                weighted_progress=round(float(weighted_num) / float(weighted_den), 1) if weighted_den else 0.0,
                 total_tasks=total,
                 done_tasks=done,
                 overdue_count=overdue,

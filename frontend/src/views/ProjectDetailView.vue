@@ -38,6 +38,12 @@
               <span class="progress-label">项目进度</span>
             </template>
           </el-progress>
+          <p v-if="hasHours" class="hero-weighted">
+            工时加权 {{ Math.round(stats?.weighted_progress ?? 0) }}%
+            <el-tooltip content="按预估工时加权：大任务占比更高，未填工时的任务按 1 小时计" placement="top">
+              <el-icon class="weighted-help"><InfoFilled /></el-icon>
+            </el-tooltip>
+          </p>
           <p class="hero-range">{{ fmtRange() }}</p>
         </div>
       </div>
@@ -180,6 +186,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { InfoFilled } from '@element-plus/icons-vue'
 import { milestoneApi, projectApi, statsApi } from '@/api'
 import type { Milestone, Project, ProjectStats, BurndownPoint } from '@/types'
 import BurndownChart from '@/components/BurndownChart.vue'
@@ -196,6 +203,9 @@ const stats = ref<ProjectStats | null>(null)
 const burndown = ref<BurndownPoint[]>([])
 const milestones = ref<Milestone[]>([])
 const activeTab = ref('overview')
+
+// 有任务填了预估工时才显示工时加权进度
+const hasHours = computed(() => stats.value?.estimated_hours_total != null)
 
 const milestoneDialog = ref(false)
 const savingMilestone = ref(false)
@@ -449,6 +459,20 @@ onMounted(load)
   font-size: var(--md-text-label-md);
   color: var(--md-on-surface-variant);
 }
+.hero-weighted {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--md-space-1);
+  margin: var(--md-space-1) 0 0;
+  font-size: var(--md-text-label-md);
+  font-weight: var(--md-weight-semibold);
+  color: var(--md-primary);
+}
+.weighted-help {
+  font-size: 13px;
+  color: var(--md-on-surface-variant);
+  cursor: help;
+}
 
 /* subnav：分类标签风格 */
 .subnav-wrap {
@@ -569,5 +593,15 @@ onMounted(load)
   font-weight: var(--md-weight-semibold);
   font-size: var(--md-text-body-md);
   color: var(--md-on-surface);
+}
+
+/* P4-2 移动端：hero 纵排，进度环居中 */
+@media (max-width: 768px) {
+  .hero-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--md-space-4);
+  }
+  .hero-progress { align-self: center; text-align: center; }
 }
 </style>

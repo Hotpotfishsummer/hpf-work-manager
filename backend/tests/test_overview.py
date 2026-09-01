@@ -109,3 +109,56 @@ async def test_list_tasks_search_and_sort(auth_client, db_session, test_project)
     assert resp.status_code == 200
     names = [t["name"] for t in resp.json()]
     assert names == ["修复登录bug"]
+
+
+@pytest.mark.asyncio
+async def test_weighted_progress(auth_client, db_session, test_project):
+    """P4-1: 工时加权进度——权重=预估工时（未填按 1），与数量进度并存。"""
+    from app.models import Task
+
+    # 3 个任务：9h 完成(100)、1h 未开始(0)、未填工时 进行中(50)
+    # 数量进度 = 1/3 = 33.3
+    # 加权 = (9*100 + 1*0 + 1*50) / (9+1+1) = 950/11 = 86.4
+    # 总工时（已填）= 10
+    db_session.add_all(
+        [
+            Task(project_id=test_project.id, name="大任务", status="done", progress=100, estimated_hours=9),
+            Task(project_id=test_project.id, name="小任务", status="todo", progress=0, estimated_hours=1),
+            Task(project_id=test_project.id, name="未填工时", status="in_progress", progress=50),
+        ]
+    )
+    await db_session.commit()
+
+    resp = await auth_client.get(f"/api/projects/{test_project.id}/stats")
+    assert resp.status_code == 200
+    s = resp.json()
+    assert s["progress"] == 33.3
+    assert s["weighted_progress"] == 86.4
+    assert s["estimated_hours_total"] == 10.0
+
+    # overview 卡片同样带加权进度
+    resp = await auth_client.get("/api/overview")
+    assert resp.status_code == 200
+    card = next(c for c in resp.json()["projects"] if c["project_id"] == test_project.id)
+    assert card["weighted_progress"] == 86.4
+
+
+@pytest.mark.asyncio
+async def test_weighted_progress_no_hours(auth_client, db_session, test_project):
+    """P4-1: 无人填工时时 estimated_hours_total=None，加权退化为数量进度。"""
+    from app.models import Task
+
+    db_session.add_all(
+        [
+            Task(project_id=test_project.id, name="A", status="done", progress=100),
+            Task(project_id=test_project.id, name="B", status="todo", progress=0),
+        ]
+    )
+    await db_session.commit()
+
+    resp = await auth_client.get(f"/api/projects/{test_project.id}/stats")
+    assert resp.status_code == 200
+    s = resp.json()
+    assert s["estimated_hours_total"] is None
+    assert s["progress"] == 50.0
+    assert s["weighted_progress"] == 50.0  # 全部按 1 权重 → 等同数量进度

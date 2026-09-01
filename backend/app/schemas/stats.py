@@ -17,6 +17,8 @@ class ProjectStats(BaseModel):
     in_progress_tasks: int
     todo_tasks: int
     progress: float  # 0-100，完成任务数/总任务数
+    weighted_progress: float  # 0-100，工时加权：Σ(权重×任务进度)/Σ(权重)，权重=预估工时（未填按 1）
+    estimated_hours_total: float | None  # 已填预估工时的任务总工时；无任务填工时为 None
     overdue_tasks: list[OverdueTask]
 
 
@@ -73,6 +75,7 @@ class DashboardProjectCard(BaseModel):
     name: str
     status: str
     progress: float
+    weighted_progress: float  # 工时加权进度（权重=预估工时，未填按 1）
     total_tasks: int
     done_tasks: int
     overdue_count: int
