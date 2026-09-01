@@ -49,6 +49,15 @@
 - **P2-3 JWT sub 改 user id**：签发 `sub=user_id + username`，decode 兼容层使旧 token（sub=username）继续有效，下游零改动；SSE ticket 同步；typ 隔离保持
 - **已在 0.2.0 覆盖的 P2 原始项**（审计确认）：登录/API Key 限流、注册 IntegrityError→409、MCP 枚举校验一致化、API Key 哈希存储、请求耗时日志
 
+### P3 · 测试与运维 ✅
+- **CI 全绿**（此前每次 push 均失败）：GitHub Actions 后端（ruff + pytest + alembic 离线迁移校验）与前端（vue-tsc + 生产构建 + 体积红线）全流程通过
+- **ruff 规则固化**：pyproject 显式 select（E4/E7/E9/F/I/B/UP/RUF），排除 `alembic/versions` 生成代码；ignore B008（FastAPI 依赖注入惯用法）/ RUF001-003（中文全角标点误报）/ UP046（Pydantic 泛型不迁移 PEP 695）；autofix 97 处，models 8 文件补 `TYPE_CHECKING` 前向引用（F821 ×18），B904 raise-from ×4
+- **两个真 bug 由 lint 抓出、测试回归覆盖**（`tests/test_overview.py`，/overview 此前零覆盖）：
+  - `routers/tasks.py` list_tasks 的 search/sort 分支缺 `func/case` 导入，调用即 NameError→500（前端纯客户端过滤从未触发）；顺带修 `overdue` 过滤在分页之后执行的语义错误 → SQL 级
+  - `services/stats.py` overview 卡片统计三元组解包错误，total>0 即 NameError（测试全靠空库短路）→ 正确解包
+- **CI 环境自洽**：conftest 注入 `ENVIRONMENT=test` + 测试 SECRET_KEY，无 `.env` 环境（CI/新 clone）直接可跑 pytest；CI 安装 `.[test]` extras；setup-node 指定 `frontend/package-lock.json` 缓存路径
+- **运维审计确认已完备**：backup sidecar（每日 pg_dump + gzip + 7 天保留）、restore.sh 交互式恢复、全服务 restart=unless-stopped、DB 感知 healthcheck
+
 ### 测试基建修复
 - 修复全量 `pytest` 挂死：pytest-asyncio 1.4 函数级测试循环与会话级 MCP 会话管理器（anyio task group 绑定单循环、`run()` 仅允许一次）冲突 → `asyncio_default_fixture/test_loop_scope = "session"` 全套共享会话循环；移除废弃的 `event_loop` fixture
 - MCP 工具执行错误以 200 + `result.isError` 返回而非 JSON-RPC error，修正 5 处断言；`test_unauthorized_mcp` 改用无凭证 client（MCP 认证层接受 JWT）
