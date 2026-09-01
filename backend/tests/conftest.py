@@ -12,6 +12,10 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 os.environ.setdefault("MCP_ALLOWED_HOSTS", "testserver,localhost")
+# 测试环境自洽：无论是否存在 .env，pytest 都能以 test 环境启动
+# （environment 默认 production 会因默认 SECRET_KEY 触发 fail-fast）
+os.environ.setdefault("ENVIRONMENT", "test")
+os.environ.setdefault("SECRET_KEY", "test-only-secret-key-0123456789abcdef0123456789abcdef")
 
 
 @pytest_asyncio.fixture(scope="function")

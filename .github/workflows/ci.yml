@@ -34,6 +34,9 @@ jobs:
 
       - name: Run pytest
         run: pytest -q
+        env:
+          ENVIRONMENT: test
+          SECRET_KEY: test-only-secret-key-0123456789abcdef0123456789abcdef
 
       - name: Verify alembic migrations (offline SQL)
         run: alembic upgrade head --sql
