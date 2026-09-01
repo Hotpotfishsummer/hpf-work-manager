@@ -19,6 +19,12 @@
         </nav>
 
         <div class="nav-actions">
+          <button class="search-btn" title="搜索 (⌘K)" @click="openCmdK">
+            <el-icon><Search /></el-icon>
+            <span>搜索</span>
+            <kbd class="search-kbd">⌘K</kbd>
+          </button>
+          <GlobalSearch ref="globalSearchRef" />
           <button class="theme-toggle" :title="theme.scheme === 'dark' ? '切换到浅色' : '切换到深色'" @click="toggleTheme">
             <el-icon v-if="theme.scheme === 'dark'"><Sunny /></el-icon>
             <el-icon v-else><Moon /></el-icon>
@@ -46,14 +52,44 @@
 </template>
 
 <script setup lang="ts">
-import { Moon, Sunny, User } from '@element-plus/icons-vue'
+import { Moon, Search, Sunny, User } from '@element-plus/icons-vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import GlobalSearch from '@/components/GlobalSearch.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const theme = useThemeStore()
+const globalSearchRef = ref<InstanceType<typeof GlobalSearch> | null>(null)
+
+function openCmdK() {
+  const el = globalSearchRef.value?.$el as HTMLElement | undefined
+  const input = el?.querySelector('input') as HTMLInputElement | undefined
+  if (input) {
+    input.focus()
+    input.value = ''
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  }
+}
+
+let onKeydown: ((e: KeyboardEvent) => void) | null = null
+onMounted(() => {
+  onKeydown = (e: KeyboardEvent) => {
+    const tag = (e.target as HTMLElement)?.tagName?.toLowerCase()
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault()
+      openCmdK()
+    }
+  }
+  document.addEventListener('keydown', onKeydown)
+})
+
+onUnmounted(() => {
+  if (onKeydown) document.removeEventListener('keydown', onKeydown)
+})
 
 function toggleTheme() {
   theme.setMode(theme.scheme === 'dark' ? 'light' : 'dark')
@@ -132,6 +168,32 @@ function onUserCommand(cmd: string) {
   display: flex;
   align-items: center;
   gap: var(--md-space-2);
+}
+.search-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--md-space-2);
+  padding: var(--md-space-1) var(--md-space-3);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-sm);
+  background: transparent;
+  color: var(--md-on-surface-variant);
+  cursor: pointer;
+  font-size: var(--md-text-label-md);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.search-btn:hover {
+  border-color: var(--md-outline);
+  color: var(--md-on-surface);
+}
+.search-kbd {
+  font-family: var(--md-font-mono, monospace);
+  font-size: 11px;
+  padding: 1px var(--md-space-1);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 4px;
+  color: var(--md-on-surface-variant);
+  background: var(--md-surface-container-high);
 }
 .theme-toggle {
   width: var(--md-control-height);

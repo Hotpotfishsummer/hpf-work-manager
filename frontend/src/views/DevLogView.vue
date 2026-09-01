@@ -98,6 +98,18 @@
       </div>
     </div>
 
+    <div v-if="hasMore" class="load-more">
+      <el-pagination
+        v-model:current-page="pagination.page"
+        :page-size="pagination.size"
+        :total="pagination.total"
+        layout="prev, pager, next"
+        :disabled="loading"
+        background
+        @current-change="loadMore"
+      />
+    </div>
+
     <!-- 开发汇报弹窗 -->
     <el-dialog v-model="reportDialog" title="开发汇报" width="720px" destroy-on-close>
       <div class="report-range">
@@ -630,6 +642,20 @@ onMounted(() => {
   margin-top: var(--md-space-1);
   font-size: var(--md-text-label-md);
   color: var(--md-on-surface-variant);
+}
+.log-task-tag {
+  cursor: pointer;
+  transition: color var(--md-duration-standard) var(--md-ease-standard),
+    border-color var(--md-duration-standard) var(--md-ease-standard);
+}
+.log-task-tag:hover {
+  color: var(--md-primary);
+  border-color: var(--md-primary);
+}
+.load-more {
+  display: flex;
+  justify-content: center;
+  padding: var(--md-space-5) 0;
 }
 
 .report-text {

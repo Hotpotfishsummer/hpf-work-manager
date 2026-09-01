@@ -24,6 +24,10 @@
           <el-icon style="margin-right: var(--md-space-1)"><Download /></el-icon>
           导出 CSV
         </el-button>
+        <el-button size="large" @click="exportMd">
+          <el-icon style="margin-right: var(--md-space-1)"><Download /></el-icon>
+          导出 .md
+        </el-button>
         <el-button type="primary" size="large" @click="openCreate">
           <el-icon style="margin-right: var(--md-space-1)"><Plus /></el-icon>
           新建任务
@@ -431,6 +435,41 @@ function exportCsv() {
   const a = document.createElement('a')
   a.href = url
   a.download = `${sanitizeFilename(project.value?.name ?? 'project')}_tasks_${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// P1-5: 导出任务 Markdown
+function exportMd() {
+  if (!tasks.value.length) {
+    ElMessage.info('暂无任务可导出')
+    return
+  }
+  const statusLabel: Record<string, string> = { todo: '待办', in_progress: '进行中', done: '已完成' }
+  const lines: string[] = [
+    `# ${project.value?.name ?? '项目'} · 任务清单`,
+    '',
+    `> 导出时间：${new Date().toLocaleString('zh-CN')} · 共 ${tasks.value.length} 个任务`,
+    '',
+  ]
+  for (const col of COLUMNS) {
+    const list = tasks.value.filter((t) => t.status === col.status)
+    if (!list.length) continue
+    lines.push(`## ${col.label}（${list.length}）`, '')
+    for (const t of list) {
+      const due = t.due_date ? ` · 截止 ${t.due_date.slice(0, 10)}` : ''
+      const overdue = t.overdue ? ' · **已逾期**' : ''
+      lines.push(`- [${t.status === 'done' ? 'x' : ' '}] **${t.name}**（${PRIORITY_LABEL[t.priority]}优先级 · ${t.progress}%${due}${overdue}）`)
+      if (t.description) lines.push(`  ${t.description}`)
+    }
+    lines.push('')
+  }
+  const md = lines.join('\n')
+  const blob = new Blob(['\uFEFF' + md], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${sanitizeFilename(project.value?.name ?? 'project')}_tasks_${new Date().toISOString().slice(0, 10)}.md`
   a.click()
   URL.revokeObjectURL(url)
 }

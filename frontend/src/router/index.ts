@@ -61,8 +61,29 @@ const router = createRouter({
         },
       ],
     },
-    { path: '/:pathMatch(.*)*', redirect: '/projects' },
+    { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue') },
   ],
+})
+
+// 设置 document.title
+router.afterEach((to) => {
+  if (to.name === 'not-found') {
+    document.title = '未找到 · HPF Work Manager'
+  } else {
+    const base = 'HPF Work Manager'
+    const names: Record<string, string> = {
+      login: '登录',
+      projects: '项目',
+      dashboard: '进度总览',
+      'project-detail': '项目概览',
+      'project-tasks': '任务看板',
+      'project-gantt': '甘特图',
+      'project-logs': '开发记录',
+      'api-keys': 'API Keys',
+    }
+    const name = names[to.name as string] ?? ''
+    document.title = name ? `${name} · ${base}` : base
+  }
 })
 
 router.beforeEach((to) => {
