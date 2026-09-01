@@ -162,3 +162,34 @@ async def test_weighted_progress_no_hours(auth_client, db_session, test_project)
     assert s["estimated_hours_total"] is None
     assert s["progress"] == 50.0
     assert s["weighted_progress"] == 50.0  # 全部按 1 权重 → 等同数量进度
+
+
+@pytest.mark.asyncio
+async def test_progress_snapshot_upsert_and_history(auth_client, db_session, test_project):
+    """P4-3: 读取 stats 时按天沉淀快照；重复读取同日只更新不新增；历史端点升序返回。"""
+    from app.models import Task
+    from app.utils.time import today_utc
+
+    db_session.add(Task(project_id=test_project.id, name="T1", status="done", progress=100))
+    db_session.add(Task(project_id=test_project.id, name="T2", status="todo", progress=0))
+    await db_session.commit()
+
+    # 第一次读取 stats → 沉淀今日快照
+    resp = await auth_client.get(f"/api/projects/{test_project.id}/stats")
+    assert resp.status_code == 200
+
+    # 任务变化后再次读取 → 同一天快照被更新而非新增
+    db_session.add(Task(project_id=test_project.id, name="T3", status="done", progress=100))
+    await db_session.commit()
+    resp = await auth_client.get(f"/api/projects/{test_project.id}/stats")
+    assert resp.status_code == 200
+
+    resp = await auth_client.get(f"/api/projects/{test_project.id}/progress-history")
+    assert resp.status_code == 200
+    history = resp.json()
+    assert len(history) == 1  # 同日 upsert，仅一条
+    snap = history[0]
+    assert snap["date"] == today_utc().isoformat()
+    assert snap["total_tasks"] == 3
+    assert snap["done_tasks"] == 2
+    assert snap["progress"] == 66.7

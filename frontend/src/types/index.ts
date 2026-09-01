@@ -126,6 +126,14 @@ export interface ProjectStats {
   overdue_tasks: OverdueTask[]
 }
 
+export interface ProgressSnapshotPoint {
+  date: string
+  total_tasks: number
+  done_tasks: number
+  progress: number
+  weighted_progress: number
+}
+
 export interface BurndownPoint {
   date: string
   ideal_remaining: number

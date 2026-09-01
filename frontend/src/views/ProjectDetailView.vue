@@ -80,6 +80,14 @@
           <el-empty v-else description="暂无任务数据" :image-size="80" />
         </section>
 
+        <!-- 进度趋势（P4-3 每日快照） -->
+        <section class="bmw-card section-card">
+          <h2 class="section-title">进度趋势</h2>
+          <p class="section-sub">Trend · 每日快照</p>
+          <ProgressTrendChart v-if="progressHistory.length" :data="progressHistory" />
+          <el-empty v-else description="快照随每次查看统计自动沉淀，明天回来就能看到曲线" :image-size="80" />
+        </section>
+
         <!-- 延期预警 -->
         <section class="bmw-card section-card">
           <h2 class="section-title">延期预警</h2>
@@ -188,8 +196,9 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { InfoFilled } from '@element-plus/icons-vue'
 import { milestoneApi, projectApi, statsApi } from '@/api'
-import type { Milestone, Project, ProjectStats, BurndownPoint } from '@/types'
+import type { Milestone, Project, ProjectStats, BurndownPoint, ProgressSnapshotPoint } from '@/types'
 import BurndownChart from '@/components/BurndownChart.vue'
+import ProgressTrendChart from '@/components/ProgressTrendChart.vue'
 import LiveIndicator from '@/components/LiveIndicator.vue'
 import { useProjectEvents } from '@/composables/useProjectEvents'
 
@@ -201,6 +210,7 @@ const loading = ref(false)
 const project = ref<Project | null>(null)
 const stats = ref<ProjectStats | null>(null)
 const burndown = ref<BurndownPoint[]>([])
+const progressHistory = ref<ProgressSnapshotPoint[]>([])
 const milestones = ref<Milestone[]>([])
 const activeTab = ref('overview')
 
@@ -248,16 +258,18 @@ const { connected, reconnectable, reconnect } = useProjectEvents(() => pid.value
 async function load() {
   loading.value = true
   try {
-    const [p, s, b, ms] = await Promise.all([
+    const [p, s, b, ms, ph] = await Promise.all([
       projectApi.get(pid.value),
       statsApi.project(pid.value),
       statsApi.burndown(pid.value),
       milestoneApi.list(pid.value),
+      statsApi.progressHistory(pid.value).catch(() => []),
     ])
     project.value = p
     stats.value = s
     burndown.value = b
     milestones.value = ms
+    progressHistory.value = ph
   } finally {
     loading.value = false
   }

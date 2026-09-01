@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from app.deps import CurrentUser, DbDep
 from app.models import Project
@@ -10,6 +10,7 @@ from app.services.stats import (
     get_burndown,
     get_gantt_data,
     get_overview,
+    get_progress_history,
     get_project_stats,
 )
 
@@ -43,6 +44,28 @@ async def project_gantt(project_id: int, user: CurrentUser, db: DbDep):
     project = await _get_owned_project(db, user, project_id)
     start, end = _project_range(project)
     return await get_gantt_data(db, project_id, start, end)
+
+
+@router.get("/projects/{project_id}/progress-history")
+async def project_progress_history(
+    project_id: int,
+    user: CurrentUser,
+    db: DbDep,
+    limit: int = Query(default=90, ge=1, le=365),
+):
+    """每日进度快照（按日期升序，默认最近 90 天）。读取 stats 时按天自动沉淀。"""
+    await _get_owned_project(db, user, project_id)
+    rows = await get_progress_history(db, project_id, limit)
+    return [
+        {
+            "date": r.date.isoformat(),
+            "total_tasks": r.total_tasks,
+            "done_tasks": r.done_tasks,
+            "progress": r.progress,
+            "weighted_progress": r.weighted_progress,
+        }
+        for r in rows
+    ]
 
 
 @router.get("/overview", response_model=DashboardOverview)

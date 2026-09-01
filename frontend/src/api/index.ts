@@ -19,6 +19,7 @@ import type {
   Project,
   ProjectCreate,
   ProjectStats,
+  ProgressSnapshotPoint,
   ProjectUpdate,
   SearchRequest,
   SearchResponse,
@@ -90,6 +91,11 @@ export const statsApi = {
     http.get<BurndownPoint[], BurndownPoint[]>(`/projects/${pid}/burndown`),
   gantt: (pid: number) => http.get<GanttData, GanttData>(`/projects/${pid}/gantt`),
   overview: () => http.get<DashboardOverview, DashboardOverview>('/overview'),
+  progressHistory: (pid: number, limit?: number) =>
+    http.get<ProgressSnapshotPoint[], ProgressSnapshotPoint[]>(
+      `/projects/${pid}/progress-history`,
+      limit ? { params: { limit } } : undefined,
+    ),
 }
 
 /* ---- API Key（AI 工具接入凭证） ---- */

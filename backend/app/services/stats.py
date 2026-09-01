@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import DevLog, DevSession, Project, Task
+from app.models import DevLog, DevSession, ProgressSnapshot, Project, Task
 from app.models.task_dependency import TaskDependency
 from app.schemas.stats import (
     BurndownPoint,
@@ -78,6 +78,9 @@ async def get_project_stats(db: AsyncSession, project_id: int) -> ProjectStats:
     overdue = [o for o in (compute_overdue(t) for t in tasks) if o is not None]
     overdue.sort(key=lambda o: o.days_late, reverse=True)
 
+    # P4-3 每日快照：读取统计时按天 upsert（自愈式），保证趋势数据随使用自然沉淀
+    await upsert_progress_snapshot(db, project_id, total, done, progress, weighted_progress)
+
     return ProjectStats(
         total_tasks=total,
         done_tasks=done,
@@ -88,6 +91,58 @@ async def get_project_stats(db: AsyncSession, project_id: int) -> ProjectStats:
         estimated_hours_total=estimated_hours_total,
         overdue_tasks=overdue,
     )
+
+
+async def upsert_progress_snapshot(
+    db: AsyncSession, project_id: int, total: int, done: int, progress: float, weighted: float
+) -> None:
+    """写入/更新今日快照；同日重复读取仅更新数值。
+
+    查询后更新而非方言级 upsert：SQLite（测试）与 PostgreSQL（生产）双兼容；
+    单用户工具并发冲突可忽略，唯一约束兜底。
+    """
+    today = today_utc()
+    snap = (
+        await db.execute(
+            select(ProgressSnapshot).where(
+                ProgressSnapshot.project_id == project_id,
+                ProgressSnapshot.date == today,
+            )
+        )
+    ).scalar_one_or_none()
+    if snap is None:
+        snap = ProgressSnapshot(
+            project_id=project_id,
+            date=today,
+            total_tasks=total,
+            done_tasks=done,
+            progress=progress,
+            weighted_progress=weighted,
+        )
+        db.add(snap)
+    else:
+        snap.total_tasks = total
+        snap.done_tasks = done
+        snap.progress = progress
+        snap.weighted_progress = weighted
+    await db.commit()
+
+
+async def get_progress_history(db: AsyncSession, project_id: int, limit: int = 90) -> list[ProgressSnapshot]:
+    """按日期升序返回最近 N 天快照（供趋势图/回溯）。"""
+    rows = (
+        (
+            await db.execute(
+                select(ProgressSnapshot)
+                .where(ProgressSnapshot.project_id == project_id)
+                .order_by(ProgressSnapshot.date.desc())
+                .limit(limit)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return list(reversed(rows))
 
 
 def _date_range(start: date, end: date) -> list[date]:
