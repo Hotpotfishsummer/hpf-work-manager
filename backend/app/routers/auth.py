@@ -39,7 +39,7 @@ async def register(request: Request, payload: UserRegister, db: DbDep):
     await db.refresh(user)
 
     return Token(
-        access_token=create_access_token(user.username),
+        access_token=create_access_token(user.username, user.id),
         user=UserOut.model_validate(user),
     )
 
@@ -54,7 +54,7 @@ async def login(request: Request, payload: LoginRequest, db: DbDep):
         raise HTTPException(status_code=401, detail="用户名或密码错误")
 
     return Token(
-        access_token=create_access_token(user.username),
+        access_token=create_access_token(user.username, user.id),
         user=UserOut.model_validate(user),
     )
 

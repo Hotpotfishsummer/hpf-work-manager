@@ -25,7 +25,7 @@ async def create_ticket(request: Request, user: CurrentUser) -> dict:
     EventSource 无法携带 Authorization 头，故先以 JWT 换取 30s 一次性 ticket，
     再以 ?ticket= 形式传入 /events/stream；避免长期令牌进入 URL。
     """
-    return {"ticket": create_sse_ticket(user.username)}
+    return {"ticket": create_sse_ticket(user.username, user.id)}
 
 
 @router.get("/events/stream")

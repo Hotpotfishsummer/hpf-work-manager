@@ -104,7 +104,7 @@ async def auth_client(client, test_user):
     """Create authenticated client with registered user."""
     from app.core.security import create_access_token
 
-    token = create_access_token(test_user.username)
+    token = create_access_token(test_user.username, test_user.id)
     client.headers.update({"Authorization": f"Bearer {token}"})
     return client
 

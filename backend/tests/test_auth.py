@@ -157,3 +157,51 @@ async def test_token_format(client, test_user):
     token = resp.json()["access_token"]
     parts = token.split(".")
     assert len(parts) == 3  # JWT has 3 parts: header.payload.signature
+
+@pytest.mark.asyncio
+async def test_jwt_sub_is_user_id_and_legacy_compat(test_user):
+    """P2-3: 新版 JWT sub=user_id、username 字段兼容还原；旧版 sub=username 仍可解码。"""
+    import jwt as pyjwt
+
+    from app.config import settings
+    from app.core.security import create_access_token, decode_token
+
+    token = create_access_token(test_user.username, test_user.id)
+    payload = pyjwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+    assert payload["sub"] == str(test_user.id)
+    assert payload["username"] == test_user.username
+    # 新 token 解码回用户名
+    assert decode_token(token) == test_user.username
+
+    # 旧版 token（sub=username，无 username 字段）仍可解码
+    legacy = pyjwt.encode(
+        {"sub": test_user.username, "exp": 4102444800},
+        settings.secret_key,
+        algorithm=settings.algorithm,
+    )
+    assert decode_token(legacy) == test_user.username
+
+
+@pytest.mark.asyncio
+async def test_sse_ticket_user_id_compat(test_user):
+    """P2-3: SSE ticket 同样 sub=user_id 且兼容旧格式。"""
+    import jwt as pyjwt
+
+    from app.config import settings
+    from app.core.security import create_access_token, create_sse_ticket, decode_sse_ticket
+
+    ticket = create_sse_ticket(test_user.username, test_user.id)
+    payload = pyjwt.decode(ticket, settings.secret_key, algorithms=[settings.algorithm])
+    assert payload["typ"] == "sse"
+    assert payload["sub"] == str(test_user.id)
+    assert decode_sse_ticket(ticket) == test_user.username
+
+    legacy = pyjwt.encode(
+        {"sub": test_user.username, "typ": "sse", "exp": 4102444800},
+        settings.secret_key,
+        algorithm=settings.algorithm,
+    )
+    assert decode_sse_ticket(legacy) == test_user.username
+
+    # 登录 JWT 不能当 SSE ticket 用（typ 区分）
+    assert decode_sse_ticket(create_access_token(test_user.username, test_user.id)) is None

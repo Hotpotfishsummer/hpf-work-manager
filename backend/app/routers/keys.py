@@ -92,4 +92,4 @@ async def exchange_for_token(request: Request, payload: ExchangeRequest):
         ).scalar_one_or_none()
         if user is None:
             raise HTTPException(status_code=401, detail="无效的 API Key")
-        return ApiKeyIssueToken(access_token=create_access_token(user.username))
+        return ApiKeyIssueToken(access_token=create_access_token(user.username, user.id))
