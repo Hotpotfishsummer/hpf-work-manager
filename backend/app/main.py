@@ -12,7 +12,17 @@ from app.config import settings
 from app.core.logging import RequestLoggingMiddleware, setup_logging
 from app.core.ratelimit import limiter
 from app.database import get_db
-from app.routers import auth, dev_logs, events, keys, milestones, projects, search, stats, tasks
+from app.routers import (
+    auth,
+    dev_logs,
+    events,
+    keys,
+    milestones,
+    projects,
+    search,
+    stats,
+    tasks,
+)
 
 setup_logging()
 

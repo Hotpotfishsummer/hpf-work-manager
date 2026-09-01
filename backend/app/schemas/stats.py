@@ -2,8 +2,6 @@ from datetime import date
 
 from pydantic import BaseModel
 
-from app.schemas.task import TaskOut
-
 
 class OverdueTask(BaseModel):
     id: int

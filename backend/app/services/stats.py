@@ -1,14 +1,14 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 
-from sqlalchemy import case, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import DevLog, DevSession, Project, Task
 from app.models.task_dependency import TaskDependency
 from app.schemas.stats import (
     BurndownPoint,
-    DashboardOverview,
     DashboardOverdueItem,
+    DashboardOverview,
     DashboardProjectCard,
     DashboardRecentLog,
     DashboardSession,
@@ -18,7 +18,7 @@ from app.schemas.stats import (
     OverdueTask,
     ProjectStats,
 )
-from app.utils.time import today_utc, utcnow
+from app.utils.time import today_utc
 
 
 def is_overdue(task: Task, today: date | None = None) -> bool:
@@ -217,18 +217,20 @@ async def get_overview(db: AsyncSession, user_id: int) -> DashboardOverview:
         pid: (total, done, overdue) for pid, total, done, overdue in project_stats_rows
     }
 
-    cards = [
-        DashboardProjectCard(
-            project_id=p.id,
-            name=p.name,
-            status=p.status,
-            progress=round(done / total * 100, 1) if (total := stats_by_pid.get(p.id, (0, 0, 0))[0]) else 0.0,
-            total_tasks=total,
-            done_tasks=done,
-            overdue_count=overdue,
+    cards = []
+    for p in projects:
+        total, done, overdue = stats_by_pid.get(p.id, (0, 0, 0))
+        cards.append(
+            DashboardProjectCard(
+                project_id=p.id,
+                name=p.name,
+                status=p.status,
+                progress=round(done / total * 100, 1) if total else 0.0,
+                total_tasks=total,
+                done_tasks=done,
+                overdue_count=overdue,
+            )
         )
-        for p in projects
-    ]
 
     # 跨项目逾期任务
     overdue_query = (

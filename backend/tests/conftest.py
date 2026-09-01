@@ -1,8 +1,8 @@
 """Shared pytest fixtures for backend tests."""
 
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -18,11 +18,8 @@ os.environ.setdefault("MCP_ALLOWED_HOSTS", "testserver,localhost")
 async def test_engine():
     """Create SQLite in-memory test engine."""
     from app.database import Base
+
     # Import all models to register their tables
-    from app.models import (
-        User, Project, Task, TaskDependency, Milestone,
-        ApiKey, DevLog, DevSession
-    )
 
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     async with engine.begin() as conn:
@@ -62,11 +59,11 @@ async def mcp_session_manager():
 @pytest_asyncio.fixture(scope="function")
 async def client(test_engine, mcp_session_manager):
     """Create AsyncClient for testing FastAPI app."""
-    from app.database import AsyncSession
     import app.database as database
     import app.mcp_auth as mcp_auth
     import app.mcp_server as mcp_server
     import app.routers.keys as keys_router
+    from app.database import AsyncSession
     from app.deps import get_db
     from app.main import app
     from app.routers import dev_logs, events, keys, projects, tasks

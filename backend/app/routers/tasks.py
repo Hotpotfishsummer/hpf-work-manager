@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import case, func, or_, select
 
 from app.core.events import publish
 from app.deps import CurrentUser, DbDep
@@ -7,7 +7,7 @@ from app.models import Milestone, Project, Task, TaskDependency
 from app.routers.projects import _get_owned_project
 from app.schemas import TaskBulkUpdate, TaskCreate, TaskOut, TaskUpdate
 from app.services.tasks import apply_task_update, to_out
-from app.utils.time import utcnow
+from app.utils.time import today_utc, utcnow
 
 router = APIRouter(tags=["tasks"])
 
@@ -57,11 +57,14 @@ async def list_tasks(
     if milestone_id is not None:
         stmt = stmt.where(Task.milestone_id == milestone_id)
     if search:
-        from sqlalchemy import or_
-
         pat = f"%{search.lower()}%"
         stmt = stmt.where(
             or_(func.lower(Task.name).like(pat), func.lower(Task.description).like(pat))
+        )
+    # 逾期为实时派生字段，SQL 级过滤保证分页语义正确
+    if overdue is True:
+        stmt = stmt.where(
+            Task.status != "done", Task.due_date.is_not(None), Task.due_date < today_utc()
         )
     # 排序
     if sort == "due_asc":
@@ -82,10 +85,7 @@ async def list_tasks(
     else:
         stmt = stmt.order_by(Task.created_at.desc())
     tasks = (await db.execute(stmt.offset(offset).limit(limit))).scalars().all()
-    outs = [to_out(t) for t in tasks]
-    if overdue:
-        outs = [t for t in outs if t.overdue]
-    return outs
+    return [to_out(t) for t in tasks]
 
 
 @router.post(

@@ -1,7 +1,15 @@
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+if TYPE_CHECKING:
+    from app.models.devlog import DevLog
+    from app.models.devsession import DevSession
+    from app.models.milestone import Milestone
+    from app.models.task import Task
+    from app.models.user import User
 
 from app.database import Base
 

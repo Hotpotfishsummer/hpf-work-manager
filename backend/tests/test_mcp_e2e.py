@@ -7,8 +7,6 @@ import json
 import re
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
 def parse_sse_text(txt: str) -> dict | None:

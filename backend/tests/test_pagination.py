@@ -1,8 +1,6 @@
 """Pagination tests for list endpoints that support pagination."""
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
 @pytest.mark.asyncio
@@ -88,7 +86,7 @@ async def test_list_dev_logs_pagination_with_filters(auth_client, db_session, te
     assert resp.status_code == 200
     data = resp.json()
     assert len(data) == 4
-    assert all(l["entry_type"] == "progress" for l in data)
+    assert all(lg["entry_type"] == "progress" for lg in data)
 
     # Filter by status
     resp = await auth_client.get(
@@ -97,7 +95,7 @@ async def test_list_dev_logs_pagination_with_filters(auth_client, db_session, te
     assert resp.status_code == 200
     data = resp.json()
     assert len(data) == 2
-    assert all(l["status"] == "done" for l in data)
+    assert all(lg["status"] == "done" for lg in data)
 
     # Combined filter
     resp = await auth_client.get(
@@ -107,7 +105,7 @@ async def test_list_dev_logs_pagination_with_filters(auth_client, db_session, te
     assert resp.status_code == 200
     data = resp.json()
     assert len(data) == 3
-    assert all(l["entry_type"] == "todo" and l["status"] == "open" for l in data)
+    assert all(lg["entry_type"] == "todo" and lg["status"] == "open" for lg in data)
 
 
 @pytest.mark.asyncio

@@ -1,7 +1,6 @@
 """Auth endpoints tests: register, login, me."""
 
 import pytest
-from httpx import ASGITransport, AsyncClient
 
 
 @pytest.mark.asyncio
@@ -188,7 +187,11 @@ async def test_sse_ticket_user_id_compat(test_user):
     import jwt as pyjwt
 
     from app.config import settings
-    from app.core.security import create_access_token, create_sse_ticket, decode_sse_ticket
+    from app.core.security import (
+        create_access_token,
+        create_sse_ticket,
+        decode_sse_ticket,
+    )
 
     ticket = create_sse_ticket(test_user.username, test_user.id)
     payload = pyjwt.decode(ticket, settings.secret_key, algorithms=[settings.algorithm])

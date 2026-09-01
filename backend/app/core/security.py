@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from passlib.context import CryptContext
@@ -18,7 +18,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 def create_access_token(subject: str, user_id: int) -> str:
     """签发 JWT。sub=user_id（稳定标识，不受改名影响），username 供兼容层还原。"""
-    expire = datetime.now(timezone.utc) + timedelta(
+    expire = datetime.now(UTC) + timedelta(
         minutes=settings.access_token_expire_minutes
     )
     payload = {"sub": str(user_id), "username": subject, "exp": expire}
@@ -42,7 +42,7 @@ def create_sse_ticket(subject: str, user_id: int) -> str:
 
     typ=sse 用于与登录 JWT 区分；有效期短（默认 30s），仅用于 /events/stream 认证。
     """
-    expire = datetime.now(timezone.utc) + timedelta(seconds=settings.sse_ticket_expire_seconds)
+    expire = datetime.now(UTC) + timedelta(seconds=settings.sse_ticket_expire_seconds)
     payload = {"sub": str(user_id), "username": subject, "typ": "sse", "exp": expire}
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 

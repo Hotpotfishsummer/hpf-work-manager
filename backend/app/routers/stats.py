@@ -1,13 +1,17 @@
 from datetime import date
 
 from fastapi import APIRouter, HTTPException
-from sqlalchemy import select
 
 from app.deps import CurrentUser, DbDep
 from app.models import Project
 from app.routers.projects import _get_owned_project
 from app.schemas import BurndownPoint, DashboardOverview, GanttData, ProjectStats
-from app.services.stats import get_burndown, get_gantt_data, get_overview, get_project_stats
+from app.services.stats import (
+    get_burndown,
+    get_gantt_data,
+    get_overview,
+    get_project_stats,
+)
 
 router = APIRouter(tags=["stats"])
 

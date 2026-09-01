@@ -7,9 +7,8 @@
 
 import hashlib
 import hmac
-import secrets
-
 import re
+import secrets
 
 from app.config import settings
 

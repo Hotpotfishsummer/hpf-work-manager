@@ -4,15 +4,15 @@
 供 MCP tool 处理器读取。未认证返回 401。
 """
 
+from sqlalchemy import select
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+import app.mcp_auth as mcp_auth_module
 from app.core.apikey import validate_api_key
 from app.core.security import decode_token
 from app.mcp_server import current_username
-from sqlalchemy import select
-import app.mcp_auth as mcp_auth_module
 from app.models import ApiKey, User
 
 

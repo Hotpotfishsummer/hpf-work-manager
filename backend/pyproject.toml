@@ -43,3 +43,24 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+
+[tool.ruff]
+# alembic/versions 为生成代码，不参与 lint
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = [
+  "E4", "E7", "E9", # pycodestyle 错误子集
+  "F",              # pyflakes（未用导入/未定义名）
+  "I",              # import 排序
+  "B",              # flake8-bugbear
+  "UP",             # pyupgrade
+  "RUF",            # ruff 专有规则
+]
+# B008：FastAPI 的 Depends()/Query() 默认参数注入为官方惯用法
+# RUF001/002/003：中文注释/文档字符串中的全角标点被误报为歧义 Unicode
+# UP046：Pydantic 泛型模型暂不迁移 PEP 695 语法
+ignore = ["B008", "RUF001", "RUF002", "RUF003", "UP046"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Header", "fastapi.Body"]

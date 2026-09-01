@@ -1,15 +1,12 @@
+"""Enum validation tests for task status, priority, dev_log types, etc."""
+
 import os
 
 import pytest
+from pydantic import ValidationError
 
 _mcp_disabled = os.environ.get("MCP_ENABLED", "true").lower() == "false"
 _requires_mcp = pytest.mark.skipif(_mcp_disabled, reason="MCP_ENABLED=false in this test run")
-
-
-"""Enum validation tests for task status, priority, dev_log types, etc."""
-
-import pytest
-from pydantic import ValidationError
 
 
 class TestTaskEnums:
@@ -17,7 +14,7 @@ class TestTaskEnums:
 
     def test_task_status_valid(self):
         """Test valid task status values."""
-        from app.schemas.task import TaskCreate, TASK_STATUS
+        from app.schemas.task import TASK_STATUS, TaskCreate
 
         for status in TASK_STATUS:
             task = TaskCreate(name="Test", status=status)
@@ -32,7 +29,7 @@ class TestTaskEnums:
 
     def test_task_priority_valid(self):
         """Test valid task priority values."""
-        from app.schemas.task import TaskCreate, TASK_PRIORITY
+        from app.schemas.task import TASK_PRIORITY, TaskCreate
 
         for priority in TASK_PRIORITY:
             task = TaskCreate(name="Test", priority=priority)
@@ -86,7 +83,7 @@ class TestDevLogEnums:
 
     def test_dev_log_entry_type_valid(self):
         """Test valid dev log entry types."""
-        from app.schemas.dev_log import DevLogCreate, DEV_LOG_TYPES
+        from app.schemas.dev_log import DEV_LOG_TYPES, DevLogCreate
 
         for entry_type in DEV_LOG_TYPES:
             log = DevLogCreate(entry_type=entry_type, title="Test")
@@ -101,7 +98,7 @@ class TestDevLogEnums:
 
     def test_dev_log_status_valid(self):
         """Test valid dev log status values."""
-        from app.schemas.dev_log import DevLogCreate, DEV_LOG_STATUS
+        from app.schemas.dev_log import DEV_LOG_STATUS, DevLogCreate
 
         for status in DEV_LOG_STATUS:
             log = DevLogCreate(entry_type="todo", title="Test", status=status)
@@ -116,7 +113,7 @@ class TestDevLogEnums:
 
     def test_dev_log_severity_valid(self):
         """Test valid dev log severity values."""
-        from app.schemas.dev_log import DevLogCreate, SEVERITY
+        from app.schemas.dev_log import SEVERITY, DevLogCreate
 
         for severity in SEVERITY:
             log = DevLogCreate(entry_type="difficulty", title="Test", severity=severity)

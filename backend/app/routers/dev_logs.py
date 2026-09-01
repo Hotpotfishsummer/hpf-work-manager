@@ -25,7 +25,6 @@ from app.services.dev_logs import (
     get_dev_log_stats,
     get_dev_report,
     session_to_dict,
-    to_dict,
 )
 from app.utils.time import utcnow
 
@@ -103,7 +102,7 @@ async def create_log(
         await _validate_related_tasks(db, project_id, data.get("related_task_ids"))
         session_id = await _attach_session(db, project_id, payload.session_id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     log = DevLog(
         project_id=project_id,
@@ -150,7 +149,7 @@ async def update_log(
         try:
             await _validate_related_tasks(db, log.project_id, data.get("related_task_ids"))
         except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
     apply_log_update(log, data)
     await db.commit()
     await db.refresh(log)

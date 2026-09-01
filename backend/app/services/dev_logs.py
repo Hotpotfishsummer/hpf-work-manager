@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import DevLog, DevSession, Project, Task
 from app.schemas import DevLogStats
-from app.schemas.dev_log import _STATUS_TYPES, _SEVERITY_TYPES
+from app.schemas.dev_log import _SEVERITY_TYPES, _STATUS_TYPES
 from app.utils.time import today_utc, utcnow
 
 

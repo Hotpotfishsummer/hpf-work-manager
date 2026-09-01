@@ -8,7 +8,7 @@ from app.core.events import subscribe, unsubscribe
 from app.core.ratelimit import limiter
 from app.core.security import create_sse_ticket, decode_sse_ticket
 from app.database import get_db
-from app.deps import CurrentUser, DbDep, OptionalUser, _user_from_username
+from app.deps import CurrentUser, OptionalUser, _user_from_username
 from app.models import User
 from app.routers.projects import _get_owned_project
 
@@ -35,7 +35,7 @@ async def event_stream(
     project_id: int = Query(..., description="订阅的项目 ID"),
     ticket: str | None = Query(default=None, description="POST /events/ticket 换取的短期 ticket"),
     user: Annotated[User | None, Depends(OptionalUser)] = None,
-    db: Annotated[object, Depends(get_db)] = None,  # noqa: B008
+    db: Annotated[object, Depends(get_db)] = None,
 ):
     """SSE 事件流：订阅指定项目的变更事件，前端实时刷新。
 
@@ -64,7 +64,7 @@ async def event_stream(
                 try:
                     message = await asyncio.wait_for(queue.get(), timeout=HEARTBEAT_INTERVAL)
                     yield {"event": "project-update", "data": message}
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # 心跳，保持连接
                     yield {"event": "ping", "data": "keepalive"}
         finally:

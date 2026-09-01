@@ -3,13 +3,21 @@
 用法：
     cd backend && .venv/bin/python scripts/seed_mock.py
 """
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 
 from sqlalchemy import select
+
 from app.core.security import hash_password
 from app.database import AsyncSessionLocal
-from app.models import DevLog, DevSession, Milestone, Project, Task, TaskDependency, User
-from app.utils.time import utcnow
+from app.models import (
+    DevLog,
+    DevSession,
+    Milestone,
+    Project,
+    Task,
+    TaskDependency,
+    User,
+)
 
 ADMIN = "admin"
 PW = "admin123"
@@ -22,7 +30,7 @@ def d(offset: int) -> date:
 
 
 def dt(offset: int) -> datetime:
-    return datetime.combine(d(offset), time(0, 0), tzinfo=timezone.utc)
+    return datetime.combine(d(offset), time(0, 0), tzinfo=UTC)
 
 
 async def main() -> None:

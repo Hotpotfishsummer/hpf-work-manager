@@ -4,18 +4,13 @@
 汇报生成、关联任务越权校验，以及 MCP 的 log_*/get_dev_report/get_project_state 链路。
 """
 
+import json
 import os
 
 import pytest
 
 _mcp_disabled = os.environ.get("MCP_ENABLED", "true").lower() == "false"
 _requires_mcp = pytest.mark.skipif(_mcp_disabled, reason="MCP_ENABLED=false in this test run")
-
-import json
-
-import pytest
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
 def parse_sse_text(txt: str) -> dict | None:
@@ -77,7 +72,6 @@ async def test_dev_log_service_layer(db_session, test_project, test_task):
     db_session.add(s)
     await db_session.commit()
     await db_session.refresh(s)
-    sid = s.id
     s.ended_at = s.started_at
     await db_session.commit()
 
@@ -333,7 +327,12 @@ async def test_dev_log_mcp_tools(mcp_client, test_project, test_task):
 @pytest.mark.asyncio
 async def test_dev_log_enum_validation():
     """Test DevLog enum validation."""
-    from app.schemas.dev_log import DevLogCreate, DEV_LOG_TYPES, DEV_LOG_STATUS, SEVERITY
+    from app.schemas.dev_log import (
+        DEV_LOG_STATUS,
+        DEV_LOG_TYPES,
+        SEVERITY,
+        DevLogCreate,
+    )
 
     # Valid entry types
     for et in DEV_LOG_TYPES:

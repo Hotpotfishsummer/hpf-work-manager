@@ -7,14 +7,12 @@ import asyncio
 import json
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
 @pytest.mark.asyncio
 async def test_api_key_generation_and_validation():
     """Test API key generation and validation."""
-    from app.core.apikey import generate_api_key, validate_api_key, API_KEY_PREFIX
+    from app.core.apikey import API_KEY_PREFIX, generate_api_key, validate_api_key
 
     raw, prefix, key_hash = generate_api_key(1)
     assert validate_api_key(raw) == key_hash
@@ -63,7 +61,6 @@ async def test_task_state_machine(db_session, test_project):
     """Test task state machine: done -> progress=100, completed_at."""
     from app.models import Task
     from app.services.tasks import apply_task_update
-    from app.utils.time import utcnow
 
     task = Task(project_id=test_project.id, name="T1", status="todo", progress=0)
     db_session.add(task)
@@ -86,7 +83,6 @@ async def test_sse_event_publish_subscribe(db_session, test_project):
     """Test SSE event publish/subscribe."""
     from app.core.events import publish, subscribe
     from app.models import Task
-    from app.services.tasks import apply_task_update
 
     task = Task(project_id=test_project.id, name="T1", status="todo", progress=0)
     db_session.add(task)

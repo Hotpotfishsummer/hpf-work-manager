@@ -1,13 +1,14 @@
 """Error response tests for 4xx status codes."""
 
 import os
+from datetime import UTC
 
 import pytest
 
 _mcp_disabled = os.environ.get("MCP_ENABLED", "true").lower() == "false"
 _requires_mcp = pytest.mark.skipif(_mcp_disabled, reason="MCP_ENABLED=false in this test run")
 
-from httpx import ASGITransport, AsyncClient
+
 
 
 class Test400Errors:
@@ -44,7 +45,7 @@ class Test400Errors:
     @pytest.mark.asyncio
     async def test_duplicate_task_dependency(self, auth_client, test_project, db_session):
         """Test adding duplicate task dependency returns 400."""
-        from app.models import Task, TaskDependency
+        from app.models import Task
 
         task1 = Task(project_id=test_project.id, name="Task 1", status="todo", progress=0)
         task2 = Task(project_id=test_project.id, name="Task 2", status="todo", progress=0)
@@ -185,9 +186,10 @@ class Test401Errors:
     @pytest.mark.asyncio
     async def test_revoked_api_key_exchange(self, auth_client, db_session, test_user):
         """Test exchanging revoked API key returns 401."""
+        from datetime import datetime
+
         from app.core.apikey import generate_api_key
         from app.models import ApiKey
-        from datetime import datetime, timezone
 
         raw, prefix, key_hash = generate_api_key(test_user.id)
         key = ApiKey(
@@ -195,7 +197,7 @@ class Test401Errors:
             name="revoked",
             prefix=prefix,
             key_hash=key_hash,
-            revoked_at=datetime.now(timezone.utc),
+            revoked_at=datetime.now(UTC),
         )
         db_session.add(key)
         await db_session.commit()

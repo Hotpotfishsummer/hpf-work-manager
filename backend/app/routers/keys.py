@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from fastapi import Request, APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
@@ -59,7 +59,7 @@ async def revoke_key(key_id: int, user: CurrentUser, db: DbDep):
     ).scalar_one_or_none()
     if key is None:
         raise HTTPException(status_code=404, detail="API Key 不存在")
-    key.revoked_at = datetime.now(timezone.utc)
+    key.revoked_at = datetime.now(UTC)
     await db.commit()
 
 
@@ -85,7 +85,7 @@ async def exchange_for_token(request: Request, payload: ExchangeRequest):
         ).scalar_one_or_none()
         if row is None:
             raise HTTPException(status_code=401, detail="无效的 API Key")
-        row.last_used_at = datetime.now(timezone.utc)
+        row.last_used_at = datetime.now(UTC)
         await db.commit()
         user = (
             await db.execute(select(User).where(User.id == row.user_id))

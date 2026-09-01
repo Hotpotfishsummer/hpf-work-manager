@@ -16,7 +16,15 @@ from sqlalchemy import or_, select
 from app.config import settings
 from app.core.events import publish
 from app.database import AsyncSessionLocal
-from app.models import DevLog, DevSession, Milestone, Project, Task, TaskDependency, User
+from app.models import (
+    DevLog,
+    DevSession,
+    Milestone,
+    Project,
+    Task,
+    TaskDependency,
+    User,
+)
 from app.schemas import (
     DevLogCreate,
     MilestoneCreate,
@@ -27,13 +35,24 @@ from app.services.dev_logs import (
     _attach_session,
     _validate_related_tasks,
     apply_log_update,
-    get_dev_log_stats as _get_dev_log_stats_service,
-    get_dev_report as _get_dev_report_service,
-    get_project_state as _get_project_state_service,
     session_to_dict,
     to_dict,
 )
-from app.services.stats import get_burndown, get_gantt_data, get_project_stats, today_utc
+from app.services.dev_logs import (
+    get_dev_log_stats as _get_dev_log_stats_service,
+)
+from app.services.dev_logs import (
+    get_dev_report as _get_dev_report_service,
+)
+from app.services.dev_logs import (
+    get_project_state as _get_project_state_service,
+)
+from app.services.stats import (
+    get_burndown,
+    get_gantt_data,
+    get_project_stats,
+    today_utc,
+)
 from app.services.tasks import apply_task_update, to_out
 from app.utils.time import utcnow
 
@@ -704,7 +723,7 @@ async def _create_log_entry(
         await _validate_related_tasks(db, project_id, related_task_ids)
         sid = await _attach_session(db, project_id, session_id)
     except ValueError as e:
-        raise ValueError(str(e))
+        raise ValueError(str(e)) from e
     log = DevLog(
         project_id=project_id,
         session_id=sid,
@@ -923,7 +942,7 @@ async def update_dev_log(
             try:
                 await _validate_related_tasks(db, log.project_id, updates["related_task_ids"])
             except ValueError as e:
-                raise ValueError(str(e))
+                raise ValueError(str(e)) from e
         apply_log_update(log, updates)
         await db.commit()
         await db.refresh(log)

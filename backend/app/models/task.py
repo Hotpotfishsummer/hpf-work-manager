@@ -1,7 +1,13 @@
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+if TYPE_CHECKING:
+    from app.models.milestone import Milestone
+    from app.models.project import Project
+    from app.models.taskdependency import TaskDependency
 
 from app.database import Base
 

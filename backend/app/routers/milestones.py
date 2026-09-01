@@ -1,4 +1,4 @@
-from fastapi import Query, APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import select
 
 from app.core.events import publish

@@ -6,7 +6,7 @@
 import asyncio
 import json
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 _queues: dict[str, set[asyncio.Queue]] = defaultdict(set)
 _lock = asyncio.Lock()
@@ -34,7 +34,7 @@ async def publish(project_id: int, event_type: str, entity: str, entity_id: int)
             "entity": entity,
             "entity_id": entity_id,
             "project_id": project_id,
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(UTC).isoformat(),
         }
     )
     async with _lock:

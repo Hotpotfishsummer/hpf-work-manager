@@ -1,10 +1,10 @@
-from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import func, or_, select
+from fastapi import APIRouter, Query
+from sqlalchemy import select
 
 from app.deps import CurrentUser, DbDep
 from app.models import Milestone, Project, Task
 from app.routers.projects import _get_owned_project
-from app.schemas.search import SearchRequest, SearchResponse, SearchResultItem
+from app.schemas.search import SearchResponse, SearchResultItem
 
 router = APIRouter(tags=["search"])
 
