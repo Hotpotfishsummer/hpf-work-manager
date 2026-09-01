@@ -12,21 +12,41 @@
 - **里程碑编辑/完成标记**：详情页里程碑时间轴加编辑弹窗 + 「标记完成/取消完成」切换，删除已捕获 cancel rejection
 - **小 bug 修复**：`dev_logs.py` no-op `resolved_at` 改 `utcnow()`；`http.ts` 422 array detail 正确渲染；所有 `el-date-picker` 加 `value-format="YYYY-MM-DD"`；Element Plus `zh-cn` locale；4 处 `ElMessageBox` cancel 加 try/catch；`ApiKeysView` 空状态/日期格式化/clipboard fallback/closable alert
 
-### P1 · 核心体验补强（进行中）
+### P1 · 核心体验补强 ✅
 #### P1-1 全局仪表盘 ✅
 - 后端 `GET /api/overview` 聚合接口（项目进度卡片 / 逾期汇总 / 近期 DevLog / 活跃会话 / 今日完成数），单次查询避免 N+1
 - 前端 `DashboardView.vue` + 路由 `/dashboard`；AppLayout「进度」导航死链修复 → 指向 `/dashboard`
 
-#### P1-2 任务看板增强（进行中，未完成）
+#### P1-2 任务看板增强 ✅
 - 后端 `list_tasks` 新增 `priority` / `milestone_id` / `search`（ILIKE 模糊） / `sort`（created_desc / due_asc / due_desc / priority_desc）参数
 - 前端搜索框 + 状态/优先级/逾期筛选表单 + 排序下拉（客户端派生，无需重新请求）
-- 任务卡片多选框 + 批量操作弹窗（批量改状态/优先级/里程碑）；API 依赖关系 `listDeps/addDep/removeDep` 接线
+- 任务卡片多选框 + 批量操作弹窗（批量改状态/优先级/里程碑）
 - 乐观更新（本地 patch + 失败回滚）；拖拽 done→todo 重置 progress
 - `ElCheckbox` / `ElSwitch` / `ElSelect` 组件注册
 
-#### P1-3 依赖关系编辑 UI（待启动）
-#### P1-4 DevLog 页补强（待启动）
-#### P1-5 全局设施（待启动）
+#### P1-3 依赖关系编辑 UI ✅
+- 任务卡片新增「依赖」按钮，卡片内以标签展示前置依赖任务名
+- 依赖管理弹窗：候选任务搜索过滤 + 多选保存（`Promise.all` 增删差量）
+- 已完成任务在候选列表中标注；乐观更新本地 `depends_on` 列表
+
+#### P1-4 DevLog 页补强 ✅
+- 新建/编辑 DevLog 弹窗（类型/标题/内容/状态/严重度/关联任务/git ref），状态与严重度字段按类型条件显示
+- 列表分页：el-pagination + 差量去重加载
+- 关联任务标签可点击跳转至任务看板
+- 开发汇报弹窗：日期范围筛选重新生成 + 下载 `.md`
+- 「标记完成」确认弹窗带条目标题，防误触
+
+#### P1-5 全局设施 ✅
+- AppLayout 接入 `GlobalSearch`，搜索按钮 + `⌘K`/`Ctrl+K` 快捷键聚焦
+- 新增 404 页面（`NotFoundView`），未知路由不再静默重定向
+- 路由 `afterEach` 设置 `document.title`（中文页面标题映射）
+- DevLog 列表接入 `el-pagination`
+- TaskBoard 新增任务清单 Markdown 导出（按状态分节 + 勾选框）
+
+### 测试基建修复
+- 修复全量 `pytest` 挂死：pytest-asyncio 1.4 函数级测试循环与会话级 MCP 会话管理器（anyio task group 绑定单循环、`run()` 仅允许一次）冲突 → `asyncio_default_fixture/test_loop_scope = "session"` 全套共享会话循环；移除废弃的 `event_loop` fixture
+- MCP 工具执行错误以 200 + `result.isError` 返回而非 JSON-RPC error，修正 5 处断言；`test_unauthorized_mcp` 改用无凭证 client（MCP 认证层接受 JWT）
+- 结果：**106 passed in ~21s**（修复前：全量跑永久挂起）
 
 ## [0.2.0] - 2026-08-26
 

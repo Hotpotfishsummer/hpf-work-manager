@@ -72,7 +72,7 @@
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | /projects/{pid}/tasks | 列表；`?status=`、`?overdue=true` 过滤 |
+| GET | /projects/{pid}/tasks | 列表；`?status=`、`?overdue=`、`?priority=`、`?milestone_id=`、`?search=`（名称/描述模糊）、`?sort=`（created_desc / due_asc / due_desc / priority_desc） |
 | POST | /projects/{pid}/tasks | 创建 → 201 |
 | GET | /tasks/{id} | 详情 |
 | PUT | /tasks/{id} | 更新（含状态流转，见下） |
@@ -107,6 +107,26 @@
 - 目标任务不存在/无权限 → `404`
 
 ## 6. 统计与进度追踪
+
+### GET /overview — 全局仪表盘聚合（P1-1）
+```json
+{ "total_projects": 3, "active_projects": 2,
+  "projects": [ { "project_id": 1, "name": "…", "status": "active", "progress": 33.3,
+                   "total_tasks": 12, "done_tasks": 4, "overdue_count": 1 } ],
+  "overdue_tasks": [ { "id": 3, "name": "…", "project_id": 1, "project_name": "…",
+                        "due_date": "2026-08-09", "days_late": 2, "priority": "medium" } ],
+  "recent_logs": [ { "id": 7, "project_id": 1, "project_name": "…", "entry_type": "progress",
+                      "title": "…", "author": "…", "created_at": "…" } ],
+  "active_sessions": [ { "id": 2, "project_id": 1, "project_name": "…", "title": "…",
+                          "log_count": 4, "started_at": "…" } ],
+  "today_completed": 3 }
+```
+- 单次聚合查询（统计头 / 项目进度卡片 / 逾期任务 / 近期 DevLog / 活跃会话 / 今日完成数），驱动 `/dashboard` 页
+
+### GET /search — 全局搜索（P1-5）
+- `?q=<关键词>&project_id=<可选，限定项目>`；`q` 至少 2 字符
+- 覆盖项目 / 任务 / 里程碑（ILIKE 模糊匹配），返回 `{ items: [ { type, id, name, description, project_id, project_name, status, due_date } ], total }`
+- 前端入口：顶栏 GlobalSearch 组件（`⌘K` 聚焦）
 
 ### GET /projects/{pid}/stats — 进度汇总
 ```json
