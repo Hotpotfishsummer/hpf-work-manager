@@ -14,8 +14,8 @@
 ## 一、项目（5）
 
 ### 1. `list_projects` — 列出当前用户的所有项目
-- 参数：无
-- 返回：`Project[]`
+- 参数：`status`（可选，active/archived）、`offset`（默认 0）、`limit`（默认 50，上限 200）
+- 返回：`Project[]`（按 created_at 倒序）
 
 ```json
 [{"id":1,"name":"HPF 官网","description":"官网改版","status":"active",
@@ -84,7 +84,9 @@ start_date, due_date, completed_at, estimated_hours, created_at`。
 - 参数：
   - `project_id: int`
   - `status: str | None`（`todo` / `in_progress` / `done`）
-  - `overdue: bool | None`（`true` 时只返回延期任务）
+  - `overdue: bool | None`（`true` 时只返回延期任务，SQL 级过滤）
+  - `search: str | None`（名称/描述 ILIKE 模糊匹配）
+  - `offset: int = 0`、`limit: int = 200`（上限 500）
 - 返回：`Task[]`（按 created_at 倒序）
 
 ```text
@@ -242,7 +244,7 @@ log_progress(project_id=1, title="完成 JWT 签发与校验", git_ref="a1b2c3d"
   - `entry_type: str | None`（progress/difficulty/todo/decision/blocker/milestone/note）
   - `status: str | None`（open/done）
   - `since: str | None`（ISO 日期时间，`2026-08-12T00:00:00` 起）
-  - `limit: int = 50`
+  - `limit: int = 50`（上限 200）、`offset: int = 0`
 - 返回：`DevLog[]`（按 created_at 倒序）
 
 ### 30. `get_dev_log_stats_mcp` — 开发记录统计

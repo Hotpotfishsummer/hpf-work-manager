@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.config import settings
 from app.core.events import publish
@@ -33,7 +33,7 @@ from app.services.dev_logs import (
     session_to_dict,
     to_dict,
 )
-from app.services.stats import get_burndown, get_gantt_data, get_project_stats
+from app.services.stats import get_burndown, get_gantt_data, get_project_stats, today_utc
 from app.services.tasks import apply_task_update, to_out
 from app.utils.time import utcnow
 
@@ -152,17 +152,24 @@ def _task_dict(t: Task) -> dict:
 
 
 @mcp.tool()
-async def list_projects() -> list[dict]:
-    """列出当前用户的所有项目。"""
+async def list_projects(
+    status: str | None = None, offset: int = 0, limit: int = 50
+) -> list[dict]:
+    """列出当前用户的所有项目，可按 status（active/archived）过滤；offset/limit 分页。"""
     username = _username()
+    if status is not None and status not in ("active", "archived"):
+        raise ValueError("status 必须为 active / archived 之一")
     async with AsyncSessionLocal() as db:
         user = await _get_user(db, username)
+        stmt = select(Project).where(Project.owner_id == user.id)
+        if status:
+            stmt = stmt.where(Project.status == status)
         rows = (
             (
                 await db.execute(
-                    select(Project)
-                    .where(Project.owner_id == user.id)
-                    .order_by(Project.created_at.desc())
+                    stmt.order_by(Project.created_at.desc())
+                    .offset(max(0, offset))
+                    .limit(min(max(1, limit), 200))
                 )
             )
             .scalars()
@@ -353,21 +360,35 @@ async def delete_milestone(milestone_id: int) -> str:
 
 @mcp.tool()
 async def list_tasks(
-    project_id: int, status: str | None = None, overdue: bool | None = None
+    project_id: int, status: str | None = None, overdue: bool | None = None,
+    search: str | None = None, offset: int = 0, limit: int = 200,
 ) -> list[dict]:
-    """列出项目任务。可按 status（todo/in_progress/done）与 overdue 过滤。"""
+    """列出项目任务。可按 status（todo/in_progress/done）、overdue 过滤、search 名称/描述模糊搜索；offset/limit 分页。"""
     username = _username()
     async with AsyncSessionLocal() as db:
         await _require_project(db, username, project_id)
         stmt = select(Task).where(Task.project_id == project_id)
         if status:
             stmt = stmt.where(Task.status == status)
+        if overdue is True:
+            stmt = stmt.where(Task.status != "done", Task.due_date.is_not(None), Task.due_date < today_utc())
+        if search:
+            like = f"%{search.strip()}%"
+            stmt = stmt.where(or_(Task.name.ilike(like), Task.description.ilike(like)))
         rows = (
-            (await db.execute(stmt.order_by(Task.created_at.desc()))).scalars().all()
+            (
+                await db.execute(
+                    stmt.order_by(Task.created_at.desc())
+                    .offset(max(0, offset))
+                    .limit(min(max(1, limit), 500))
+                )
+            )
+            .scalars()
+            .all()
         )
         outs = [to_out(t) for t in rows]
-        if overdue:
-            outs = [t for t in outs if t.overdue]
+        if overdue is False:
+            outs = [t for t in outs if not t.overdue]
         return [_task_dict(t) for t in outs]
 
 
@@ -808,9 +829,10 @@ async def end_dev_session(session_id: int, summary: str | None = None) -> dict:
 @mcp.tool()
 async def list_dev_logs(
     project_id: int, entry_type: str | None = None,
-    status: str | None = None, since: str | None = None, limit: int = 50,
+    status: str | None = None, since: str | None = None,
+    limit: int = 50, offset: int = 0,
 ) -> list[dict]:
-    """列出项目的开发记录。可按 entry_type（progress/difficulty/todo/decision/blocker/milestone/note）与 status（open/done）过滤。"""
+    """列出项目的开发记录。可按 entry_type（progress/difficulty/todo/decision/blocker/milestone/note）与 status（open/done）过滤；offset/limit 分页。"""
     username = _username()
     async with AsyncSessionLocal() as db:
         await _require_project(db, username, project_id)
@@ -822,7 +844,13 @@ async def list_dev_logs(
         if since:
             stmt = stmt.where(DevLog.created_at >= datetime.fromisoformat(since))
         rows = (
-            (await db.execute(stmt.order_by(DevLog.created_at.desc()).limit(limit)))
+            (
+                await db.execute(
+                    stmt.order_by(DevLog.created_at.desc())
+                    .offset(max(0, offset))
+                    .limit(min(max(1, limit), 200))
+                )
+            )
             .scalars()
             .all()
         )

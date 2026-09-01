@@ -303,3 +303,50 @@ async def test_mcp_list_task_dependencies(mcp_client, test_project, test_task):
     content = result["content"][0]["text"]
     assert "前置任务" in content
     assert str(dep_id) in content
+
+
+@pytest.mark.asyncio
+async def test_mcp_list_tools_pagination_and_search(mcp_client, test_project):
+    """P2-2: MCP list 工具 offset/limit 分页与 search 模糊搜索。"""
+    from app.database import AsyncSessionLocal
+    from app.models import Task
+
+    async with AsyncSessionLocal() as db:
+        for i in range(5):
+            db.add(Task(project_id=test_project.id, name=f"分页任务{i}", status="todo", progress=0))
+        db.add(Task(project_id=test_project.id, name="特殊搜索目标", description="关键词xyz", status="todo", progress=0))
+        await db.commit()
+
+    sid = await test_mcp_auth_initialize(mcp_client)
+    headers = {**mcp_client.headers, "mcp-session-id": sid}
+
+    async def call(name, arguments):
+        resp = await mcp_client.post(
+            "/mcp/",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 40,
+                "method": "tools/call",
+                "params": {"name": name, "arguments": arguments},
+            },
+        )
+        assert resp.status_code == 200
+        data = parse_sse_text(resp.text)
+        assert data["result"].get("isError") is not True, data
+        # list 返回值为多个 content 块（每项一块），合并后再断言
+        return "".join(b.get("text", "") for b in data["result"]["content"])
+
+    # 分页：limit=2, offset=0 vs offset=2 不重叠
+    page0 = await call("list_tasks", {"project_id": test_project.id, "limit": 2, "offset": 0})
+    page1 = await call("list_tasks", {"project_id": test_project.id, "limit": 2, "offset": 2})
+    names0 = re.findall(r'"name": "([^"]+)"', page0)
+    names1 = re.findall(r'"name": "([^"]+)"', page1)
+    assert len(names0) == 2 and len(names1) == 2
+    assert not set(names0) & set(names1)
+
+    # 搜索命中名称与描述
+    searched = await call("list_tasks", {"project_id": test_project.id, "search": "xyz"})
+    assert "特殊搜索目标" in searched
+    searched2 = await call("list_tasks", {"project_id": test_project.id, "search": "分页任务"})
+    assert "分页任务0" in searched2
