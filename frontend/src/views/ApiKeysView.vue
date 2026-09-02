@@ -40,7 +40,7 @@
       <el-table-column label="最近使用" min-width="160">
         <template #default="{ row }">{{ row.last_used_at ? fmtDate(row.last_used_at) : '—' }}</template>
       </el-table-column>
-      <el-table-column label="创建时间" min-width="160">
+      <el-table-column v-if="!isNarrow" label="创建时间" min-width="160">
         <template #default="{ row }">{{ fmtDate(row.created_at) }}</template>
       </el-table-column>
       <el-table-column label="操作" width="110" align="right">
@@ -56,7 +56,7 @@
     </el-table>
     <el-empty v-if="!loading && keys.length === 0" description="还没有 API Key，点击右上角创建" :image-size="80" />
 
-    <el-dialog v-model="createVisible" title="新建 API Key" width="420px">
+    <el-dialog v-model="createVisible" title="新建 API Key" :width="isNarrow ? '92%' : '420px'">
       <el-form label-position="top" @submit.prevent>
         <el-form-item label="Key 名称">
           <el-input v-model="name" placeholder="如：Claude Code / Cursor / 自建 agent" />
@@ -84,6 +84,8 @@ const createVisible = ref(false)
 const creating = ref(false)
 const name = ref('')
 const visibleKey = ref('')
+// 与 P4-2 移动端断点一致：≤560px 收起次要列、压缩弹窗宽度
+const isNarrow = ref(window.matchMedia('(max-width: 560px)').matches)
 
 async function load() {
   loading.value = true
@@ -172,6 +174,10 @@ onMounted(load)
   font-weight: var(--md-weight-semibold);
   color: var(--md-on-surface);
 }
+.page-head {
+  flex-wrap: wrap;
+  gap: var(--md-space-3);
+}
 .page-sub {
   color: var(--md-on-surface-variant);
   margin-top: var(--md-space-1);
@@ -185,5 +191,9 @@ onMounted(load)
   background: var(--md-surface-container-high);
   padding: 1px var(--md-space-2);
   border-radius: var(--md-radius-sm);
+}
+@media (max-width: 560px) {
+  .page-title { font-size: var(--md-text-body-lg); }
+  .keys-page :deep(.el-table) { font-size: var(--md-text-label-sm); }
 }
 </style>
