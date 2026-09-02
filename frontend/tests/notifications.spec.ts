@@ -51,7 +51,15 @@ const localStorageMock = {
 vi.stubGlobal('localStorage', localStorageMock)
 
 const ticketPost = vi.fn(async () => ({ ticket: 't-1' }))
-vi.mock('@/api/http', () => ({ default: { post: (...args: unknown[]) => ticketPost(...(args as [])) } }))
+const httpGet = vi.fn(async () => ({ last_read_at: null }))
+const httpPut = vi.fn(async () => ({ last_read_at: null }))
+vi.mock('@/api/http', () => ({
+  default: {
+    post: (...args: unknown[]) => ticketPost(...(args as [])),
+    get: (...args: unknown[]) => httpGet(...(args as [])),
+    put: (...args: unknown[]) => httpPut(...(args as [])),
+  },
+}))
 vi.stubGlobal('EventSource', MockEventSource as unknown as typeof EventSource)
 
 import { useNotifications } from '@/stores/notifications'
@@ -66,6 +74,8 @@ beforeEach(() => {
   vi.resetModules()
   esInstances.length = 0
   ticketPost.mockClear()
+  httpGet.mockClear()
+  httpPut.mockClear()
   for (const k of Object.keys(store)) delete store[k]
 })
 

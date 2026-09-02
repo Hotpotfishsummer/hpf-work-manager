@@ -18,6 +18,7 @@ from app.routers import (
     events,
     keys,
     milestones,
+    notifications,
     projects,
     search,
     stats,
@@ -111,6 +112,7 @@ app.include_router(tasks.router, prefix=API_PREFIX)
 app.include_router(stats.router, prefix=API_PREFIX)
 app.include_router(dev_logs.router, prefix=API_PREFIX)
 app.include_router(events.router, prefix=API_PREFIX)
+app.include_router(notifications.router, prefix=API_PREFIX)
 
 
 @app.get("/api/health", tags=["health"])

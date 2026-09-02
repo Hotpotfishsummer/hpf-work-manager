@@ -271,6 +271,13 @@
 
 > **两种使用方式**：① 通过 MCP Server（推荐，见 `08-AI接入指南.md`）；② 通过 `/keys/exchange` 换 JWT 后调 REST。
 
+## 8.5 通知已读水位（P4-4 通知中心）
+
+- `GET /notifications/watermark` → `{ "last_read_at": "<ISO8601 UTC> | null" }`（需登录）
+- `PUT /notifications/watermark`，body `{ "last_read_at": "<ISO8601>" }` → 回写后的水位。
+  水位**只前推不回退**（多设备旧时间戳不覆盖新状态）；无时区的时间戳按 UTC 解释。
+  前端已读状态以服务端为准，localStorage 仅作离线兜底。
+
 ## 9. SSE 实时推送（进度同步）
 
 ### POST /events/ticket — 换取 SSE 短期 ticket（需登录）

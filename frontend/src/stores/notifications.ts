@@ -59,6 +59,42 @@ function handleEvent(raw: string) {
   }
 }
 
+/** 登录后从服务端拉取已读水位（localStorage 仅作离线兜底） */
+async function syncWatermarkFromServer(myGen: number) {
+  try {
+    const { default: http } = await import('@/api/http')
+    const res = await http.get<{ last_read_at: string | null }, { last_read_at: string | null }>(
+      '/notifications/watermark',
+    )
+    if (myGen !== generation) return
+    if (res.last_read_at) {
+      const t = new Date(res.last_read_at).getTime()
+      if (Number.isFinite(t) && t > lastReadTs.value) {
+        lastReadTs.value = t
+        persistReadTs()
+        recomputeUnread()
+      }
+    }
+  } catch {
+    // 拉取失败：沿用 localStorage 兜底
+  }
+}
+
+/** markAllRead 后把水位推送到服务端（fire-and-forget，失败静默） */
+function pushWatermarkToServer() {
+  if (!Number.isFinite(lastReadTs.value) || lastReadTs.value <= 0) return
+  const iso = new Date(lastReadTs.value).toISOString()
+  import('@/api/http')
+    .then(({ default: http }) =>
+      http
+        .put<{ last_read_at: string }, unknown>('/notifications/watermark', {
+          last_read_at: iso,
+        })
+        .catch(() => {}),
+    )
+    .catch(() => {})
+}
+
 function connect() {
   if (started || es) return
   started = true
@@ -94,6 +130,7 @@ function open() {
           retry = 0
           reconnectable.value = false
           connected.value = true
+          void syncWatermarkFromServer(myGen)
         }
         es.onerror = () => {
           connected.value = false
@@ -143,6 +180,7 @@ function markAllRead() {
     persistReadTs()
   }
   recomputeUnread()
+  pushWatermarkToServer()
 }
 
 /** 实体/动作中文标签（通知渲染用） */
