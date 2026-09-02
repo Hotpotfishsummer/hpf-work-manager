@@ -27,6 +27,7 @@ import type {
   TaskBulkUpdate,
   TaskCreate,
   TaskUpdate,
+  DevLogPage,
   TaskComment,
   User,
 } from '@/types'
@@ -121,6 +122,14 @@ export const devLogApi = {
     pid: number,
     params?: { entry_type?: string; status?: string; since?: string; limit?: number; offset?: number },
   ) => http.get<DevLog[], DevLog[]>(`/projects/${pid}/logs`, { params }),
+  // 带精确总数（服务端按同一筛选条件 count）
+  listPage: (
+    pid: number,
+    params?: { entry_type?: string; status?: string; since?: string; limit?: number; offset?: number },
+  ) =>
+    http.get<DevLogPage, DevLogPage>(`/projects/${pid}/logs`, {
+      params: { ...params, with_total: true },
+    }),
   create: (pid: number, data: DevLogCreate) =>
     http.post<DevLog, DevLog>(`/projects/${pid}/logs`, data),
   stats: (pid: number) =>

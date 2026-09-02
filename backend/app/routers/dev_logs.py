@@ -10,6 +10,7 @@ from app.routers.projects import _get_owned_project
 from app.schemas import (
     DevLogCreate,
     DevLogOut,
+    DevLogPage,
     DevLogStats,
     DevLogUpdate,
     DevReport,
@@ -60,7 +61,10 @@ async def _get_session(db: DbDep, user: CurrentUser, session_id: int) -> DevSess
 # ---- 开发记录条目 ----
 
 
-@router.get("/projects/{project_id}/logs", response_model=list[DevLogOut])
+@router.get(
+    "/projects/{project_id}/logs",
+    response_model=list[DevLogOut] | DevLogPage,
+)
 async def list_logs(
     project_id: int,
     user: CurrentUser,
@@ -70,20 +74,30 @@ async def list_logs(
     since: date | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    with_total: bool = Query(default=False, description="true 时返回 {items, total} 信封"),
 ):
     await _get_owned_project(db, user, project_id)
-    stmt = select(DevLog).where(DevLog.project_id == project_id)
+    conds = [DevLog.project_id == project_id]
     if entry_type:
-        stmt = stmt.where(DevLog.entry_type == entry_type)
+        conds.append(DevLog.entry_type == entry_type)
     if log_status:
-        stmt = stmt.where(DevLog.status == log_status)
+        conds.append(DevLog.status == log_status)
     if since:
-        stmt = stmt.where(func.date(DevLog.created_at) >= since)
+        conds.append(func.date(DevLog.created_at) >= since)
+    stmt = select(DevLog).where(*conds)
     rows = (
         (await db.execute(stmt.order_by(DevLog.created_at.desc()).offset(offset).limit(limit)))
         .scalars()
         .all()
     )
+    if with_total:
+        total = (
+            await db.execute(select(func.count(DevLog.id)).where(*conds))
+        ).scalar_one()
+        return {
+            "items": [DevLogOut.model_validate(r).model_dump(mode="json") for r in rows],
+            "total": total,
+        }
     return rows
 
 

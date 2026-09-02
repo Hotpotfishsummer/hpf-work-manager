@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
 
 # Ensure app is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -21,11 +22,16 @@ os.environ.setdefault("SECRET_KEY", "test-only-secret-key-0123456789abcdef012345
 @pytest_asyncio.fixture(scope="function")
 async def test_engine():
     """Create SQLite in-memory test engine."""
+    import app.models  # noqa: F401  # 显式注册全部模型（单文件运行时其他测试不会代为导入）
     from app.database import Base
 
-    # Import all models to register their tables
-
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    # StaticPool：:memory: 库下所有连接共享同一实例，否则 create_all 建的表
+    # 只存在于一个连接里，单独运行部分测试时报 "no such table"
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
 
     # 与生产 PostgreSQL 对齐：强制外键（否则 DB 级 ON DELETE CASCADE 不生效，
     # 级联删除相关测试会误报）。SQLite 需按连接开启 pragma。

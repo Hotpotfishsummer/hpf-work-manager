@@ -368,3 +368,41 @@ async def test_dev_log_enum_validation():
     # Status done only for todo/blocker
     with pytest.raises(ValueError, match="status 仅可用于"):
         DevLogCreate(entry_type="progress", title="test", status="done")
+
+@pytest.mark.asyncio
+async def test_list_logs_with_total_envelope(auth_client, test_project, db_session):
+    """?with_total=1 返回 {items, total} 信封；total 按筛选条件精确计数。"""
+    from app.models import DevLog
+
+    for i in range(7):
+        db_session.add(
+            DevLog(
+                project_id=test_project.id,
+                entry_type="note" if i < 3 else "progress",
+                title=f"log{i}",
+                content="c",
+            )
+        )
+    await db_session.commit()
+
+    # 默认仍是纯列表（向后兼容）
+    resp = await auth_client.get(f"/api/projects/{test_project.id}/logs")
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
+
+    # 信封：total=7
+    resp = await auth_client.get(
+        f"/api/projects/{test_project.id}/logs", params={"with_total": "true", "limit": 3}
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert set(body.keys()) == {"items", "total"}
+    assert body["total"] == 7
+    assert len(body["items"]) == 3
+
+    # 筛选后 total 同步缩小
+    resp = await auth_client.get(
+        f"/api/projects/{test_project.id}/logs",
+        params={"with_total": "true", "entry_type": "note"},
+    )
+    assert resp.json()["total"] == 3

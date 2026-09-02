@@ -61,6 +61,11 @@ export interface MilestoneUpdate {
   status?: string
 }
 
+export interface DevLogPage {
+  items: DevLog[]
+  total: number
+}
+
 export interface TaskComment {
   id: number
   task_id: number

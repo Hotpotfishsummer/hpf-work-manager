@@ -75,3 +75,10 @@ class DevLogOut(DevLogBase):
     created_at: datetime
     updated_at: datetime
     resolved_at: datetime | None
+
+
+class DevLogPage(BaseModel):
+    """带总数的分页信封（?with_total=1 时返回；默认仍是纯列表，向后兼容）。"""
+
+    items: list[DevLogOut]
+    total: int

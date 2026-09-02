@@ -361,17 +361,13 @@ async function loadMore() {
       offset,
     }
     if (filters.entry_type) params.entry_type = filters.entry_type
-    const page = await devLogApi.list(pid.value, params)
-    if (page.length === 0) {
-      pagination.total = logs.value.length
-    } else {
-      // 追加（去重）
-      const existingIds = new Set(logs.value.map((l) => l.id))
-      const newItems = page.filter((l) => !existingIds.has(l.id))
-      logs.value = [...logs.value, ...newItems]
-      pagination.page += 1
-      pagination.total = logs.value.length + (page.length < pagination.size ? 0 : 1)
-    }
+    const page = await devLogApi.listPage(pid.value, params)
+    pagination.total = page.total // 服务端精确计数（此前 +1 估算，筛选后不准）
+    // 追加（去重）
+    const existingIds = new Set(logs.value.map((l) => l.id))
+    const newItems = page.items.filter((l) => !existingIds.has(l.id))
+    logs.value = [...logs.value, ...newItems]
+    if (newItems.length) pagination.page += 1
   } finally {
     loading.value = false
   }
@@ -389,10 +385,11 @@ function formatTime(iso: string) {
 async function loadLogs(reset = true) {
   const params: Record<string, string> = {}
   if (filters.entry_type) params.entry_type = filters.entry_type
-  logs.value = await devLogApi.list(pid.value, params)
+  const page = await devLogApi.listPage(pid.value, params)
+  logs.value = page.items
   if (reset) {
     pagination.page = 1
-    pagination.total = logs.value.length
+    pagination.total = page.total
   }
 }
 
@@ -402,15 +399,15 @@ async function load() {
     const [p, s, ls, ss] = await Promise.all([
       projectApi.get(pid.value),
       devLogApi.stats(pid.value),
-      devLogApi.list(pid.value),
+      devLogApi.listPage(pid.value),
       devSessionApi.list(pid.value),
     ])
     project.value = p
     stats.value = s
-    logs.value = ls
+    logs.value = ls.items
     sessions.value = ss
     pagination.page = 1
-    pagination.total = ls.length
+    pagination.total = ls.total
   } finally {
     loading.value = false
   }

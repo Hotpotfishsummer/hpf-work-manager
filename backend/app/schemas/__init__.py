@@ -11,6 +11,7 @@ from app.schemas.dev_log import (
     DevLogBase,
     DevLogCreate,
     DevLogOut,
+    DevLogPage,
     DevLogUpdate,
 )
 from app.schemas.dev_session import (
@@ -63,6 +64,7 @@ __all__ = [
     "DevLogBase",
     "DevLogCreate",
     "DevLogOut",
+    "DevLogPage",
     "DevLogStats",
     "DevLogUpdate",
     "DevReport",
