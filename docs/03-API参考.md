@@ -83,14 +83,25 @@
 | DELETE | /tasks/{id}/dependencies | 移除依赖：`{"depends_on_task_id": n}` → 204 |
 
 ```json
-// 任务对象（含派生字段 overdue）
+// 任务对象（含派生字段 overdue / depends_on）
 { "id": 1, "project_id": 1, "milestone_id": null,
   "name": "页面设计", "description": null, "status": "todo",
   "priority": "high", "progress": 40,
   "start_date": "2026-08-01", "due_date": "2026-08-10",
   "completed_at": null, "estimated_hours": null, "created_at": "...",
-  "overdue": true }
+  "overdue": true, "depends_on": [] }
 ```
+
+### 5.1 评论
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | /tasks/{id}/comments | 评论列表（created_at 升序） |
+| POST | /tasks/{id}/comments | 新增：`{"content": "..."}`（1-2000 字符）→ 201 |
+| DELETE | /comments/{id} | 删除（项目 owner）→ 204 |
+
+评论对象：`{ "id", "task_id", "author_id", "author_username", "content", "created_at" }`。
+任务删除时评论级联删除；写操作发布 SSE 事件（`entity: "comment"`）。
 
 ### 状态流转规则（PUT / bulk 均适用）
 
@@ -292,7 +303,7 @@
 ```json
 { "type": "updated", "entity": "task", "entity_id": 42, "project_id": 1, "ts": "2026-08-12T05:41:00+00:00" }
 ```
-- `entity` ∈ `project`/`milestone`/`task`/`log`/`session`；`type` ∈ `created`/`updated`/`deleted`
+- `entity` ∈ `project`/`milestone`/`task`/`log`/`session`/`comment`；`type` ∈ `created`/`updated`/`deleted`
 - 每 25s 发送 `ping` 心跳保活；前端可据此自动刷新受影响项目。
 - 注意：此端点未挂 slowapi 限流装饰器（与 EventSourceResponse 的签名解析冲突会误判 422），长连接天然低频，由 nginx `limit_req` 兜底。
 
