@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.deps import CurrentUser, DbDep
 from app.models import Milestone, Project, Task
@@ -108,7 +108,22 @@ async def search(
             )
         )
 
-    # Total count (approximate: sum of individual counts)
-    total = len(items)
+    # 精确总数：按实体分别 count（此前 total = len(items) ≤ 3×limit，
+    # 前端据此判断能否翻页会提前显示"没有更多"）
+    project_total = (
+        await db.execute(
+            select(func.count(Project.id)).where(
+                project_cond, Project.name.ilike(f"%{q}%")
+            )
+        )
+    ).scalar_one()
+    task_total = (
+        await db.execute(select(func.count(Task.id)).where(task_cond, Task.name.ilike(f"%{q}%")))
+    ).scalar_one()
+    ms_total = (
+        await db.execute(
+            select(func.count(Milestone.id)).where(ms_cond, Milestone.name.ilike(f"%{q}%"))
+        )
+    ).scalar_one()
 
-    return SearchResponse(items=items, total=total)
+    return SearchResponse(items=items, total=project_total + task_total + ms_total)

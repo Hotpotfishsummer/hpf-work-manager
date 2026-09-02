@@ -86,6 +86,13 @@ async def test_search_finds_project_task_milestone(auth_client, test_project):
     assert {"task", "milestone"} <= kinds
     assert body["total"] >= 2
 
+    # total 为精确总数（按实体分别 count，不受分页影响）
+    resp = await auth_client.get("/api/search", params={"q": "蓝鲸", "limit": 1})
+    assert resp.status_code == 200
+    assert resp.json()["total"] == body["total"]
+    # limit 按实体独立生效：3 类实体 × limit=1 → 至多 3 条
+    assert len(resp.json()["items"]) <= 3
+
 
 async def test_search_min_length_validation(auth_client):
     resp = await auth_client.get("/api/search", params={"q": "蓝"})
