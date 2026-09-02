@@ -8,6 +8,7 @@ import sys
 
 DB_PATH = f"/tmp/hpf_e2e_{os.getpid()}.db"
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{DB_PATH}"
+os.environ["ENVIRONMENT"] = "dev"  # 允许短测试密钥（fail-fast 校验放行）
 os.environ["SECRET_KEY"] = "test-secret"
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
@@ -87,24 +88,27 @@ async def main():
         check("创建项目", r.status_code == 201, f"-> {r.status_code}")
         pid = r.json()["id"]
 
-        # 6. 创建里程碑
+        # 6. 创建里程碑（相对日期：过去 A / 未来 B·C，避免脚本随时间腐化）
+        from datetime import date, timedelta
+        today = date.today()
+        d = lambda off: (today + timedelta(days=off)).isoformat()
         r = await c.post(f"/projects/{pid}/milestones", headers=H, json={
-            "name": "设计评审", "due_date": "2026-08-15"})
+            "name": "设计评审", "due_date": d(-19)})
         check("创建里程碑", r.status_code == 201)
         mid = r.json()["id"]
 
-        # 7. 创建任务（含依赖）
+        # 7. 创建任务（含依赖）：A 已逾期，B/C 未逾期
         r = await c.post(f"/projects/{pid}/tasks", headers=H, json={
-            "name": "页面设计", "priority": "high", "due_date": "2026-08-10",
-            "milestone_id": mid, "start_date": "2026-08-01", "progress": 40})
+            "name": "页面设计", "priority": "high", "due_date": d(-24),
+            "milestone_id": mid, "start_date": d(-33), "progress": 40})
         check("创建任务A", r.status_code == 201)
         ta = r.json()["id"]
         r = await c.post(f"/projects/{pid}/tasks", headers=H, json={
-            "name": "前端开发", "status": "in_progress", "due_date": "2026-09-01"})
+            "name": "前端开发", "status": "in_progress", "due_date": d(-2 + 61)})
         check("创建任务B", r.status_code == 201)
         tb = r.json()["id"]
         r = await c.post(f"/projects/{pid}/tasks", headers=H, json={
-            "name": "测试验收", "due_date": "2026-09-28"})
+            "name": "测试验收", "due_date": d(25)})
         check("创建任务C", r.status_code == 201)
         tc = r.json()["id"]
 

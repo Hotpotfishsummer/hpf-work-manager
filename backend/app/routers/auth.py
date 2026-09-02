@@ -4,7 +4,12 @@ from sqlalchemy import select
 
 from app.core.login_throttle import check_throttled, record_failure, record_success
 from app.core.ratelimit import limiter
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import (
+    _DUMMY_HASH,
+    create_access_token,
+    hash_password,
+    verify_password,
+)
 from app.deps import CurrentUser, DbDep
 from app.models import User
 from app.schemas import Token, UserOut, UserRegister
@@ -55,7 +60,13 @@ async def login(request: Request, payload: LoginRequest, db: DbDep):
     user = (
         await db.execute(select(User).where(User.username == payload.username))
     ).scalar_one_or_none()
-    if not user or not verify_password(payload.password, user.hashed_password):
+    if user is None:
+        # 时序侧信道缓解：用户不存在时也执行一次 bcrypt 校验，避免响应时间差
+        # 泄露"该用户名是否存在"（注册接口的枚举同理，配合 IP 限流共同缓解）
+        verify_password(payload.password, _DUMMY_HASH)
+        record_failure(payload.username)
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+    if not verify_password(payload.password, user.hashed_password):
         record_failure(payload.username)
         raise HTTPException(status_code=401, detail="用户名或密码错误")
 

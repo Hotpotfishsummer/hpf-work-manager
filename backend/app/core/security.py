@@ -7,6 +7,10 @@ from app.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# 登录时序侧信道缓解用：用户不存在时对服务端执行一次等价 bcrypt 校验，
+# 使"用户不存在"与"密码错误"的响应耗时一致（内容为随机密钥的密文，不可反推）。
+_DUMMY_HASH = pwd_context.hash("timing-side-channel-mitigation-dummy")
+
 
 def hash_password(plain: str) -> str:
     return pwd_context.hash(plain)
