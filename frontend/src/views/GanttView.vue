@@ -35,7 +35,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { projectApi, statsApi, taskApi } from '@/api'
-import type { GanttData, Project } from '@/types'
+import type { GanttData, Project, TaskStatus } from '@/types'
 import GanttChart from '@/components/GanttChart.vue'
 import { useProjectEvents } from '@/composables/useProjectEvents'
 import LiveIndicator from '@/components/LiveIndicator.vue'
@@ -69,9 +69,18 @@ async function onDateChange(taskId: string, start: string, end: string) {
 }
 
 async function onProgressChange(taskId: string, progress: number) {
+  // 状态联动：拉满标完成；仅当任务原为 done 而进度回退 <100 时改回进行中
+  // （后端状态机在 done 态会忽略 progress 写入，必须同时改状态；
+  //   todo 任务拖进度保持 todo，避免误启动）
+  const current = gantt.value?.tasks.find((t) => t.id === taskId)
   await taskApi.update(Number(taskId), {
     progress,
-    status: progress >= 100 ? 'done' : undefined,
+    status:
+      progress >= 100
+        ? 'done'
+        : current?.status === 'done'
+          ? 'in_progress'
+          : (current?.status as TaskStatus | undefined),
   })
   ElMessage.success(`进度已更新为 ${progress}%`)
   gantt.value = await statsApi.gantt(pid.value)

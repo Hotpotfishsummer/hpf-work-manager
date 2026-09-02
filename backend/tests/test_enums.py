@@ -201,11 +201,10 @@ class TestProjectEnums:
     """Test project-related enum validations."""
 
     def test_project_status_valid(self):
-        """Test valid project status values."""
+        """合法项目状态（模型层仅 active/archived，P5 起端点层校验枚举）。"""
         from app.schemas.project import ProjectUpdate
 
-        # Based on the model, status should be a string
-        for status in ["active", "archived", "on_hold"]:
+        for status in ["active", "archived"]:
             proj = ProjectUpdate(name="Test", status=status)
             assert proj.status == status
 
@@ -450,3 +449,16 @@ async def test_mcp_auth_initialize(mcp_client):
     )
     assert resp.status_code == 200
     return resp.headers.get("mcp-session-id")
+
+@pytest.mark.asyncio
+async def test_project_update_status_enum_rejected(auth_client, test_project):
+    """ProjectUpdate.status 枚举校验：任意字符串 → 422。"""
+    resp = await auth_client.put(
+        f"/api/projects/{test_project.id}", json={"status": "bogus"}
+    )
+    assert resp.status_code == 422
+    resp = await auth_client.put(
+        f"/api/projects/{test_project.id}", json={"status": "archived"}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "archived"

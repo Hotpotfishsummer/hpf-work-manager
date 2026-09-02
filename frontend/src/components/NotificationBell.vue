@@ -146,6 +146,9 @@ function go(n: NotificationItem) {
   font-size: var(--md-text-body-sm);
 }
 @media (max-width: 560px) {
-  .notify-btn { display: none; } /* 极小屏收起，与顶栏适配策略一致 */
+  .notify-btn {
+    width: 34px;
+    height: 34px;
+  } /* 极小屏缩小尺寸但保留入口（AI 写入进度是核心场景，通知不应缺席） */
 }
 </style>

@@ -22,6 +22,12 @@ class ProjectUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=500)
     status: str | None = None  # active / archived
+
+    @model_validator(mode="after")
+    def _check_status(self) -> "ProjectUpdate":
+        if self.status is not None and self.status not in {"active", "archived"}:
+            raise ValueError("status 必须为 ['active', 'archived'] 之一")
+        return self
     start_date: date | None = None
     end_date: date | None = None
 
