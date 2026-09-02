@@ -57,6 +57,7 @@ from app.services.stats import (
 from app.services.tasks import (
     apply_task_update,
     ensure_no_cycle,
+    get_project_comment_counts,
     get_project_depends_map,
     get_task_depends,
 )
@@ -155,7 +156,9 @@ def _milestone_dict(m: Milestone) -> dict:
     }
 
 
-def _task_dict(t: Task, depends_on: list[int] | None = None) -> dict:
+def _task_dict(
+    t: Task, depends_on: list[int] | None = None, comment_count: int | None = None
+) -> dict:
     return {
         "id": t.id,
         "project_id": t.project_id,
@@ -171,6 +174,7 @@ def _task_dict(t: Task, depends_on: list[int] | None = None) -> dict:
         "estimated_hours": t.estimated_hours,
         "created_at": t.created_at.isoformat() if t.created_at else None,
         "depends_on": sorted(depends_on) if depends_on is not None else [],
+        "comment_count": comment_count if comment_count is not None else 0,
     }
 
 
@@ -418,7 +422,11 @@ async def list_tasks(
             .all()
         )
         depends_map = await get_project_depends_map(db, project_id)
-        return [_task_dict(t, depends_map.get(t.id, [])) for t in rows]
+        comment_counts = await get_project_comment_counts(db, project_id)
+        return [
+            _task_dict(t, depends_map.get(t.id, []), comment_counts.get(t.id, 0))
+            for t in rows
+        ]
 
 
 @mcp.tool()
@@ -427,7 +435,10 @@ async def get_task(task_id: int) -> dict:
     username = _username()
     async with AsyncSessionLocal() as db:
         task = await _require_task(db, username, task_id)
-        return _task_dict(task, await get_task_depends(db, task.id))
+        comment_counts = await get_project_comment_counts(db, task.project_id)
+        return _task_dict(
+            task, await get_task_depends(db, task.id), comment_counts.get(task.id, 0)
+        )
 
 
 @mcp.tool()

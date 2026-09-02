@@ -3,7 +3,7 @@
 REST router 与 MCP server 复用，避免逻辑分叉。
 """
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Task, TaskDependency
@@ -42,13 +42,32 @@ def apply_task_update(task: Task, data: dict) -> None:
             setattr(task, key, data[key])
 
 
-def to_out(task: Task, depends_on: list[int] | None = None) -> TaskOut:
-    """序列化任务；传入 depends_on（列表端点应批量取好后传入，避免 N+1）。"""
+def to_out(
+    task: Task, depends_on: list[int] | None = None, comment_count: int | None = None
+) -> TaskOut:
+    """序列化任务；依赖/评论数应由列表端点批量取好后传入，避免 N+1。"""
     out = TaskOut.model_validate(task)
     out.overdue = is_overdue(task)
     if depends_on is not None:
         out.depends_on = sorted(depends_on)
+    if comment_count is not None:
+        out.comment_count = comment_count
     return out
+
+
+async def get_project_comment_counts(db: AsyncSession, project_id: int) -> dict[int, int]:
+    """项目内任务评论数（按 task_id 分组，一次聚合）。"""
+    from app.models import Comment
+
+    rows = (
+        await db.execute(
+            select(Comment.task_id, func.count(Comment.id))
+            .join(Task, Comment.task_id == Task.id)
+            .where(Task.project_id == project_id)
+            .group_by(Comment.task_id)
+        )
+    ).all()
+    return {tid: cnt for tid, cnt in rows}
 
 
 async def get_task_depends(db: AsyncSession, task_id: int) -> list[int]:

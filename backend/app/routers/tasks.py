@@ -15,6 +15,7 @@ from app.schemas import (
 from app.services.tasks import (
     apply_task_update,
     ensure_no_cycle,
+    get_project_comment_counts,
     get_project_depends_map,
     get_task_depends,
     to_out,
@@ -98,7 +99,10 @@ async def list_tasks(
         stmt = stmt.order_by(Task.created_at.desc())
     tasks = (await db.execute(stmt.offset(offset).limit(limit))).scalars().all()
     depends_map = await get_project_depends_map(db, project_id)
-    return [to_out(t, depends_map.get(t.id, [])) for t in tasks]
+    comment_counts = await get_project_comment_counts(db, project_id)
+    return [
+        to_out(t, depends_map.get(t.id, []), comment_counts.get(t.id, 0)) for t in tasks
+    ]
 
 
 @router.post(
@@ -132,7 +136,8 @@ async def create_task(
 @router.get("/tasks/{task_id}", response_model=TaskOut)
 async def get_task(task_id: int, user: CurrentUser, db: DbDep):
     task = await _get_task(db, user, task_id)
-    return to_out(task, await get_task_depends(db, task.id))
+    comment_counts = await get_project_comment_counts(db, task.project_id)
+    return to_out(task, await get_task_depends(db, task.id), comment_counts.get(task.id, 0))
 
 
 @router.put("/tasks/{task_id}", response_model=TaskOut)
@@ -147,7 +152,8 @@ async def update_task(
     await db.commit()
     await db.refresh(task)
     await publish(task.project_id, "updated", "task", task.id)
-    return to_out(task, await get_task_depends(db, task.id))
+    comment_counts = await get_project_comment_counts(db, task.project_id)
+    return to_out(task, await get_task_depends(db, task.id), comment_counts.get(task.id, 0))
 
 
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)

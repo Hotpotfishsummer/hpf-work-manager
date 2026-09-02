@@ -115,6 +115,9 @@
                 {{ t.due_date ? t.due_date.slice(0, 10) : '无截止' }}
               </span>
               <span v-if="t.overdue" class="tc-overdue">已逾期</span>
+              <span v-if="(t.comment_count ?? 0) > 0" class="tc-comments" title="评论数">
+                💬 {{ t.comment_count }}
+              </span>
             </div>
 
             <el-progress
@@ -889,6 +892,11 @@ watch(pid, load)
 .tc-meta { display: flex; align-items: center; justify-content: space-between; margin: var(--md-space-1) 0; }
 .tc-date { font-size: var(--md-text-label-md); color: var(--md-on-surface-variant); }
 .tc-date.is-overdue { color: var(--md-status-overdue); font-weight: var(--md-weight-semibold); }
+.tc-comments {
+  margin-left: auto;
+  font-size: var(--md-text-label-sm);
+  color: var(--md-on-surface-variant);
+}
 .tc-overdue {
   font-size: var(--md-text-label-md);
   font-weight: var(--md-weight-semibold);

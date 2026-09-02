@@ -97,3 +97,26 @@ async def test_self_dependency_rejected(auth_client, test_project):
         f"/api/tasks/{a}/dependencies", json={"depends_on_task_id": a}
     )
     assert resp.status_code == 400
+
+
+async def test_task_out_includes_comment_count(auth_client, test_project):
+    """TaskOut.comment_count 聚合评论数；删除评论后递减。"""
+    tid = await _create_task(auth_client, test_project, "C")
+    resp = await auth_client.get(f"/api/tasks/{tid}")
+    assert resp.json()["comment_count"] == 0
+
+    await auth_client.post(f"/api/tasks/{tid}/comments", json={"content": "一"})
+    await auth_client.post(f"/api/tasks/{tid}/comments", json={"content": "二"})
+    resp = await auth_client.get(f"/api/tasks/{tid}")
+    assert resp.json()["comment_count"] == 2
+
+    # 列表端点同样聚合
+    resp = await auth_client.get(f"/api/projects/{test_project.id}/tasks")
+    by_id = {t["id"]: t for t in resp.json()}
+    assert by_id[tid]["comment_count"] == 2
+
+    # 删除一条 → 1
+    comments = (await auth_client.get(f"/api/tasks/{tid}/comments")).json()
+    await auth_client.delete(f"/api/comments/{comments[0]['id']}")
+    resp = await auth_client.get(f"/api/tasks/{tid}")
+    assert resp.json()["comment_count"] == 1

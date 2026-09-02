@@ -90,6 +90,8 @@ export interface Task {
   estimated_hours: number | null
   created_at: string
   overdue: boolean
+  /** 派生字段：评论数（后端聚合） */
+  comment_count?: number
 }
 
 export interface TaskCreate {

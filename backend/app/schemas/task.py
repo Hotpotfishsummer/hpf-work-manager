@@ -68,6 +68,8 @@ class TaskOut(TaskBase):
     overdue: bool = False
     # 派生字段：前置依赖任务 id 列表（后端查询，不落库）
     depends_on: list[int] = []
+    # 派生字段：评论数（后端聚合查询，不落库）
+    comment_count: int = 0
 
 
 class TaskDependencyCreate(BaseModel):
