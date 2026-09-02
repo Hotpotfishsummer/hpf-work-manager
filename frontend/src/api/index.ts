@@ -21,7 +21,6 @@ import type {
   ProjectStats,
   ProgressSnapshotPoint,
   ProjectUpdate,
-  SearchRequest,
   SearchResponse,
   SearchResultItem,
   Task,

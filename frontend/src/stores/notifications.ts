@@ -3,7 +3,9 @@
  *
  * - 登录后由 AppLayout 触发 connect()（不带 project_id，后端按所有权过滤全局广播）
  * - 事件只在前端内存中保留最近 50 条；已读水位 lastReadTs 持久化 localStorage
- * - 断线自动重连（指数退避，最多 8 次，之后可手动重连）
+ * - 断线自动重连（指数退避，最多 8 次），之后 reconnectable=true，可手动 reconnect()
+ * - generation 计数防竞态：disconnect() 后仍在途的动态 import/ticket 请求不会建连
+ * - 已读水位取服务器事件时间戳（而非本地 Date.now()），避免客户端时钟偏移误判
  */
 import { computed, ref } from 'vue'
 
@@ -22,12 +24,14 @@ const LS_KEY = 'hpf_notify_read_ts'
 
 const items = ref<NotificationItem[]>([])
 const connected = ref(false)
+const reconnectable = ref(false)
 const unread = ref(0)
 
 let es: EventSource | null = null
 let retry = 0
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 let started = false
+let generation = 0 // disconnect/重连时递增，使在途异步流程失效
 
 function loadReadTs(): number {
   const v = Number(localStorage.getItem(LS_KEY) ?? '0')
@@ -61,47 +65,83 @@ function connect() {
   open()
 }
 
+function scheduleReconnect() {
+  if (retry >= MAX_RETRIES) {
+    reconnectable.value = true
+    return
+  }
+  const delay = Math.min(1000 * 2 ** retry, 30000)
+  retry += 1
+  const myGen = generation
+  reconnectTimer = setTimeout(() => {
+    if (myGen === generation) open()
+  }, delay)
+}
+
 function open() {
+  const myGen = generation
   const BASE = import.meta.env.VITE_API_BASE || '/api'
   // EventSource 无法携带 Authorization：先以 JWT 换 30s 短期 ticket
-  import('@/api/http').then(async ({ default: http }) => {
-    try {
-      const { ticket } = await http.post<{ ticket: string }, { ticket: string }>('/events/ticket')
-      es = new EventSource(`${BASE}/events/stream?ticket=${encodeURIComponent(ticket)}`)
-      es.addEventListener('project-update', (ev) => handleEvent((ev as MessageEvent).data))
-      es.onopen = () => {
-        retry = 0
-        connected.value = true
-      }
-      es.onerror = () => {
+  import('@/api/http')
+    .then(async ({ default: http }) => {
+      if (myGen !== generation) return // 已 disconnect/换代：放弃建连
+      try {
+        const { ticket } = await http.post<{ ticket: string }, { ticket: string }>('/events/ticket')
+        if (myGen !== generation) return
+        es = new EventSource(`${BASE}/events/stream?ticket=${encodeURIComponent(ticket)}`)
+        es.addEventListener('project-update', (ev) => handleEvent((ev as MessageEvent).data))
+        es.onopen = () => {
+          retry = 0
+          reconnectable.value = false
+          connected.value = true
+        }
+        es.onerror = () => {
+          connected.value = false
+          es?.close()
+          es = null
+          scheduleReconnect()
+        }
+      } catch {
         connected.value = false
-        es?.close()
-        es = null
-        if (retry >= MAX_RETRIES) return // 停止重试；用户可刷新页面恢复
-        const delay = Math.min(1000 * 2 ** retry, 30000)
-        retry += 1
-        reconnectTimer = setTimeout(open, delay)
+        scheduleReconnect()
       }
-    } catch {
-      started = false
-    }
-  })
+    })
+    .catch(() => {
+      // 动态 import 本身失败：按断线处理走退避重连
+      if (myGen === generation && started) scheduleReconnect()
+    })
 }
 
 function disconnect() {
+  generation += 1
   started = false
   if (reconnectTimer) clearTimeout(reconnectTimer)
   es?.close()
   es = null
   connected.value = false
+  reconnectable.value = false
   items.value = []
   unread.value = 0
   lastReadTs.value = loadReadTs()
 }
 
+/** 手动重连（重试熔断后由 UI 触发；重置退避计数） */
+function reconnect() {
+  if (es) return // 已连接，无需重连
+  retry = 0
+  reconnectable.value = false
+  started = true
+  open()
+}
+
 function markAllRead() {
-  lastReadTs.value = Date.now()
-  persistReadTs()
+  // 用服务器事件时间戳推进水位：客户端 Date.now() 与服务器时钟偏移会误判未读数。
+  // 列表为空时保持原水位（没有新事件可读）。
+  const times = items.value.map((n) => new Date(n.ts).getTime()).filter((t) => Number.isFinite(t))
+  if (times.length) {
+    lastReadTs.value = Math.max(lastReadTs.value, ...times)
+    persistReadTs()
+  }
   recomputeUnread()
 }
 
@@ -121,5 +161,5 @@ export const TYPE_LABEL: Record<string, string> = {
 
 export function useNotifications() {
   const list = computed(() => items.value)
-  return { list, unread, connected, connect, disconnect, markAllRead }
+  return { list, unread, connected, reconnectable, lastReadTs, connect, disconnect, reconnect, markAllRead }
 }

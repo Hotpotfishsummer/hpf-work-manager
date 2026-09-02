@@ -13,6 +13,7 @@
       <span class="notify-conn" :class="connected ? 'is-on' : 'is-off'">
         {{ connected ? '实时' : '已断开' }}
       </span>
+      <el-button v-if="!connected && reconnectable" link size="small" @click="reconnect">重连</el-button>
       <el-button v-if="unread > 0" link size="small" @click="markAllRead">全部已读</el-button>
     </div>
 
@@ -50,7 +51,8 @@ import { Bell } from '@element-plus/icons-vue'
 import { ENTITY_LABEL, TYPE_LABEL, useNotifications, type NotificationItem } from '@/stores/notifications'
 
 const router = useRouter()
-const { list, unread, connected, markAllRead } = useNotifications()
+const { list, unread, connected, reconnectable, lastReadTs, reconnect, markAllRead } =
+  useNotifications()
 const open = ref(false)
 
 function onToggle() {
@@ -59,7 +61,8 @@ function onToggle() {
 }
 
 function isUnread(n: NotificationItem) {
-  return new Date(n.ts).getTime() > Date.now() - 60_000 // 一分钟内高亮
+  // 按已读水位判断（与角标同口径）；此前"60 秒窗口"在刷新后永久丢失高亮
+  return new Date(n.ts).getTime() > lastReadTs.value
 }
 
 function tagType(t: string) {

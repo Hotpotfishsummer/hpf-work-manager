@@ -134,7 +134,6 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { statsApi } from '@/api'
 import type { DashboardOverview } from '@/types'
-import BurndownChart from '@/components/BurndownChart.vue'
 
 const router = useRouter()
 const overview = ref<DashboardOverview | null>(null)

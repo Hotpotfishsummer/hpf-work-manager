@@ -321,13 +321,6 @@ export interface SearchResultItem {
   due_date: string | null
 }
 
-export interface SearchRequest {
-  q: string
-  project_id?: number | null
-  limit?: number
-  offset?: number
-}
-
 export interface SearchResponse {
   items: SearchResultItem[]
   total: number
