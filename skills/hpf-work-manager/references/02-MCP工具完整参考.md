@@ -1,4 +1,4 @@
-# 02 · MCP 工具完整参考（34 个）
+# 02 · MCP 工具完整参考（35 个）
 
 > 全部工具的签名、参数、返回值与示例。以服务端实际实现为准
 > （源码：`backend/app/mcp_server.py`）。工具只操作**当前认证用户**的数据。
@@ -107,7 +107,7 @@ list_tasks(project_id=1, overdue=true)
   - `status: str = "todo"`（`todo/in_progress/done`）
   - `progress: int = 0`（0-100）
   - `start_date` / `due_date: str | None`
-  - `estimated_hours: int | None`（预留字段）
+  - `estimated_hours: int | None`（工时/小时，参与工时加权进度）
 - 返回：`Task`
 - 状态机：`status="done"` 时自动 `progress=100` + `completed_at=now`。
 
@@ -159,7 +159,7 @@ update_task(task_id=42, status="done")
 ```json
 {
   "total_tasks": 20, "done_tasks": 8, "in_progress_tasks": 4, "todo_tasks": 8,
-  "progress": 40.0,
+  "progress": 40.0, "weighted_progress": 46.2,
   "overdue_tasks": [
     {"id": 12, "name": "首页轮播", "due_date": "2026-08-10", "days_late": 3, "priority": "high"}
   ]
@@ -167,6 +167,7 @@ update_task(task_id=42, status="done")
 ```
 
 - `progress` = 已完成任务数 / 总任务数 × 100（1 位小数）。
+- `weighted_progress` = 工时加权完成度（按 `estimated_hours` 加权；未填工时的任务按 1 计），双口径之一。
 - `overdue_tasks` 按延期天数倒序；无延期返回空数组。
 
 ### 19. `get_burndown_mcp` — 燃尽图数据

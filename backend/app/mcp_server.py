@@ -606,7 +606,7 @@ async def list_task_dependencies(task_id: int) -> list[dict]:
 
 @mcp.tool()
 async def get_project_stats_mcp(project_id: int) -> dict:
-    """获取项目进度统计（总数/完成/进行中/待办/进度%/延期列表）。"""
+    """获取项目进度统计（总数/完成/进行中/待办/进度%/工时加权进度/延期列表）。"""
     username = _username()
     async with AsyncSessionLocal() as db:
         await _require_project(db, username, project_id)
@@ -617,6 +617,7 @@ async def get_project_stats_mcp(project_id: int) -> dict:
             "in_progress_tasks": stats.in_progress_tasks,
             "todo_tasks": stats.todo_tasks,
             "progress": stats.progress,
+            "weighted_progress": stats.weighted_progress,
             "overdue_tasks": [
                 {
                     "id": o.id,
