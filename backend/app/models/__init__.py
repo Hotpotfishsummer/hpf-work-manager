@@ -1,4 +1,5 @@
 from app.models.api_key import ApiKey
+from app.models.comment import Comment
 from app.models.dev_log import DevLog
 from app.models.dev_session import DevSession
 from app.models.milestone import Milestone
@@ -11,6 +12,7 @@ from app.models.user import User
 
 __all__ = [
     "ApiKey",
+    "Comment",
     "DevLog",
     "DevSession",
     "Milestone",

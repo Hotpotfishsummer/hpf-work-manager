@@ -17,6 +17,7 @@ from app.config import settings
 from app.core.events import publish
 from app.database import AsyncSessionLocal
 from app.models import (
+    Comment,
     DevLog,
     DevSession,
     Milestone,
@@ -957,6 +958,86 @@ async def update_dev_log(
         await db.refresh(log)
         await publish(log.project_id, "updated", "log", log.id)
         return to_dict(log)
+
+
+# ---------- 评论（P5） ----------
+
+
+@mcp.tool()
+async def add_comment(task_id: int, content: str) -> dict:
+    """为任务添加一条评论（1-2000 字符）。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        task = await _require_task(db, username, task_id)
+        if not content.strip():
+            raise ValueError("评论内容不能为空")
+        if len(content) > 2000:
+            raise ValueError("评论内容不能超过 2000 字符")
+        user = (
+            await db.execute(select(User).where(User.username == username))
+        ).scalar_one_or_none()
+        comment = Comment(
+            task_id=task_id, author_id=user.id if user else None, author_username=username,
+            content=content.strip(),
+        )
+        db.add(comment)
+        await db.commit()
+        await db.refresh(comment)
+        await publish(task.project_id, "created", "comment", comment.id)
+        return _comment_dict(comment)
+
+
+@mcp.tool()
+async def list_comments(task_id: int, offset: int = 0, limit: int = 100) -> list[dict]:
+    """列出任务的评论（按时间升序；offset/limit 分页，上限 500）。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        await _require_task(db, username, task_id)
+        rows = (
+            await db.execute(
+                select(Comment)
+                .where(Comment.task_id == task_id)
+                .order_by(Comment.created_at.asc(), Comment.id.asc())
+                .offset(max(0, offset))
+                .limit(min(max(1, limit), 500))
+            )
+        ).scalars().all()
+        return [_comment_dict(c) for c in rows]
+
+
+@mcp.tool()
+async def delete_comment(comment_id: int) -> str:
+    """删除一条评论（仅限自己项目内的评论）。"""
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        comment = (
+            await db.execute(
+                select(Comment)
+                .join(Task, Comment.task_id == Task.id)
+                .join(Project, Task.project_id == Project.id)
+                .where(Comment.id == comment_id, Project.owner_id == User.id)
+                .where(User.username == username)
+            )
+        ).scalar_one_or_none()
+        if comment is None:
+            raise ValueError("评论不存在")
+        pid = (
+            await db.execute(select(Task.project_id).where(Task.id == comment.task_id))
+        ).scalar_one()
+        await db.delete(comment)
+        await db.commit()
+        await publish(pid, "deleted", "comment", comment_id)
+        return f"评论 {comment_id} 已删除"
+
+
+def _comment_dict(c: Comment) -> dict:
+    return {
+        "id": c.id,
+        "task_id": c.task_id,
+        "author_username": c.author_username,
+        "content": c.content,
+        "created_at": c.created_at.isoformat() if c.created_at else None,
+    }
 
 
 @mcp.tool()

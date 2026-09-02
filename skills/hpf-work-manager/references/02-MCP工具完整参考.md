@@ -1,4 +1,4 @@
-# 02 · MCP 工具完整参考（35 个）
+# 02 · MCP 工具完整参考（38 个）
 
 > 全部工具的签名、参数、返回值与示例。以服务端实际实现为准
 > （源码：`backend/app/mcp_server.py`）。工具只操作**当前认证用户**的数据。
@@ -301,6 +301,23 @@ log_progress(project_id=1, title="完成 JWT 签发与校验", git_ref="a1b2c3d"
 - 参数：`log_id`
 - 返回：`DevLog`（`status="done"`、`resolved_at` 盖章）
 - 约束：**仅 `todo` / `blocker`** 条目可用，其他类型报错。
+## 六、任务评论（3）
+
+`Comment` 结构：`id, task_id, author_id, author_username, content, created_at`。
+
+### 36. `add_comment` — 为任务添加评论
+- 参数：`task_id: int`、`content: str`（1-2000 字符）
+- 返回：`Comment`
+- 约束：任务必须属于当前用户；内容去除首尾空白后不能为空。
+
+### 37. `list_comments` — 列出任务评论
+- 参数：`task_id: int`、`offset: int = 0`、`limit: int = 100`（上限 500）
+- 返回：`Comment[]`（按 created_at 升序）
+
+### 38. `delete_comment` — 删除评论
+- 参数：`comment_id: int`
+- 返回：`str`，如 `"评论 7 已删除"`
+- 约束：仅限删除自己项目内的评论。
 
 ---
 
@@ -308,5 +325,5 @@ log_progress(project_id=1, title="完成 JWT 签发与校验", git_ref="a1b2c3d"
 
 MCP 工具与 REST 端点共享业务逻辑。REST 需要 JWT（`/api/keys/exchange` 换得），完整端点见仓库 `docs/03-API参考.md`。关键区别：
 
-- REST 提供 MCP 没有的：批量更新 `POST /api/tasks/bulk`、任务依赖查询 `GET /api/tasks/{id}/dependencies`、分页 `offset/limit`。
+- REST 提供 MCP 没有的：批量更新 `POST /api/tasks/bulk`、任务依赖查询 `GET /api/tasks/{id}/dependencies`、分页 `offset/limit`、通知水位 `GET/PUT /api/notifications/watermark`。
 - SSE 订阅：`GET /api/events/stream?project_id={pid}`。

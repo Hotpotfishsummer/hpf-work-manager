@@ -14,6 +14,7 @@ from app.core.ratelimit import limiter
 from app.database import get_db
 from app.routers import (
     auth,
+    comments,
     dev_logs,
     events,
     keys,
@@ -113,6 +114,7 @@ app.include_router(stats.router, prefix=API_PREFIX)
 app.include_router(dev_logs.router, prefix=API_PREFIX)
 app.include_router(events.router, prefix=API_PREFIX)
 app.include_router(notifications.router, prefix=API_PREFIX)
+app.include_router(comments.router, prefix=API_PREFIX)
 
 
 @app.get("/api/health", tags=["health"])

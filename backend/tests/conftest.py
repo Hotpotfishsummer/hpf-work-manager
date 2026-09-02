@@ -26,6 +26,15 @@ async def test_engine():
     # Import all models to register their tables
 
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+
+    # 与生产 PostgreSQL 对齐：强制外键（否则 DB 级 ON DELETE CASCADE 不生效，
+    # 级联删除相关测试会误报）。SQLite 需按连接开启 pragma。
+    from sqlalchemy import event
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def _fk_pragma(dbapi_conn, _record):
+        dbapi_conn.execute("pragma foreign_keys=ON")
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield engine
