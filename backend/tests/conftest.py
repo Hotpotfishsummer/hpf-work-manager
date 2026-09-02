@@ -129,6 +129,40 @@ async def test_user(db_session):
 
 
 @pytest_asyncio.fixture(scope="function")
+async def other_user(db_session):
+    """第二个用户（跨用户隔离测试用）。"""
+    from app.core.security import hash_password
+    from app.models import User
+
+    user = User(
+        username="otheruser",
+        email="other@example.com",
+        hashed_password=hash_password("otherpass123"),
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture(scope="function")
+async def other_auth_client(client, other_user):
+    """以 other_user 身份访问的独立客户端（与 auth_client 同一 app，共享依赖覆盖）。"""
+    from httpx import ASGITransport, AsyncClient
+
+    from app.core.security import create_access_token
+    from app.main import app
+
+    token = create_access_token(other_user.username, other_user.id)
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://localhost",
+        headers={"Authorization": f"Bearer {token}"},
+    ) as ac:
+        yield ac
+
+
+@pytest_asyncio.fixture(scope="function")
 async def test_project(db_session, test_user):
     """Create a test project in the database."""
     from app.models import Project
