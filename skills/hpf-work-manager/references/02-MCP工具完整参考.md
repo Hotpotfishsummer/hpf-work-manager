@@ -78,13 +78,14 @@ create_project(name="HPF 官网", start_date="2026-08-01", end_date="2026-09-30"
 ## 三、任务（8）
 
 `Task` 结构：`id, project_id, milestone_id, name, description, status, priority, progress,
-start_date, due_date, completed_at, estimated_hours, created_at`。
+start_date, due_date, completed_at, estimated_hours, created_at`；另有派生字段
+`overdue`（是否延期）与 `depends_on`（前置依赖任务 id 列表，后端查询不落库）。
 
 ### 10. `list_tasks` — 列出项目任务
 - 参数：
   - `project_id: int`
   - `status: str | None`（`todo` / `in_progress` / `done`）
-  - `overdue: bool | None`（`true` 时只返回延期任务，SQL 级过滤）
+  - `overdue: bool | None`（`true`/`false` 均为 SQL 级过滤，分页语义稳定）
   - `search: str | None`（名称/描述 ILIKE 模糊匹配）
   - `offset: int = 0`、`limit: int = 200`（上限 500）
 - 返回：`Task[]`（按 created_at 倒序）
@@ -136,7 +137,7 @@ update_task(task_id=42, status="done")
 ### 15. `add_task_dependency` — 添加任务依赖（task 依赖 depends_on）
 - 参数：`task_id: int`、`depends_on_task_id: int`
 - 返回：`str`，如 `"任务 42 已依赖任务 40"`
-- 约束：不能依赖自身；重复添加报错。
+- 约束：不能依赖自身；重复添加报错；**成环检测**——沿 depends_on 上游链可达 task_id 时拒绝（REST/MCP 一致）。
 
 ### 16. `remove_task_dependency` — 移除任务依赖
 - 参数：`task_id: int`、`depends_on_task_id: int`

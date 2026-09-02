@@ -53,7 +53,12 @@ from app.services.stats import (
     get_gantt_data,
     get_project_stats,
 )
-from app.services.tasks import apply_task_update
+from app.services.tasks import (
+    apply_task_update,
+    ensure_no_cycle,
+    get_project_depends_map,
+    get_task_depends,
+)
 from app.utils.time import utcnow
 
 # 由 ASGI 中间件在每次请求时写入当前认证用户名
@@ -149,7 +154,7 @@ def _milestone_dict(m: Milestone) -> dict:
     }
 
 
-def _task_dict(t: Task) -> dict:
+def _task_dict(t: Task, depends_on: list[int] | None = None) -> dict:
     return {
         "id": t.id,
         "project_id": t.project_id,
@@ -164,6 +169,7 @@ def _task_dict(t: Task) -> dict:
         "completed_at": t.completed_at.isoformat() if t.completed_at else None,
         "estimated_hours": t.estimated_hours,
         "created_at": t.created_at.isoformat() if t.created_at else None,
+        "depends_on": sorted(depends_on) if depends_on is not None else [],
     }
 
 
@@ -410,16 +416,17 @@ async def list_tasks(
             .scalars()
             .all()
         )
-        return [_task_dict(t) for t in rows]
+        depends_map = await get_project_depends_map(db, project_id)
+        return [_task_dict(t, depends_map.get(t.id, [])) for t in rows]
 
 
 @mcp.tool()
 async def get_task(task_id: int) -> dict:
-    """获取单个任务详情。"""
+    """获取单个任务详情（含前置依赖 depends_on 列表）。"""
     username = _username()
     async with AsyncSessionLocal() as db:
         task = await _require_task(db, username, task_id)
-        return _task_dict(task)
+        return _task_dict(task, await get_task_depends(db, task.id))
 
 
 @mcp.tool()
@@ -528,11 +535,10 @@ async def delete_task(task_id: int) -> str:
 async def add_task_dependency(task_id: int, depends_on_task_id: int) -> str:
     """为任务添加依赖（前者依赖后者）。"""
     username = _username()
-    if task_id == depends_on_task_id:
-        raise ValueError("任务不能依赖自身")
     async with AsyncSessionLocal() as db:
         task = await _require_task(db, username, task_id)
         await _require_task(db, username, depends_on_task_id)
+        await ensure_no_cycle(db, task_id, depends_on_task_id)
         exists = (
             await db.execute(
                 select(TaskDependency).where(

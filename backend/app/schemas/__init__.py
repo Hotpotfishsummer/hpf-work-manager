@@ -40,6 +40,7 @@ from app.schemas.task import (
     TaskBase,
     TaskBulkUpdate,
     TaskCreate,
+    TaskDependencyCreate,
     TaskOut,
     TaskUpdate,
 )
@@ -83,6 +84,7 @@ __all__ = [
     "TaskBase",
     "TaskBulkUpdate",
     "TaskCreate",
+    "TaskDependencyCreate",
     "TaskOut",
     "TaskUpdate",
     "Token",

@@ -66,3 +66,11 @@ class TaskOut(TaskBase):
     created_at: datetime
     # 派生字段：是否延期（后端计算，不落库）
     overdue: bool = False
+    # 派生字段：前置依赖任务 id 列表（后端查询，不落库）
+    depends_on: list[int] = []
+
+
+class TaskDependencyCreate(BaseModel):
+    """添加/移除依赖的请求体（此前为裸 dict，类型不校验）。"""
+
+    depends_on_task_id: int = Field(gt=0)

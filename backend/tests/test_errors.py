@@ -418,8 +418,8 @@ class Test422Errors:
         resp = await auth_client.post(
             f"/api/tasks/{test_task.id}/dependencies", json={}
         )
+        # 请求体已 schema 化（TaskDependencyCreate），缺字段由 Pydantic 422
         assert resp.status_code == 422
-        assert "缺少 depends_on_task_id" in resp.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_remove_dependency_missing_depends_on(self, auth_client, test_task):
@@ -427,8 +427,8 @@ class Test422Errors:
         resp = await auth_client.request(
             "DELETE", f"/api/tasks/{test_task.id}/dependencies", json={}
         )
+        # 请求体已 schema 化（TaskDependencyCreate），缺字段由 Pydantic 422
         assert resp.status_code == 422
-        assert "缺少 depends_on_task_id" in resp.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_bulk_update_empty_ids(self, auth_client):

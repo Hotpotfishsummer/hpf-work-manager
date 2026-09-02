@@ -5,8 +5,20 @@ from app.core.events import publish
 from app.deps import CurrentUser, DbDep
 from app.models import Milestone, Project, Task, TaskDependency
 from app.routers.projects import _get_owned_project
-from app.schemas import TaskBulkUpdate, TaskCreate, TaskOut, TaskUpdate
-from app.services.tasks import apply_task_update, to_out
+from app.schemas import (
+    TaskBulkUpdate,
+    TaskCreate,
+    TaskDependencyCreate,
+    TaskOut,
+    TaskUpdate,
+)
+from app.services.tasks import (
+    apply_task_update,
+    ensure_no_cycle,
+    get_project_depends_map,
+    get_task_depends,
+    to_out,
+)
 from app.utils.time import display_today, utcnow
 
 router = APIRouter(tags=["tasks"])
@@ -85,7 +97,8 @@ async def list_tasks(
     else:
         stmt = stmt.order_by(Task.created_at.desc())
     tasks = (await db.execute(stmt.offset(offset).limit(limit))).scalars().all()
-    return [to_out(t) for t in tasks]
+    depends_map = await get_project_depends_map(db, project_id)
+    return [to_out(t, depends_map.get(t.id, [])) for t in tasks]
 
 
 @router.post(
@@ -118,7 +131,8 @@ async def create_task(
 
 @router.get("/tasks/{task_id}", response_model=TaskOut)
 async def get_task(task_id: int, user: CurrentUser, db: DbDep):
-    return to_out(await _get_task(db, user, task_id))
+    task = await _get_task(db, user, task_id)
+    return to_out(task, await get_task_depends(db, task.id))
 
 
 @router.put("/tasks/{task_id}", response_model=TaskOut)
@@ -133,7 +147,7 @@ async def update_task(
     await db.commit()
     await db.refresh(task)
     await publish(task.project_id, "updated", "task", task.id)
-    return to_out(task)
+    return to_out(task, await get_task_depends(db, task.id))
 
 
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -185,14 +199,16 @@ async def list_dependencies(task_id: int, user: CurrentUser, db: DbDep):
 
 
 @router.post("/tasks/{task_id}/dependencies", status_code=status.HTTP_204_NO_CONTENT)
-async def add_dependency(task_id: int, depends_on: dict, user: CurrentUser, db: DbDep):
-    dep_id = depends_on.get("depends_on_task_id")
-    if not dep_id:
-        raise HTTPException(status_code=422, detail="缺少 depends_on_task_id")
+async def add_dependency(
+    task_id: int, payload: TaskDependencyCreate, user: CurrentUser, db: DbDep
+):
+    dep_id = payload.depends_on_task_id
     task = await _get_task(db, user, task_id)
     await _get_task(db, user, dep_id)
-    if task_id == dep_id:
-        raise HTTPException(status_code=400, detail="任务不能依赖自身")
+    try:
+        await ensure_no_cycle(db, task_id, dep_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     exists = (
         await db.execute(
@@ -211,10 +227,10 @@ async def add_dependency(task_id: int, depends_on: dict, user: CurrentUser, db: 
 
 
 @router.delete("/tasks/{task_id}/dependencies", status_code=status.HTTP_204_NO_CONTENT)
-async def remove_dependency(task_id: int, depends_on: dict, user: CurrentUser, db: DbDep):
-    dep_id = depends_on.get("depends_on_task_id")
-    if not dep_id:
-        raise HTTPException(status_code=422, detail="缺少 depends_on_task_id")
+async def remove_dependency(
+    task_id: int, payload: TaskDependencyCreate, user: CurrentUser, db: DbDep
+):
+    dep_id = payload.depends_on_task_id
     task = await _get_task(db, user, task_id)
     row = (
         await db.execute(

@@ -3,7 +3,10 @@
 REST router 与 MCP server 复用，避免逻辑分叉。
 """
 
-from app.models import Task
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import Task, TaskDependency
 from app.schemas import TaskOut
 from app.services.stats import is_overdue
 from app.utils.time import utcnow
@@ -39,7 +42,59 @@ def apply_task_update(task: Task, data: dict) -> None:
             setattr(task, key, data[key])
 
 
-def to_out(task: Task) -> TaskOut:
+def to_out(task: Task, depends_on: list[int] | None = None) -> TaskOut:
+    """序列化任务；传入 depends_on（列表端点应批量取好后传入，避免 N+1）。"""
     out = TaskOut.model_validate(task)
     out.overdue = is_overdue(task)
+    if depends_on is not None:
+        out.depends_on = sorted(depends_on)
     return out
+
+
+async def get_task_depends(db: AsyncSession, task_id: int) -> list[int]:
+    """单任务的前置依赖 id 列表。"""
+    rows = (
+        await db.execute(
+            select(TaskDependency.depends_on_task_id).where(TaskDependency.task_id == task_id)
+        )
+    ).scalars().all()
+    return sorted(rows)
+
+
+async def get_project_depends_map(db: AsyncSession, project_id: int) -> dict[int, list[int]]:
+    """项目内全部依赖边按 task_id 分组（列表序列化一次取全，避免 N+1）。"""
+    rows = (
+        await db.execute(
+            select(TaskDependency.task_id, TaskDependency.depends_on_task_id)
+            .join(Task, TaskDependency.task_id == Task.id)
+            .where(Task.project_id == project_id)
+        )
+    ).all()
+    mapping: dict[int, list[int]] = {}
+    for tid, dep in rows:
+        mapping.setdefault(tid, []).append(dep)
+    return mapping
+
+
+async def ensure_no_cycle(db: AsyncSession, task_id: int, depends_on_task_id: int) -> None:
+    """环检测：沿 depends_on 链从新前置任务向上游遍历，若能回到 task_id 则成环。
+
+    REST 与 MCP 共用；成环抛 ValueError（调用方转 400/工具错误）。
+    """
+    if task_id == depends_on_task_id:
+        raise ValueError("任务不能依赖自身")
+    frontier = [depends_on_task_id]
+    seen = set(frontier)
+    while frontier:
+        rows = (
+            await db.execute(
+                select(TaskDependency.depends_on_task_id).where(
+                    TaskDependency.task_id.in_(frontier)
+                )
+            )
+        ).scalars().all()
+        nxt = [d for d in rows if d not in seen]
+        if task_id in nxt:
+            raise ValueError(f"添加依赖会形成循环：任务 {task_id} 已在任务 {depends_on_task_id} 的上游链路中")
+        seen.update(nxt)
+        frontier = nxt
