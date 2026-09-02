@@ -78,3 +78,54 @@ async def test_ticket_rate_limited_after_60_per_minute(auth_client):
         assert 429 in codes, f"61 次请求内应出现 429，实际末尾: {codes[-5:]}"
     finally:
         limiter.reset()
+
+
+@pytest.mark.asyncio
+async def test_full_stream_flow_subscribe_and_receive(auth_client, test_project):
+    """完整流集成：换 ticket → 订阅项目流 → 写操作发布事件 → 流中收到 project-update。"""
+    import asyncio
+    import json as _json
+
+    # 1. 换取短期 ticket
+    resp = await auth_client.post("/api/events/ticket")
+    assert resp.status_code == 200
+    ticket = resp.json()["ticket"]
+
+    url = f"/api/events/stream?project_id={test_project.id}&ticket={ticket}"
+    lines: list[str] = []
+
+    async def read_first_event():
+        async with auth_client.stream("GET", url) as resp:
+            assert resp.status_code == 200
+            async for line in resp.aiter_lines():
+                lines.append(line)
+                if line.startswith("event: project-update"):
+                    return True
+        return False
+
+    reader = asyncio.create_task(read_first_event())
+    await asyncio.sleep(1)  # 等 SSE 端完成订阅
+
+    # 2. 写操作 → 服务端 publish → SSE 流转发
+    done = False
+    for _ in range(5):  # 容忍订阅竞态：多次触发直到流中出现事件
+        resp = await auth_client.post(
+            f"/api/projects/{test_project.id}/tasks", json={"name": "sse 集成"}
+        )
+        assert resp.status_code == 201
+        try:
+            done = await asyncio.wait_for(asyncio.shield(reader), timeout=1)
+            if done:
+                break
+        except (asyncio.TimeoutError, TimeoutError):
+            continue
+
+    assert done
+    # 解析事件负载
+    idx = lines.index("event: project-update")
+    payload = _json.loads(lines[idx + 1].removeprefix("data: "))
+    assert payload["entity"] == "task"
+    assert payload["type"] == "created"
+    assert payload["project_id"] == test_project.id
+
+    reader.cancel()
