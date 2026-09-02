@@ -406,3 +406,41 @@ async def test_list_logs_with_total_envelope(auth_client, test_project, db_sessi
         params={"with_total": "true", "entry_type": "note"},
     )
     assert resp.json()["total"] == 3
+
+
+@pytest.mark.asyncio
+async def test_mcp_list_dev_logs_since_timezone_variants(mcp_client):
+    """since 参数接受无时区（按 UTC）与 Z 后缀两种形式，不因时区处理崩溃。"""
+    resp = await mcp_client.post(
+        "/mcp/",
+        json={
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2025-06-18",
+                "capabilities": {},
+                "clientInfo": {"name": "t", "version": "1"},
+            },
+        },
+    )
+    sid = resp.headers["mcp-session-id"]
+
+    async def call(cid: int, since: str):
+        r = await mcp_client.post(
+            "/mcp/",
+            headers={**mcp_client.headers, "mcp-session-id": sid},
+            json={
+                "jsonrpc": "2.0",
+                "id": cid,
+                "method": "tools/call",
+                "params": {"name": "list_dev_logs", "arguments": {"project_id": 1, "since": since}},
+            },
+        )
+        return parse_sse_text(r.text)
+
+    # 项目可能不存在（错误返回也算"不崩溃"），关键是无 500/unhandled
+    data = await call(2, "2020-01-01T00:00:00")
+    assert data is not None
+    data = await call(3, "2020-01-01T00:00:00Z")
+    assert data is not None

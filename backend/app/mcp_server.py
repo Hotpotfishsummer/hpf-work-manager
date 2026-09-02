@@ -6,7 +6,7 @@
 """
 
 import contextvars
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from urllib.parse import urlparse
 
 from mcp.server.fastmcp import FastMCP
@@ -871,7 +871,10 @@ async def list_dev_logs(
         if status:
             stmt = stmt.where(DevLog.status == status)
         if since:
-            stmt = stmt.where(DevLog.created_at >= datetime.fromisoformat(since))
+            since_dt = datetime.fromisoformat(since)
+            if since_dt.tzinfo is None:
+                since_dt = since_dt.replace(tzinfo=UTC)
+            stmt = stmt.where(DevLog.created_at >= since_dt)
         rows = (
             (
                 await db.execute(
