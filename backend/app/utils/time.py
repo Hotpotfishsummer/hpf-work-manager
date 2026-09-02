@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 
 def utcnow() -> datetime:
@@ -6,5 +6,5 @@ def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
-def today_utc() -> datetime.date:
+def today_utc() -> date:
     return utcnow().date()

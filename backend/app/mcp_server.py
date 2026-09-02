@@ -53,7 +53,7 @@ from app.services.stats import (
     get_project_stats,
     today_utc,
 )
-from app.services.tasks import apply_task_update, to_out
+from app.services.tasks import apply_task_update
 from app.utils.time import utcnow
 
 # 由 ASGI 中间件在每次请求时写入当前认证用户名
@@ -391,6 +391,11 @@ async def list_tasks(
             stmt = stmt.where(Task.status == status)
         if overdue is True:
             stmt = stmt.where(Task.status != "done", Task.due_date.is_not(None), Task.due_date < today_utc())
+        if overdue is False:
+            # 与 overdue=True 对称的 SQL 条件：保证分页语义稳定（页大小恒定）
+            stmt = stmt.where(
+                or_(Task.status == "done", Task.due_date.is_(None), Task.due_date >= today_utc())
+            )
         if search:
             like = f"%{search.strip()}%"
             stmt = stmt.where(or_(Task.name.ilike(like), Task.description.ilike(like)))
@@ -405,10 +410,7 @@ async def list_tasks(
             .scalars()
             .all()
         )
-        outs = [to_out(t) for t in rows]
-        if overdue is False:
-            outs = [t for t in outs if not t.overdue]
-        return [_task_dict(t) for t in outs]
+        return [_task_dict(t) for t in rows]
 
 
 @mcp.tool()

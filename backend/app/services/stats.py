@@ -1,6 +1,8 @@
 from datetime import date, timedelta
 
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import DevLog, DevSession, ProgressSnapshot, Project, Task
@@ -98,33 +100,33 @@ async def upsert_progress_snapshot(
 ) -> None:
     """写入/更新今日快照；同日重复读取仅更新数值。
 
-    查询后更新而非方言级 upsert：SQLite（测试）与 PostgreSQL（生产）双兼容；
-    单用户工具并发冲突可忽略，唯一约束兜底。
+    方言级原子 upsert（ON CONFLICT DO UPDATE）：GET 读路径并发调用时
+    不会因双插入撞唯一约束而 409。PostgreSQL（生产）与 SQLite（测试）均支持。
     """
     today = today_utc()
-    snap = (
-        await db.execute(
-            select(ProgressSnapshot).where(
-                ProgressSnapshot.project_id == project_id,
-                ProgressSnapshot.date == today,
-            )
-        )
-    ).scalar_one_or_none()
-    if snap is None:
-        snap = ProgressSnapshot(
-            project_id=project_id,
-            date=today,
-            total_tasks=total,
-            done_tasks=done,
-            progress=progress,
-            weighted_progress=weighted,
-        )
-        db.add(snap)
+    values = {
+        "project_id": project_id,
+        "date": today,
+        "total_tasks": total,
+        "done_tasks": done,
+        "progress": progress,
+        "weighted_progress": weighted,
+    }
+    if db.get_bind().dialect.name == "postgresql":
+        insert_stmt = pg_insert(ProgressSnapshot).values(**values)
     else:
-        snap.total_tasks = total
-        snap.done_tasks = done
-        snap.progress = progress
-        snap.weighted_progress = weighted
+        insert_stmt = sqlite_insert(ProgressSnapshot).values(**values)
+    await db.execute(
+        insert_stmt.on_conflict_do_update(
+            index_elements=[ProgressSnapshot.project_id, ProgressSnapshot.date],
+            set_={
+                "total_tasks": total,
+                "done_tasks": done,
+                "progress": progress,
+                "weighted_progress": weighted,
+            },
+        )
+    )
     await db.commit()
 
 

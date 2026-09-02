@@ -166,7 +166,7 @@ async def bulk_update(payload: TaskBulkUpdate, user: CurrentUser, db: DbDep):
         apply_task_update(task, data)
     await db.commit()
     for task in tasks:
-        publish(task.project_id, "updated", "task", task.id)
+        await publish(task.project_id, "updated", "task", task.id)
 
 
 # ---- 依赖关系管理 ----
