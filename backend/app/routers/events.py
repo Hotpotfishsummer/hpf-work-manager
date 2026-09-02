@@ -8,7 +8,8 @@ from sse_starlette.sse import EventSourceResponse
 from app.core.events import subscribe, subscribe_global, unsubscribe, unsubscribe_global
 from app.core.ratelimit import limiter
 from app.core.security import create_sse_ticket, decode_sse_ticket, decode_token
-from app.deps import CurrentUser, DbDep, _user_from_username
+from app.database import AsyncSessionLocal
+from app.deps import CurrentUser, _user_from_username
 from app.models import Project, User
 from app.routers.projects import _get_owned_project
 
@@ -34,40 +35,44 @@ async def event_stream(
     project_id: int | None = Query(default=None, description="订阅的项目 ID；省略则订阅全部有权限项目的全局流"),
     ticket: str | None = Query(default=None, description="POST /events/ticket 换取的短期 ticket"),
     authorization: str | None = Header(default=None),
-    db: DbDep = None,
 ):
     """SSE 事件流：订阅指定项目（或全局）的变更事件，前端实时刷新。
 
     认证优先级：Authorization 头（JWT）> ?ticket= 短期 ticket。
     全局流仅转发该用户拥有的项目事件，不泄露他人 project_id。
 
-    注意：认证在端点内手动校验而非 Depends(OptionalUser)——slowapi 包装下
-    该依赖与 sse_starlette 的签名解析冲突，无凭证请求会被误判 422 而非 401；
-    SSE 为长连接天然低频，限流由 nginx limit_req 兜底。
+    注意：
+    - 认证在端点内手动校验而非 Depends(OptionalUser)——slowapi 包装下
+      该依赖与 sse_starlette 的签名解析冲突，无凭证请求会被误判 422 而非 401。
+    - 认证/所有权查询用独立会话并在流式响应开始前释放：FastAPI 的 yield 依赖
+      （DbDep）在响应完毕后才归还连接，SSE 是无限流，会导致每条长连接独占
+      连池连接（pool_size=5+overflow=5，约 10 条连接即耗尽全局请求队列）。
+    - SSE 为长连接天然低频，限流由 nginx limit_req 兜底。
     """
-    # 手动认证：优先 JWT header，次之 ticket
-    user = None
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization[7:]
-        username = decode_token(token)
-        if username:
-            user = await _user_from_username(db, username)
-    if user is None and ticket:
-        username = decode_sse_ticket(ticket)
-        if username:
-            user = await _user_from_username(db, username)
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="未认证",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    # 手动认证：优先 JWT header，次之 ticket；会话作用域仅覆盖认证与所有权查询
+    async with AsyncSessionLocal() as db:
+        user = None
+        if authorization and authorization.startswith("Bearer "):
+            token = authorization[7:]
+            username = decode_token(token)
+            if username:
+                user = await _user_from_username(db, username)
+        if user is None and ticket:
+            username = decode_sse_ticket(ticket)
+            if username:
+                user = await _user_from_username(db, username)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="未认证",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
-    if project_id is not None:
-        await _get_owned_project(db, user, project_id)
-        owned_ids: set[int] | None = None
-    else:
-        owned_ids = await _owned_project_ids(db, user)
+        if project_id is not None:
+            await _get_owned_project(db, user, project_id)
+            owned_ids: set[int] | None = None
+        else:
+            owned_ids = await _owned_project_ids(db, user)
 
     queue: asyncio.Queue = asyncio.Queue(maxsize=100)
 

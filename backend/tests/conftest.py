@@ -81,6 +81,7 @@ async def client(test_engine, mcp_session_manager):
     mcp_auth.AsyncSessionLocal = async_session
     mcp_server.AsyncSessionLocal = async_session
     keys_router.AsyncSessionLocal = async_session
+    events.AsyncSessionLocal = async_session
 
     async def get_db_override():
         async with async_session() as session:
