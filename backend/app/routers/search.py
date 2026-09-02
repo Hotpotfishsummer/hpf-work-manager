@@ -43,26 +43,32 @@ async def search(
         select(Project.id).where(project_cond)
     ) if project_id is None else Task.project_id == project_id
     task_stmt = (
-        select(Task)
+        select(Task, Project.name)
+        .join(Project, Task.project_id == Project.id)
         .where(task_cond, Task.name.ilike(f"%{q}%"))
         .order_by(Task.created_at.desc())
         .limit(limit)
         .offset(offset)
     )
-    tasks = (await db.execute(task_stmt)).scalars().all()
+    task_rows = (await db.execute(task_stmt)).all()
+    task_pid_to_name = {t.project_id: pname for t, pname in task_rows}
+    tasks = [t for t, _ in task_rows]
 
     # Search milestones
     ms_cond = Milestone.project_id.in_(
         select(Project.id).where(project_cond)
     ) if project_id is None else Milestone.project_id == project_id
     ms_stmt = (
-        select(Milestone)
+        select(Milestone, Project.name)
+        .join(Project, Milestone.project_id == Project.id)
         .where(ms_cond, Milestone.name.ilike(f"%{q}%"))
         .order_by(Milestone.due_date.asc().nulls_last())
         .limit(limit)
         .offset(offset)
     )
-    milestones = (await db.execute(ms_stmt)).scalars().all()
+    ms_rows = (await db.execute(ms_stmt)).all()
+    ms_pid_to_name = {m.project_id: pname for m, pname in ms_rows}
+    milestones = [m for m, _ in ms_rows]
 
     # Build results
     items: list[SearchResultItem] = []
@@ -88,7 +94,7 @@ async def search(
                 name=t.name,
                 description=t.description,
                 project_id=t.project_id,
-                project_name=None,  # Could join if needed
+                project_name=task_pid_to_name.get(t.project_id),
                 status=t.status,
                 due_date=t.due_date.isoformat() if t.due_date else None,
             )
@@ -102,7 +108,7 @@ async def search(
                 name=m.name,
                 description=None,
                 project_id=m.project_id,
-                project_name=None,
+                project_name=ms_pid_to_name.get(m.project_id),
                 status=m.status,
                 due_date=m.due_date.isoformat() if m.due_date else None,
             )

@@ -84,6 +84,9 @@ async def test_search_finds_project_task_milestone(auth_client, test_project):
     body = resp.json()
     kinds = {item["type"] for item in body["items"]}
     assert {"task", "milestone"} <= kinds
+    # 任务/里程碑结果带所属项目名（此前恒为 null）
+    for item in body["items"]:
+        assert item["project_name"] == test_project.name
     assert body["total"] >= 2
 
     # total 为精确总数（按实体分别 count，不受分页影响）
