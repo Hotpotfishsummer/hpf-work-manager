@@ -20,19 +20,19 @@ from app.schemas.stats import (
     OverdueTask,
     ProjectStats,
 )
-from app.utils.time import today_utc
+from app.utils.time import display_date, display_day_bounds_utc, display_today
 
 
 def is_overdue(task: Task, today: date | None = None) -> bool:
     """延期判定：未完成且截止日期早于今天（不落库，实时派生）。"""
-    today = today or today_utc()
+    today = today or display_today()
     return task.status != "done" and task.due_date is not None and task.due_date < today
 
 
 def compute_overdue(task: Task) -> OverdueTask | None:
     if not is_overdue(task):
         return None
-    days_late = (today_utc() - task.due_date).days
+    days_late = (display_today() - task.due_date).days
     return OverdueTask(
         id=task.id,
         name=task.name,
@@ -103,7 +103,7 @@ async def upsert_progress_snapshot(
     方言级原子 upsert（ON CONFLICT DO UPDATE）：GET 读路径并发调用时
     不会因双插入撞唯一约束而 409。PostgreSQL（生产）与 SQLite（测试）均支持。
     """
-    today = today_utc()
+    today = display_today()
     values = {
         "project_id": project_id,
         "date": today,
@@ -175,10 +175,10 @@ async def get_burndown(db: AsyncSession, project_id: int, start: date, end: date
         )
     ).all()
 
-    # 按日期统计完成数（completed_at 为 UTC datetime，取日期）
+    # 按日期统计完成数（completed_at 为 UTC 时间戳，按展示时区折算日历日期）
     completed_by_day: dict[date, int] = {}
     for (completed_at,) in rows:
-        d = completed_at.date()
+        d = display_date(completed_at)
         completed_by_day[d] = completed_by_day.get(d, 0) + 1
 
     days = _date_range(start, end)
@@ -249,7 +249,7 @@ async def get_overview(db: AsyncSession, user_id: int) -> DashboardOverview:
 
     单次查询返回，避免前端 N+1 并发请求。
     """
-    today = today_utc()
+    today = display_today()
 
     # 用户全部项目
     projects = (
@@ -373,16 +373,19 @@ async def get_overview(db: AsyncSession, user_id: int) -> DashboardOverview:
             for s, count in session_rows
         ]
 
-    # 今日完成数（按本地完成日期判定）
+    # 今日完成数（按展示时区的当日时间窗过滤；func.date 是 UTC 分桶，
+    # 会让 UTC+8 用户本地 0:00-8:00 完成的任务记到"昨天"）
     today_completed = 0
     if project_ids:
+        day_start, day_end = display_day_bounds_utc(today)
         today_completed = (
             await db.execute(
                 select(func.count(Task.id)).where(
                     Task.project_id.in_(project_ids),
                     Task.status == "done",
                     Task.completed_at.is_not(None),
-                    func.date(Task.completed_at) == today.isoformat(),
+                    Task.completed_at >= day_start,
+                    Task.completed_at < day_end,
                 )
             )
         ).scalar_one()

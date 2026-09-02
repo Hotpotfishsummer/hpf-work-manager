@@ -24,9 +24,9 @@ async def test_burndown_shape(auth_client, test_project):
     # 存在时区错位——见 IMPROVEMENTS B9，此处规避该边界）
     from datetime import timedelta
 
-    from app.utils.time import today_utc
+    from app.utils.time import display_today
 
-    today = today_utc()
+    today = display_today()
     resp = await auth_client.put(
         f"/api/projects/{test_project.id}",
         json={

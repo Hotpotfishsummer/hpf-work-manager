@@ -7,7 +7,7 @@ from app.models import Milestone, Project, Task, TaskDependency
 from app.routers.projects import _get_owned_project
 from app.schemas import TaskBulkUpdate, TaskCreate, TaskOut, TaskUpdate
 from app.services.tasks import apply_task_update, to_out
-from app.utils.time import today_utc, utcnow
+from app.utils.time import display_today, utcnow
 
 router = APIRouter(tags=["tasks"])
 
@@ -64,7 +64,7 @@ async def list_tasks(
     # 逾期为实时派生字段，SQL 级过滤保证分页语义正确
     if overdue is True:
         stmt = stmt.where(
-            Task.status != "done", Task.due_date.is_not(None), Task.due_date < today_utc()
+            Task.status != "done", Task.due_date.is_not(None), Task.due_date < display_today()
         )
     # 排序
     if sort == "due_asc":

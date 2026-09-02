@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     mcp_path: str = "/mcp"
     # MCP DNS 防重绑定的允许 Host（逗号分隔）；空则从 CORS_ORIGINS 推导
     mcp_allowed_hosts: str = ""
+    # 展示时区：逾期/今日完成/快照/燃尽分桶等"日历今天"语义统一按该时区判定
+    display_timezone: str = "Asia/Shanghai"
 
     @model_validator(mode="after")
     def _enforce_secret_key(self) -> "Settings":

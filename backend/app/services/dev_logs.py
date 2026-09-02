@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import DevLog, DevSession, Project, Task
 from app.schemas import DevLogStats
 from app.schemas.dev_log import _SEVERITY_TYPES, _STATUS_TYPES
-from app.utils.time import today_utc, utcnow
+from app.utils.time import display_day_bounds_utc, display_today, utcnow
 
 
 def to_dict(log: DevLog) -> dict:
@@ -131,12 +131,13 @@ async def get_dev_log_stats(db: AsyncSession, project_id: int) -> DevLogStats:
     for entry_type, cnt in rows:
         type_counts[entry_type] = cnt
 
-    today = today_utc()
+    day_start, day_end = display_day_bounds_utc(display_today())
     today_count = (
         await db.execute(
             select(func.count(DevLog.id)).where(
                 DevLog.project_id == project_id,
-                func.date(DevLog.created_at) == today,
+                DevLog.created_at >= day_start,
+                DevLog.created_at < day_end,
             )
         )
     ).scalar_one()

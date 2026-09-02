@@ -13,14 +13,15 @@ from app.services.stats import (
     get_progress_history,
     get_project_stats,
 )
+from app.utils.time import display_today
 
 router = APIRouter(tags=["stats"])
 
 
 def _project_range(project: Project) -> tuple[date, date]:
     """项目起止日期，缺省回退到今日，保证区间非空。"""
-    start = project.start_date or date.today()
-    end = project.end_date or date.today()
+    start = project.start_date or display_today()
+    end = project.end_date or display_today()
     if start > end:
         raise HTTPException(status_code=400, detail="项目开始日期晚于截止日期")
     return start, end

@@ -74,9 +74,9 @@ async def test_mcp_list_tasks_overdue_false_stable_pagination(mcp_client):
     """overdue=False 应在 SQL 层过滤：即使页边界两侧混合逾期任务，页大小也恒定。"""
     from datetime import timedelta
 
-    from app.utils.time import today_utc
+    from app.utils.time import display_today
 
-    today = today_utc()
+    today = display_today()
 
     # MCP initialize
     resp = await mcp_client.post(

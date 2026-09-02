@@ -48,10 +48,10 @@ from app.services.dev_logs import (
     get_project_state as _get_project_state_service,
 )
 from app.services.stats import (
+    display_today,
     get_burndown,
     get_gantt_data,
     get_project_stats,
-    today_utc,
 )
 from app.services.tasks import apply_task_update
 from app.utils.time import utcnow
@@ -390,11 +390,11 @@ async def list_tasks(
         if status:
             stmt = stmt.where(Task.status == status)
         if overdue is True:
-            stmt = stmt.where(Task.status != "done", Task.due_date.is_not(None), Task.due_date < today_utc())
+            stmt = stmt.where(Task.status != "done", Task.due_date.is_not(None), Task.due_date < display_today())
         if overdue is False:
             # 与 overdue=True 对称的 SQL 条件：保证分页语义稳定（页大小恒定）
             stmt = stmt.where(
-                or_(Task.status == "done", Task.due_date.is_(None), Task.due_date >= today_utc())
+                or_(Task.status == "done", Task.due_date.is_(None), Task.due_date >= display_today())
             )
         if search:
             like = f"%{search.strip()}%"
@@ -639,8 +639,8 @@ async def get_burndown_mcp(project_id: int) -> list[dict]:
     username = _username()
     async with AsyncSessionLocal() as db:
         p = await _require_project(db, username, project_id)
-        start = p.start_date or date.today()
-        end = p.end_date or date.today()
+        start = p.start_date or display_today()
+        end = p.end_date or display_today()
         points = await get_burndown(db, project_id, start, end)
         return [
             {"date": pt.date, "ideal_remaining": pt.ideal_remaining, "actual_remaining": pt.actual_remaining}
@@ -654,8 +654,8 @@ async def get_gantt_mcp(project_id: int) -> dict:
     username = _username()
     async with AsyncSessionLocal() as db:
         p = await _require_project(db, username, project_id)
-        start = p.start_date or date.today()
-        end = p.end_date or date.today()
+        start = p.start_date or display_today()
+        end = p.end_date or display_today()
         gantt = await get_gantt_data(db, project_id, start, end)
         return {
             "project_start": gantt.project_start,

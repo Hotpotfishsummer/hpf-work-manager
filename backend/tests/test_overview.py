@@ -168,7 +168,7 @@ async def test_weighted_progress_no_hours(auth_client, db_session, test_project)
 async def test_progress_snapshot_upsert_and_history(auth_client, db_session, test_project):
     """P4-3: 读取 stats 时按天沉淀快照；重复读取同日只更新不新增；历史端点升序返回。"""
     from app.models import Task
-    from app.utils.time import today_utc
+    from app.utils.time import display_today
 
     db_session.add(Task(project_id=test_project.id, name="T1", status="done", progress=100))
     db_session.add(Task(project_id=test_project.id, name="T2", status="todo", progress=0))
@@ -189,7 +189,7 @@ async def test_progress_snapshot_upsert_and_history(auth_client, db_session, tes
     history = resp.json()
     assert len(history) == 1  # 同日 upsert，仅一条
     snap = history[0]
-    assert snap["date"] == today_utc().isoformat()
+    assert snap["date"] == display_today().isoformat()
     assert snap["total_tasks"] == 3
     assert snap["done_tasks"] == 2
     assert snap["progress"] == 66.7
