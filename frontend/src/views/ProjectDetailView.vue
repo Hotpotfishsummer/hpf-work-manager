@@ -191,7 +191,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { InfoFilled } from '@element-plus/icons-vue'
@@ -395,6 +395,8 @@ async function saveProject() {
 }
 
 onMounted(load)
+// 路由参数变化时组件复用，onMounted 不会再次触发
+watch(pid, load)
 </script>
 
 <style scoped>

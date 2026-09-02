@@ -31,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { projectApi, statsApi, taskApi } from '@/api'
@@ -86,6 +86,8 @@ function scheduleReload() {
 const { connected, reconnectable, reconnect } = useProjectEvents(() => pid.value, scheduleReload)
 
 onMounted(load)
+// 路由参数变化时组件复用，需按 pid 重载
+watch(pid, load)
 </script>
 
 <style scoped>

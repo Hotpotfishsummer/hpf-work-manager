@@ -79,7 +79,8 @@ const loading = ref(false)
 const showDropdown = ref(false)
 const focused = ref(false)
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
-let abortController: AbortController | null = null
+// 请求序号守卫：慢请求晚返回时丢弃过期结果（axios abort 需全链路透传 signal，此处以序号实现同等效果）
+let latestSeq = 0
 
 const DEBOUNCE_MS = 300
 const MIN_QUERY_LENGTH = 2
@@ -161,22 +162,23 @@ async function doSearch(q: string) {
     return
   }
 
+  const seq = ++latestSeq
   loading.value = true
-  if (abortController) abortController.abort()
-  abortController = new AbortController()
 
   try {
     const res = await searchApi.global(q)
+    if (seq !== latestSeq) return // 已有更新的搜索，丢弃过期结果
     results.value = res.items
     total.value = res.total
     showDropdown.value = true
   } catch (err) {
     console.error('Search failed:', err)
+    if (seq !== latestSeq) return
     results.value = []
     total.value = 0
     showDropdown.value = false
   } finally {
-    loading.value = false
+    if (seq === latestSeq) loading.value = false
   }
 }
 
@@ -240,7 +242,7 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
   if (debounceTimer) clearTimeout(debounceTimer)
-  if (abortController) abortController.abort()
+  latestSeq += 1 // 使在途请求结果全部失效
 })
 </script>
 

@@ -28,6 +28,9 @@
           <el-icon style="margin-right: var(--md-space-1)"><Download /></el-icon>
           导出 .md
         </el-button>
+        <el-button v-if="selectedTasks.length" size="large" @click="openBulkDialog">
+          批量操作（{{ selectedTasks.length }}）
+        </el-button>
         <el-button type="primary" size="large" @click="openCreate">
           <el-icon style="margin-right: var(--md-space-1)"><Plus /></el-icon>
           新建任务
@@ -275,7 +278,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
@@ -324,12 +327,6 @@ const COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
   { status: 'todo', label: '待办', color: 'var(--md-status-todo)' },
   { status: 'in_progress', label: '进行中', color: 'var(--md-status-inprogress)' },
   { status: 'done', label: '已完成', color: 'var(--md-status-done)' },
-]
-
-const FILTERS = [
-  { value: 'all', label: '全部' },
-  { value: 'overdue', label: '已延期' },
-  { value: 'high', label: '高优先级' },
 ]
 
 /** 应用前端筛选 + 搜索 + 排序（响应式派生，不另行请求） */
@@ -403,6 +400,8 @@ async function load() {
     project.value = p
     tasks.value = ts
     milestones.value = ms
+    // 全量刷新后旧选择可能已失效（任务被删/改），清空防止把过期 id 传给 bulk
+    selectedTasks.value = []
   } finally {
     loading.value = false
   }
@@ -685,6 +684,8 @@ async function saveDeps() {
 }
 
 onMounted(load)
+// 同一路由记录下切换项目（/projects/1/tasks → /projects/2/tasks）时组件被复用，需按 pid 重载
+watch(pid, load)
 </script>
 
 <style scoped>

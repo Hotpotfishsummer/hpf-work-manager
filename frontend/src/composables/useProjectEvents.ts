@@ -22,14 +22,25 @@ export function useProjectEvents(projectId: () => number | null, onUpdate: () =>
   let es: EventSource | null = null
   let retry = 0
   let manualClosed = false
+  let retryTimer: ReturnType<typeof setTimeout> | null = null
   const connected = ref(false)
   const reconnectable = ref(false)
 
   const BASE = import.meta.env.VITE_API_BASE || '/api'
 
+  function scheduleConnect(delay: number) {
+    if (retryTimer) clearTimeout(retryTimer)
+    retryTimer = setTimeout(connect, delay)
+  }
+
   async function connect() {
     const pid = projectId()
     if (pid == null || manualClosed) return
+    // 幂等守卫：上一个连接还挂着时先关掉，防止双连接重复触发 onUpdate
+    if (es) {
+      es.close()
+      es = null
+    }
 
     // 先换取短期 ticket，失败则按退避重连（token 失效时由拦截器转登录，不再死循环）
     let ticket = ''
@@ -41,7 +52,7 @@ export function useProjectEvents(projectId: () => number | null, onUpdate: () =>
       if (!manualClosed && retry < MAX_RETRIES) {
         const delay = Math.min(1000 * 2 ** retry, 30000)
         retry += 1
-        setTimeout(connect, delay)
+        scheduleConnect(delay)
       } else {
         reconnectable.value = true
       }
@@ -70,7 +81,7 @@ export function useProjectEvents(projectId: () => number | null, onUpdate: () =>
         }
         const delay = Math.min(1000 * 2 ** retry, 30000)
         retry += 1
-        setTimeout(connect, delay)
+        scheduleConnect(delay)
       }
     } catch {
       // 环境不支持 EventSource 时静默降级（无实时刷新）
@@ -79,6 +90,10 @@ export function useProjectEvents(projectId: () => number | null, onUpdate: () =>
 
   function close() {
     manualClosed = true
+    if (retryTimer) {
+      clearTimeout(retryTimer)
+      retryTimer = null
+    }
     es?.close()
     es = null
     connected.value = false
@@ -90,7 +105,7 @@ export function useProjectEvents(projectId: () => number | null, onUpdate: () =>
     manualClosed = false
     retry = 0
     reconnectable.value = false
-    setTimeout(connect, 0)
+    scheduleConnect(0)
   }
 
   onMounted(connect)
@@ -100,7 +115,7 @@ export function useProjectEvents(projectId: () => number | null, onUpdate: () =>
     if (pid === old) return
     close()
     manualClosed = false
-    setTimeout(connect, 0)
+    scheduleConnect(0)
   })
 
   return { connected, reconnectable, reconnect }
