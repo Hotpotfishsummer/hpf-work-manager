@@ -60,3 +60,21 @@ async def test_global_stream_requires_auth(client):
     """无凭证访问全局流 → 401。"""
     resp = await client.get("/api/events/stream")
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_ticket_rate_limited_after_60_per_minute(auth_client):
+    """/events/ticket 挂了 slowapi 60/minute：连续请求应触发 429（nginx 之外的应用层兜底）。"""
+    from app.core.ratelimit import limiter
+
+    limiter.reset()
+    try:
+        codes = []
+        for _ in range(61):
+            resp = await auth_client.post("/api/events/ticket")
+            codes.append(resp.status_code)
+            if resp.status_code == 429:
+                break
+        assert 429 in codes, f"61 次请求内应出现 429，实际末尾: {codes[-5:]}"
+    finally:
+        limiter.reset()
