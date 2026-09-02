@@ -61,6 +61,15 @@ export interface MilestoneUpdate {
   status?: string
 }
 
+export interface TaskComment {
+  id: number
+  task_id: number
+  author_id: number | null
+  author_username: string
+  content: string
+  created_at: string
+}
+
 export interface Task {
   id: number
   project_id: number

@@ -27,6 +27,7 @@ import type {
   TaskBulkUpdate,
   TaskCreate,
   TaskUpdate,
+  TaskComment,
   User,
 } from '@/types'
 
@@ -75,12 +76,21 @@ export const taskApi = {
   listDeps: (id: number) => http.get<number[], number[]>(`/tasks/${id}/dependencies`),
   addDep: (id: number, dependsOn: number) =>
     http.post<null, null>(`/tasks/${id}/dependencies`, { depends_on_task_id: dependsOn }),
+  // 后端以请求体接收 depends_on_task_id（DELETE body），不能用 query 传
   removeDep: (id: number, dependsOn: number) =>
-    http.request<number[], null>({
+    http.request<null, null>({
       method: 'DELETE',
       url: `/tasks/${id}/dependencies`,
-      params: { depends_on_task_id: dependsOn },
+      data: { depends_on_task_id: dependsOn },
     }),
+}
+
+/* ---- 任务评论 ---- */
+export const commentApi = {
+  list: (taskId: number) => http.get<TaskComment[], TaskComment[]>(`/tasks/${taskId}/comments`),
+  create: (taskId: number, content: string) =>
+    http.post<TaskComment, TaskComment>(`/tasks/${taskId}/comments`, { content }),
+  remove: (id: number) => http.delete<null, null>(`/comments/${id}`),
 }
 
 /* ---- 统计 / 进度 ---- */

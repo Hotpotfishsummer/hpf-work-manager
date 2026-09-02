@@ -186,6 +186,7 @@ function markAllRead() {
 /** 实体/动作中文标签（通知渲染用） */
 export const ENTITY_LABEL: Record<string, string> = {
   task: '任务',
+  comment: '评论',
   project: '项目',
   milestone: '里程碑',
   log: '开发记录',

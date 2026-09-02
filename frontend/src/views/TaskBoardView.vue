@@ -211,6 +211,35 @@
           </el-form-item>
         </div>
       </el-form>
+      <!-- 评论面板（仅编辑已有任务时） -->
+      <template v-if="editing">
+        <el-divider content-position="left">评论（{{ comments.length }}）</el-divider>
+        <el-scrollbar max-height="180px" class="comment-scroll">
+          <div v-for="c in comments" :key="c.id" class="comment-item">
+            <div class="comment-meta">
+              <span class="comment-author">{{ c.author_username }}</span>
+              <span class="comment-time">{{ relTime(c.created_at) }}</span>
+              <el-button link size="small" type="danger" @click="removeComment(c.id)">删除</el-button>
+            </div>
+            <div class="comment-content">{{ c.content }}</div>
+          </div>
+          <div v-if="!comments.length" class="comment-empty">暂无评论——记录一下进展或上下文</div>
+        </el-scrollbar>
+        <div class="comment-input">
+          <el-input
+            v-model="newComment"
+            type="textarea"
+            :rows="2"
+            maxlength="2000"
+            show-word-limit
+            placeholder="写下评论，Enter 发送（Shift+Enter 换行）"
+            @keydown.enter.exact.prevent="submitComment"
+          />
+          <el-button type="primary" :loading="commentSaving" :disabled="!newComment.trim()" @click="submitComment">
+            发送
+          </el-button>
+        </div>
+      </template>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="save">保存</el-button>
@@ -282,8 +311,8 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { milestoneApi, projectApi, taskApi } from '@/api'
-import type { Milestone, Project, Task, TaskPriority, TaskStatus, TaskUpdate } from '@/types'
+import { commentApi, milestoneApi, projectApi, taskApi } from '@/api'
+import type { Milestone, Project, Task, TaskComment, TaskPriority, TaskStatus, TaskUpdate } from '@/types'
 import { generateCsv } from '@/utils/csv'
 import { useProjectEvents } from '@/composables/useProjectEvents'
 import LiveIndicator from '@/components/LiveIndicator.vue'
@@ -481,6 +510,51 @@ function scheduleReload() {
 }
 const { connected, reconnectable, reconnect } = useProjectEvents(() => pid.value, scheduleReload)
 
+// ---- 任务评论 ----
+const comments = ref<TaskComment[]>([])
+const newComment = ref('')
+const commentSaving = ref(false)
+
+async function loadComments(taskId: number) {
+  comments.value = []
+  newComment.value = ''
+  try {
+    comments.value = await commentApi.list(taskId)
+  } catch {
+    // 评论加载失败不阻塞任务编辑
+  }
+}
+
+async function submitComment() {
+  const content = newComment.value.trim()
+  if (!content || !editing.value) return
+  commentSaving.value = true
+  try {
+    const c = await commentApi.create(editing.value.id, content)
+    comments.value.push(c)
+    newComment.value = ''
+  } finally {
+    commentSaving.value = false
+  }
+}
+
+async function removeComment(id: number) {
+  try {
+    await commentApi.remove(id)
+    comments.value = comments.value.filter((c) => c.id !== id)
+  } catch {
+    // 删除失败保持原状（错误提示由拦截器统一处理）
+  }
+}
+
+function relTime(ts: string) {
+  const diff = Date.now() - new Date(ts).getTime()
+  if (diff < 60_000) return '刚刚'
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`
+  return ts.slice(0, 10)
+}
+
 function openCreate() {
   editing.value = null
   form.name = ''
@@ -496,6 +570,7 @@ function openCreate() {
 
 function openEdit(t: Task) {
   editing.value = t
+  void loadComments(t.id)
   form.name = t.name
   form.description = t.description ?? ''
   form.priority = t.priority
@@ -867,5 +942,52 @@ watch(pid, load)
   .head-actions .el-form--inline .el-form-item {
     margin-right: var(--md-space-2);
   }
+}
+</style>
+
+<style scoped>
+.comment-scroll {
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-md);
+  padding: var(--md-space-1);
+  margin-bottom: var(--md-space-2);
+}
+.comment-item {
+  padding: var(--md-space-2) var(--md-space-1);
+  border-bottom: 1px solid var(--md-outline-variant);
+}
+.comment-item:last-child { border-bottom: none; }
+.comment-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--md-space-2);
+  margin-bottom: 2px;
+}
+.comment-author {
+  font-weight: var(--md-weight-semibold);
+  font-size: var(--md-text-label-sm);
+  color: var(--md-on-surface);
+}
+.comment-time {
+  flex: 1;
+  font-size: var(--md-text-label-sm);
+  color: var(--md-on-surface-variant);
+}
+.comment-content {
+  font-size: var(--md-text-body-sm);
+  color: var(--md-on-surface);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.comment-empty {
+  padding: var(--md-space-4) var(--md-space-2);
+  text-align: center;
+  color: var(--md-on-surface-variant);
+  font-size: var(--md-text-body-sm);
+}
+.comment-input {
+  display: flex;
+  gap: var(--md-space-2);
+  align-items: flex-end;
 }
 </style>
