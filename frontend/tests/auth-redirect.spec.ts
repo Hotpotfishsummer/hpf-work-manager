@@ -34,6 +34,14 @@ vi.mock('element-plus', () => ({
   },
 }))
 
+// Mock router（拦截器 401 时动态 import('@/router') 跳转登录页）
+vi.mock('@/router', () => ({
+  default: {
+    currentRoute: { value: { path: '/projects/1', fullPath: '/projects/1' } },
+    push: vi.fn(),
+  },
+}))
+
 // Mock localStorage
 const localStorageMock = {
   getItem: vi.fn(),
@@ -62,6 +70,9 @@ describe('http interceptor 401 handling', () => {
 
   beforeEach(async () => {
     vi.resetModules()
+    // 拦截器动态 import('@/stores/auth') 使用 Pinia，测试需先激活
+    const { createPinia, setActivePinia } = await import('pinia')
+    setActivePinia(createPinia())
     const { default: httpModule } = await import('@/api/http')
     http = httpModule.default
 
@@ -83,6 +94,9 @@ describe('http interceptor 401 handling', () => {
 
   it('removes token and redirects on 401', async () => {
     localStorageMock.getItem.mockReturnValue('test-token')
+    const { useAuthStore } = await import('@/stores/auth')
+    const authStore = useAuthStore()
+    authStore.token = 'test-token'
 
     const error = {
       response: {
@@ -94,11 +108,17 @@ describe('http interceptor 401 handling', () => {
     await expect(responseErrorInterceptor!(error)).rejects.toEqual(error)
     expect(localStorageMock.removeItem).toHaveBeenCalledWith('hpf_token')
     expect(localStorageMock.removeItem).toHaveBeenCalledWith('hpf_user')
-    expect(window.location.href).toBe('/login')
+    // 拦截器经 vue-router 跳转登录页（携带 redirect query）
+    const { push } = (await import('@/router')).default as unknown as { push: ReturnType<typeof vi.fn> }
+    expect(push).toHaveBeenCalledWith({ path: '/login', query: { redirect: '/projects/1' } })
   })
 
   it('does not redirect if already on login page', async () => {
-    window.location.pathname = '/login'
+    // 路由 mock 需指向 /login 以验证「已在该页则不重复跳转」分支
+    const routerModule = (await import('@/router')) as unknown as {
+      default: { currentRoute: { value: { path: string } }; push: ReturnType<typeof vi.fn> }
+    }
+    routerModule.default.currentRoute.value.path = '/login'
     localStorageMock.getItem.mockReturnValue('test-token')
 
     const error = {
@@ -111,7 +131,7 @@ describe('http interceptor 401 handling', () => {
     await expect(responseErrorInterceptor!(error)).rejects.toEqual(error)
     expect(localStorageMock.removeItem).toHaveBeenCalledWith('hpf_token')
     expect(localStorageMock.removeItem).toHaveBeenCalledWith('hpf_user')
-    expect(window.location.href).toBe('http://localhost:8080')
+    expect(routerModule.default.push).not.toHaveBeenCalled()
   })
 
   it('shows error message for non-401 errors', async () => {

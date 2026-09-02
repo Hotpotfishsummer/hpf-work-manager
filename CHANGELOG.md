@@ -5,6 +5,24 @@
 
 ## [Unreleased]
 
+### P4 · 体验增强 ✅
+#### P4-1 工时加权进度 ✅
+- 任务支持 `estimated_hours`，统计新增 `weighted_progress`（工时加权完成度）；仪表盘卡片与详情页双口径展示
+
+#### P4-2 移动端适配 ✅
+- AppLayout 顶栏响应式压缩（≤900px 收品牌名/搜索文案，≤560px 收起搜索）；任务看板与详情页两栏布局折叠单栏
+
+#### P4-3 每日进度快照 ✅
+- 读取 stats 时按天沉淀快照（upsert，同日只更新不新增）；新增 `GET /projects/{id}/progress-history`；详情页新增进度趋势图（ProgressTrendChart）
+
+#### P4-4 通知中心（SSE 全局流） ✅
+- 后端事件总线新增全局主题（`subscribe_global`/`publish` 扇出到项目+全局双通道）
+- `GET /events/stream` 支持省略 `project_id` 订阅全局流；服务端按用户所有权过滤，他人项目事件静默丢弃不泄露存在性
+- 全局流认证改为端点内手动校验（Authorization 头优先、?ticket= 兜底）：绕开 slowapi 包装签名与 FastAPI 0.141 参数解析的冲突（此前无凭证请求被误判 422 而非 401）
+- 前端 `stores/notifications.ts`：全局 SSE 单例连接（ticket 换取 + 指数退避重连最多 8 次）、50 条去重缓存、已读水位持久化 localStorage
+- 前端 `NotificationBell.vue`：顶栏铃铛（未读角标 + 弹层列表 + 相对时间 + 点击跳转对应页面），≤560px 收起与移动端导航策略一致
+- AppLayout 登录后自动连接、登出断开；新增 `tests/test_global_events.py`（总线扇出/所有权过滤/401 边界）
+
 ### P0 · 修复损坏与半成品功能（核心卖点真正可用）
 - **SSE 实时同步修复**：新增 `POST /api/events/ticket`（JWT 换 30s 一次性 ticket），`/events/stream` 支持 `?ticket=` 认证；前端 `useProjectEvents` 改用 `addEventListener('project-update')` + 最大 8 次重试熔断，消除 401 无限重连
 - **REST publish 补齐**：`routers/projects.py` / `milestones.py` / `tasks.py` 全部写操作补齐事件广播；`projects.py` 新增 `?status=` 过滤

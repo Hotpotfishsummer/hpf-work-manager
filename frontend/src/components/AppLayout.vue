@@ -25,6 +25,7 @@
             <kbd class="search-kbd">⌘K</kbd>
           </button>
           <GlobalSearch ref="globalSearchRef" />
+          <NotificationBell />
           <button class="theme-toggle" :title="theme.scheme === 'dark' ? '切换到浅色' : '切换到深色'" @click="toggleTheme">
             <el-icon v-if="theme.scheme === 'dark'"><Sunny /></el-icon>
             <el-icon v-else><Moon /></el-icon>
@@ -56,13 +57,21 @@ import { Moon, Search, Sunny, User } from '@element-plus/icons-vue'
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import GlobalSearch from '@/components/GlobalSearch.vue'
+import NotificationBell from '@/components/NotificationBell.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useNotifications } from '@/stores/notifications'
 import { useThemeStore } from '@/stores/theme'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const theme = useThemeStore()
 const globalSearchRef = ref<InstanceType<typeof GlobalSearch> | null>(null)
+const { connect: connectNotifications, disconnect: disconnectNotifications } = useNotifications()
+
+// 登录状态下启动全局通知 SSE；登出即断开
+onMounted(() => {
+  if (authStore.token) connectNotifications()
+})
 
 function openCmdK() {
   const el = globalSearchRef.value?.$el as HTMLElement | undefined
@@ -89,6 +98,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (onKeydown) document.removeEventListener('keydown', onKeydown)
+  disconnectNotifications()
 })
 
 function toggleTheme() {

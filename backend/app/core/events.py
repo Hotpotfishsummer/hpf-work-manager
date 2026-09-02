@@ -38,7 +38,7 @@ async def publish(project_id: int, event_type: str, entity: str, entity_id: int)
         }
     )
     async with _lock:
-        queues = list(_queues[_topic(project_id)])
+        queues = list(_queues[_topic(project_id)]) + list(_queues.get("global", set()))
     for q in queues:
         # 队列满则丢弃最旧事件，避免阻塞业务写路径
         if q.full():
@@ -50,3 +50,15 @@ async def publish(project_id: int, event_type: str, entity: str, entity_id: int)
             q.put_nowait(message)
         except asyncio.QueueFull:
             pass
+
+
+# ---- 全局主题（P4-4 通知中心）：跨项目广播，订阅方须自行按所有权过滤 ----
+
+async def subscribe_global(queue: asyncio.Queue) -> None:
+    async with _lock:
+        _queues["global"].add(queue)
+
+
+async def unsubscribe_global(queue: asyncio.Queue) -> None:
+    async with _lock:
+        _queues["global"].discard(queue)

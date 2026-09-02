@@ -273,7 +273,13 @@
 
 ## 9. SSE 实时推送（进度同步）
 
+### POST /events/ticket — 换取 SSE 短期 ticket（需登录）
+- EventSource 无法携带 Authorization 头，先以 JWT 换取 30s 一次性 ticket，再以 `?ticket=` 传入流端点，避免长期令牌进入 URL。
+- 响应：`{ "ticket": "<jwt-typ=sse>" }`；限流 60/min/IP。
+
 ### GET /events/stream?project_id={pid} — 项目变更事件流（需登录）
+- 认证优先级：`Authorization: Bearer <JWT>` 头 > `?ticket=` 短期 ticket；两者皆无 → `401`。
+- `project_id` 可省略：省略则订阅**全局流**（P4-4 通知中心），服务端按当前用户拥有的项目过滤——他人项目的事件静默丢弃，不泄露其存在。
 - 长连接，`text/event-stream`。任一写操作（项目/里程碑/任务/依赖/DevLog/会话）后推送 `project-update` 事件。
 - 事件格式（`data` 字段为 JSON）：
 ```json
@@ -281,6 +287,7 @@
 ```
 - `entity` ∈ `project`/`milestone`/`task`/`log`/`session`；`type` ∈ `created`/`updated`/`deleted`
 - 每 25s 发送 `ping` 心跳保活；前端可据此自动刷新受影响项目。
+- 注意：此端点未挂 slowapi 限流装饰器（与 EventSourceResponse 的签名解析冲突会误判 422），长连接天然低频，由 nginx `limit_req` 兜底。
 
 ## 10. MCP Server（AI 工具）
 
