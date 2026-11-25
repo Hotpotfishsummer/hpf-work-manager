@@ -35,6 +35,18 @@ export const chartColors = {
   get error() {
     return cssVar('--md-error')
   },
+  get warning() {
+    return cssVar('--md-warning')
+  },
+  get warningFill() {
+    return cssVar('--md-warning-fill')
+  },
+  get primaryContainer() {
+    return cssVar('--md-primary-container')
+  },
+  get errorContainer() {
+    return cssVar('--md-error-container')
+  },
 }
 
 /** 主题切换时触发回调（ECharts 组件用它重绘）。 */
