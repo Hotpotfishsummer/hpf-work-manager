@@ -312,3 +312,87 @@
 - 端点：`{base}/mcp`（Streamable HTTP 传输，兼容 SSE）
 - 认证：`Authorization: Bearer <API Key 或 JWT>`
 - 工具清单与用法见 `08-AI接入指南.md`
+
+## 11. 算力雷达（Quota）
+
+用于「5h 算力调度雷达」页面，实时反映内部 MiniMax 额度窗口，并据此判定协同驱动模式。
+
+> ⚠️ 需要环境变量 `MINIMAX_API_KEY`。未配置时端点正常返回但 `ok=false`，
+> 前端显示"未配置"，AI 规划类接口自动降级为确定性启发式引擎（不影响其它功能）。
+
+### GET /quota — 当前额度状态
+- 响应：
+```json
+{
+  "ok": true,
+  "remaining_percent": 63,
+  "minutes_left": 253,
+  "reset_time_str": "20:00:00",
+  "is_night_shift": false,
+  "suggestion": "额度充足，可继续高强度推演"
+}
+```
+- 服务端 10s 缓存，避免前端轮询击穿上游接口。
+
+### GET /quota/driver-mode — 协同驱动模式判定
+- 响应：
+```json
+{
+  "driver_mode": "DUAL_CERTIFIED",
+  "mode_desc": "双重认证协同模式 (Dual-Agent Consensus Active)",
+  "has_internal_tokens": true,
+  "quota_status": { "...": "同 GET /quota" },
+  "guidelines": "内部 MiniMax 算力充足……"
+}
+```
+- `driver_mode` ∈ `DUAL_CERTIFIED`（额度 >5%，内部架构师交叉审查）/ `EXTERNAL_DRIVEN`（额度耗尽，降级为确定性工程护栏）。
+
+## 12. 灵感工坊（Ideator）
+
+面向"从代码库现状推演下一步"与"碰撞新项目点子"，并为每个提案生成可直接落地的任务。
+
+### GET /ideator/projects — 扫描服务器本地项目
+- 扫描 `/workspace/projects`（容器内挂载 `~/dsh-workspace/projects`）下的目录，返回可建档的本地项目列表。
+
+### POST /ideator/sync-projects — 批量导入本地项目（需登录）
+- 将尚未建档的本地项目批量创建为独立 Project（按名称去重）。
+- 响应：`{ "ok": true, "synced_count": 3, "created_projects": ["a", "b", "c"], "total_local": 12 }`
+
+### POST /ideator/analyze — 推演下一步规划
+- 请求：`{ "project_name": "hpf-work-manager" }`
+- 读取项目 README、git log 与代码树，返回 3 条高价值 Next Steps：
+```json
+{
+  "project_name": "hpf-work-manager",
+  "suggestions": [
+    {
+      "title": "补齐备份恢复演练脚本",
+      "category": "devops",
+      "priority": "high",
+      "description": "详细任务需求与 Prompt 描述",
+      "estimated_hours": 2,
+      "reason": "推荐理由"
+    }
+  ]
+}
+```
+- 额度耗尽或无密钥时走 `_heuristic_next_steps` 启发式规则，返回结构一致。
+
+### POST /ideator/brainstorm — 灵感孵化
+- 请求：`{ "theme": "实用生产力工具" }`
+- 响应：`{ "theme": "...", "ideas": [{ "title", "tagline", "problem", "tech_stack", "mvp_features", "initial_task_prompt" }] }`
+
+### POST /ideator/apply-task — 一键收纳为看板任务（需登录）→ `201`
+- 可将灵感/建议落到**已有项目**，或以 `create_new_project` 直接孵化**全新独立项目**。
+
+### POST /ideator/propose-plan — 提交规划提案（双重认证核心）
+- 外部 Agent 提交多项任务规划，内部 Token 充足时由 MiniMax 架构师交叉审查（纠偏幻觉与不合理排期）；
+  额度耗尽时由确定性工程护栏校验（Schema / DAG 环检测 / 防撞车）。
+- 响应包含 `certified`、`review_notes`、`tasks`（认证后的任务列表）。
+- 对应 MCP 工具 `propose_task_plan`。
+
+### POST /ideator/verify-task — 任务核销（双重认证核心）
+- 必须提供真实 `git_ref` 与 `verification_evidence`，通过后自动置 `done` 并写入交付 DevLog。
+- 对应 MCP 工具 `verify_and_complete_task`。
+
+### GET /ideator/driver-mode — 驱动模式（同 `/quota/driver-mode`，兼容旧调用）

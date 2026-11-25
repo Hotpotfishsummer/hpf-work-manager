@@ -5,6 +5,43 @@
 
 ## [Unreleased]
 
+### 2026-11 · 基础设施与安全修复 ✅
+
+- **备份静默失效（严重）**：backup 容器只注入 `POSTGRES_PASSWORD`，而 `pg_dump` 只认
+  `PGPASSWORD`，导致 2026-10-16 起 9 份备份全部是 20 字节空 gzip，且因 `| gzip >`
+  仍成功退出而毫无告警。补 `PGPASSWORD`；改为「写临时文件 → 校验 >1KB → 原子改名」，
+  失败不再覆盖好文件；新增 `scripts/check_backup.py` 做产物健康检查（大小/时效/可解压）。
+  已做真实恢复演练（12 张表、数据条数一致）。
+- **硬编码密钥清除**：`services/ideator.py`、`services/quota.py` 的 `MINIMAX_API_KEY`
+  默认值与 `docker-compose.yml` 的兜底值全部移除，只从环境变量读取（本仓库是公开的）。
+  缺密钥时算力雷达返回"未配置"而非 401，AI 规划走确定性启发式降级。
+- **认证回退修复**：UI 重构把 REST 认证换成无条件回退 admin，任何匿名请求都以管理员
+  身份读写全部数据，11 个 401 测试因此失效。改为由 `AUTH_REQUIRED` 控制：默认 `false`
+  保持内网免鉴权（行为不变），置 `true` 强制 JWT/API Key；MCP 层同步收紧。
+- **前端认证打桩修复**：去掉 `tailnet-mode-token` 占位 token，改为有 `hpf_token` 才附加
+  Authorization；恢复 401 清凭证 + 带 redirect 跳转逻辑。前端 49 测试全绿。
+- **误入库文件移除**：`hpf_env_2026-09-03.bak`（含真实数据库密码与 JWT 签名密钥）
+  移出仓库并加入 gitignore。
+- **分支收编**：`feature/harness-pilot` 的 8 个提交以 squash 方式合入 `main`
+  （原历史含明文密钥，逐提交合并会污染主干）。
+- **测试**：后端 164 passed，前端 49 passed；`vue-tsc` 与 `npm run build` 通过。
+
+### 2026-10 · AI Agent Cockpit（UI 重构 + 双重认证协同）
+
+- **UI 整体重做**：改为 Linear 风格「AI Agent Cockpit」，新增驾驶舱（`/`）、
+  灵感工坊（`/ideas`）、算力雷达（`/quota`）三页；移除旧 `/login` 与 `/dashboard`。
+- **算力调度雷达**：实时读取 MiniMax 5h 额度窗口、重置倒计时与夜间班次建议，
+  据此判定协同驱动模式（`DUAL_CERTIFIED` / `EXTERNAL_DRIVEN`）。
+- **双重认证协同引擎**：外部 Agent 提交的规划提案由内部架构师模型交叉审查
+  （纠偏幻觉与不合理排期）；额度耗尽时降级为确定性工程护栏（Schema / DAG 环检测 /
+  防撞车校验）。新增 `propose_task_plan`、`verify_and_complete_task`、
+  `get_manager_status`、`get_next_steps`、`brainstorm_ideas`、`sync_local_projects`
+  6 个驱动类 MCP 工具（工具总数 38 → 44）。
+- **多项目解耦**：支持扫描 `~/dsh-workspace/projects` 批量导入本地代码库为独立项目，
+  任务与 DevLog 按项目独立管理。
+- **新增 REST 端点**：`/quota`、`/quota/driver-mode`、`/ideator/*`（9 个）。
+- **前端细节修复**：CSP 放行内联脚本、不安全 HTTP 环境下剪贴板降级、AI 分析超时放宽至 120s。
+
 ### 夜间质量迭代 ✅
 - **正确性**：批量任务更新后 SSE 事件发布缺失（缺 `await`）；并发读 stats 触发快照唯一约束 409（改原子 upsert）；MCP `list_tasks` overdue 分页语义不稳
 - **性能**：SSE 长连接不再独占数据库连接池（认证会话提前释放，此前约 10 条连接即耗尽池）
