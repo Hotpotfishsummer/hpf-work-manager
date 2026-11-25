@@ -27,9 +27,9 @@
         "`cd frontend && npx vitest run tests/design-tokens.spec.ts` 退出码 0",
         "闸门报告中列出的违规数 = 0"
       ],
-      "passes": false,
+      "passes": true,
       "blocked": false,
-      "notes": ""
+      "notes": "基线 411 处违规被逐行列出；同时抓到引用未定义令牌 --md-elevation-3"
     },
     {
       "id": "F002",
@@ -41,9 +41,9 @@
         "DESIGN.md §2 含全部新令牌行",
         "vitest 令牌对称性用例通过"
       ],
-      "passes": false,
+      "passes": true,
       "blocked": false,
-      "notes": ""
+      "notes": "新增 4 组 tint/glow + on-success-container + warning-container-strong；DESIGN.md §2 同步并写明健康度三级映射"
     },
     {
       "id": "F003",

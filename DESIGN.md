@@ -38,6 +38,10 @@ non-themeable (e.g. a brand SVG glyph) — and even then prefer a token.
 | `--md-on-error` | #ffffff | #690005 | Text on error |
 | `--md-error-container` | #ffdad6 | #93000a | Error chip/tag fill |
 | `--md-on-error-container` | #410002 | #ffdad6 | Text on error-container |
+| `--md-on-success-container` | #0a3d0f | #b9f2c0 | Text on success-container |
+| `--md-warning-container-strong` | #ffe0b2 | #543d00 | Emphasized warning container border (attention cards) |
+| `--md-{primary,success,warning,error}-tint` | 10–12% alpha | 16% alpha | Badge / chip translucent fills |
+| `--md-{primary,success,warning,error}-glow` | ~60% alpha | ~65% alpha | Live-dot halos (the only permitted glow) |
 | `--md-success` | #2e7d32 | #a5d6a7 | done status |
 | `--md-success-container` | #a9e6a8 | #17631f | Success tag fill |
 | `--md-warning` | #8a5a00 | #f5c344 | Priority-high / warning |
@@ -51,6 +55,10 @@ done → `--md-success` · overdue → `--md-error`.
 
 **Priority mapping:** high → `--md-warning`（唯一占用 warning 的语义）· medium / low → 中性
 `--md-on-surface-variant`。error 红仅保留给逾期/破坏性操作，不用于优先级。
+
+**Health levels:** good → `--md-success` · warning / attention / pending-instruction → `--md-warning`
+(incl. the former orange "external driver" state) · critical → `--md-error`. No purple status; night/quiet
+states use `primary-container`.
 
 **Elevation:** flat chrome = surface-container-low + 1px outline-variant. Floating chrome
 (dialogs/dropdowns) = surface-container-high + `--md-shadow-2`. Prefer color-elevation over

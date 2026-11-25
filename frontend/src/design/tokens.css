@@ -61,6 +61,21 @@
   /* 甘特图今日线（主色 10% 浅底，深浅各自取值） */
   --md-today-highlight: rgba(0, 102, 204, 0.10);
 
+  /* ---- 语义色的浅底与发光（徽章底 / 实时点光晕，深浅各自取值）---- */
+  --md-primary-tint: rgba(0, 102, 204, 0.10);
+  --md-primary-glow: rgba(0, 102, 204, 0.55);
+  --md-success-tint: rgba(46, 125, 50, 0.12);
+  --md-success-glow: rgba(82, 196, 26, 0.60);
+  --md-warning-tint: rgba(250, 140, 22, 0.12);
+  --md-warning-glow: rgba(250, 173, 20, 0.60);
+  --md-error-tint: rgba(255, 77, 79, 0.10);
+  --md-error-glow: rgba(255, 77, 79, 0.60);
+
+  /* 语义色的容器底 + 对应文字（信息条 / 行动建议框，深色下容器转深、文字转亮） */
+  --md-on-success-container: #0a3d0f;
+  --md-on-warning-container: #2a1900;
+  --md-warning-container-strong: #ffe0b2;
+
   /* ---- 阴影：色阶提升为主，阴影仅悬浮 chrome ---- */
   --md-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.06);
   --md-shadow-2: 0 8px 16px rgba(0, 0, 0, 0.14), 0 4px 8px rgba(0, 0, 0, 0.10);
@@ -191,6 +206,20 @@
   --md-inverse-on-surface: #1d1d1f;
 
   --md-today-highlight: rgba(78, 160, 255, 0.16);
+
+  --md-primary-tint: rgba(78, 160, 255, 0.16);
+  --md-primary-glow: rgba(78, 160, 255, 0.70);
+  --md-success-tint: rgba(165, 214, 167, 0.16);
+  --md-success-glow: rgba(129, 201, 133, 0.65);
+  --md-warning-tint: rgba(245, 195, 68, 0.16);
+  --md-warning-glow: rgba(245, 195, 68, 0.65);
+  --md-error-tint: rgba(255, 180, 171, 0.16);
+  --md-error-glow: rgba(255, 180, 171, 0.65);
+
+  --md-on-success-container: #b9f2c0;
+  --md-on-warning-container: #ffdf9f;
+  --md-warning-container-strong: #543d00;
+
 
   --md-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
   --md-shadow-2: 0 8px 16px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.5);

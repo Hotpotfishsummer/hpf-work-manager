@@ -289,7 +289,7 @@ onUnmounted(() => {
   max-width: 480px;
   padding: var(--md-space-1);
   border-radius: var(--md-radius-lg);
-  box-shadow: var(--md-elevation-3);
+  box-shadow: var(--md-shadow-2);
   border: 1px solid var(--md-outline-variant);
 }
 
