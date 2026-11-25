@@ -33,7 +33,7 @@
 | 部署与更新 | `docs/05-部署指南.md`、`docs/06-开发指南.md` 第 7 节 |
 | 生产环境信息（本地） | `.workbuddy/DEPLOY.md` |
 | MCP 接入技能包 | `skills/hpf-work-manager/` |
-| 设计规范 | `DESIGN.md`（Apple × MD3 角色令牌，禁内联 hex） |
+| 设计规范 | `DESIGN.md`（Material Design 3，分层靠色阶与间距、分区不描边，禁内联 hex） |
 
 <!-- agent-harness:begin -->
 ## agent-harness 契约（本 worktree 分支 `feat/md3-design-consistency`）

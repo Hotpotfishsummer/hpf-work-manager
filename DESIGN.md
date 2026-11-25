@@ -1,131 +1,133 @@
-# Apple × Material Design 3 — DESIGN.md
+# Material Design 3 — DESIGN.md
 
-> Hybrid system for a data-dense task/progress manager.
-> **Structure & density = Material 3; surfaces, type, borders, whitespace rhythm = Apple.**
-> Every token has a light AND dark value. Theme is driven by `data-theme="light|dark"` on `<html>`.
+本文件是前端 UI 的**唯一设计源**。它描述「界面应该是什么样、为什么」，落地位置：
 
-## 1. Theme System
+| 层 | 位置 | 说明 |
+|---|---|---|
+| 令牌 | `frontend/src/design/tokens.css` | 所有颜色 / 字阶 / 形状 / 高度 / 状态层 / 动效 / 间距 |
+| 控件 | `frontend/src/design/element-plus.css`、`global.css` | Element Plus 与 `.md-*` 语义类 |
+| 规范闸门 | `frontend/tests/design-tokens.spec.ts` | `npm test` 自动跑，违规即失败 |
+| 方法论参考 | `docs/design/m3-reference/` | [material-design-3-ui](https://github.com/skydashnet/material-design-3-ui-skill)（MIT）的参考规范 |
+| 页面改造规范 | `docs/design/M3-页面改造规范.md` | 改页面时的操作手册 |
 
-- Two schemes: **light** (`:root`, default) and **dark** (`[data-theme='dark']`).
-- Selection follows `prefers-color-scheme` by default (`system`); a nav toggle overrides it;
-  choice persisted in `localStorage` (`hpf_theme`) and applied pre-paint (no FOUC).
-- Playwright/dev checks must verify BOTH schemes; a color change done in one mode only is a bug.
-- No third "auto" value in the store — `system` resolves to light/dark at read time.
+更高优先级的外部依据：<https://m3.material.io/>。
 
-## 2. Color Roles (MD3)
+## 0. 一句话
 
-All colors are roles. Never hardcode a hex in a `.vue` or `.ts` file unless it's genuinely
-non-themeable (e.g. a brand SVG glyph) — and even then prefer a token.
+**扁平、克制、靠色块与间距分层级。** 边框只留给少数必要的控件；阴影只给浮在内容之上的东西；
+主色要稀缺；颜色一定成对出现（容器色 + 该容器上的文字色）。
 
-| Role | Light | Dark | Use |
+## 1. 分层怎么表达（按顺序选）
+
+1. **间距与标题**：把相关内容归为一组，不套框。
+2. **表面色阶**：需要「一块整体」时才升一档表面色（填充式卡片）。
+3. **分隔线**：`outline-variant`，只在行与行之间。
+4. **阴影**：只给弹层、菜单、对话框等浮层。
+
+分区、工具条、卡片**不描边**（闸门规则「分区细边框」会拦）。允许描边的只有：
+未选中的筛选芯片、描边按钮、输入框底部状态线、表格行分隔线、甘特网格线、卡片左侧的状态强调条。
+
+## 2. 颜色
+
+角色色由官方算法从种子色生成（`node frontend/scripts/gen-m3-tokens.mjs`），深浅两套自动成对。
+要换主色，只改脚本里的 `SEED_MAIN` 后重跑。
+
+### 表面
+
+| 令牌 | 浅色 | 深色 | 用在哪 |
 |---|---|---|---|
-| `--md-primary` | #0066cc | #4ea0ff | Buttons/links/focus/active states, in_progress status |
-| `--md-on-primary` | #ffffff | #00305f | Text/icon on primary |
-| `--md-primary-container` | #cfe3ff | #004a8f | Tonal buttons, selected chips, inspects |
-| `--md-on-primary-container` | #001b3c | #d2e5ff | Text on primary-container |
-| `--md-surface` | #f8f9f9 | #141414 | Page canvas |
-| `--md-on-surface` | #1a1b1f | #e4e2e6 | Primary text (≈ Apple ink #1d1d1f in light) |
-| `--md-surface-container-lowest` | #ffffff | #0e0e0e | Highest surface (dialogs' content) |
-| `--md-surface-container-low` | #f1f2f4 | #1c1c1e | Card body on canvas |
-| `--md-surface-container` | #eaecf0 | #202022 | Nested grouping inside a card |
-| `--md-surface-container-high` | #e4e6ea | #2a2a2d | Dialog body / elevated regions |
-| `--md-surface-container-highest` | #dfe1e4 | #353537 | Chips, controls bottom layer |
-| `--md-on-surface-variant` | #44474d | #c5c6ca | Secondary text, placeholders, icons |
-| `--md-surface-variant` | #e0e2e8 | #434549 | Filled tags, chip fills |
-| `--md-outline` | #73777f | #8f9297 | Emphasized outlines (focus ring) |
-| `--md-outline-variant` | #c3c6cc | #434549 | Hairlines, card borders |
-| `--md-error` | #ba1a1a | #ffb4ab | Overdue / destructive |
-| `--md-on-error` | #ffffff | #690005 | Text on error |
-| `--md-error-container` | #ffdad6 | #93000a | Error chip/tag fill |
-| `--md-on-error-container` | #410002 | #ffdad6 | Text on error-container |
-| `--md-on-success-container` | #0a3d0f | #b9f2c0 | Text on success-container |
-| `--md-warning-container-strong` | #ffe0b2 | #543d00 | Emphasized warning container border (attention cards) |
-| `--md-{primary,success,warning,error}-tint` | 10–12% alpha | 16% alpha | Badge / chip translucent fills |
-| `--md-{primary,success,warning,error}-glow` | ~60% alpha | ~65% alpha | Halo colors; use them through `--md-glow-*` |
-| `--md-glow-{primary,success,warning,error}` | `0 0 6px <glow>` | same | Complete halo shadow (the only permitted glow) |
-| `--md-warning-fill` / `--md-on-warning-fill` | #e69b00 / #ffffff | #f5c344 / #3d2f00 | Solid warning blocks (bars, dots). `--md-warning` is text-only |
-| `--md-ring-1` / `-1-hover` / `-2` | outline-variant / outline / primary | same | 1px border ring, hover ring, 2px focus ring (inset) |
-| `--md-ring-width` / `--md-accent-bar-width` / `--md-glow-blur` | 2px / 3px / 6px | same | Focus-ring width, callout accent bar, halo blur |
-| `--md-scrim` / `--md-scrim-heavy` | ink 6% / 40% | black 40% / 64% | Loading masks and scrims |
-| `--md-text-display-xl` | 44px | 44px | Oversized KPI numbers, empty-state glyphs |
-| `--md-success` | #2e7d32 | #a5d6a7 | done status |
-| `--md-success-container` | #a9e6a8 | #17631f | Success tag fill |
-| `--md-warning` | #8a5a00 | #f5c344 | Priority-high / warning |
-| `--md-warning-container` | #ffdfa8 | #543d00 | Warning tag fill |
-| `--md-ink` | #1d1d1f | #e4e2e6 | Apple near-black ink (headlines) |
-| `--md-parchment` | #f5f5f7 | #1a1a1c | Apple off-white alternate band / footer |
-| `--md-on-parchment` | #1d1d1f | #e4e2e6 | Text on parchment |
+| `--md-surface` | tone 98 | tone 6 | 页面底、顶栏 |
+| `--md-surface-container-low` | 96 | 10 | 大面积容器 |
+| `--md-surface-container` | 94 | 12 | 导航栏底、表头、卡内分块 |
+| `--md-surface-container-high` | 92 | 17 | 浮层、卡内分块、中性芯片 |
+| `--md-surface-container-highest` | 90 | 22 | 填充式卡片、输入框底 |
 
-**Status mapping:** todo → `--md-on-surface-variant` · in_progress → `--md-primary` ·
-done → `--md-success` · overdue → `--md-error`.
+卡内再分块用 `surface-container-high` / `-container`，不要卡片套卡片。
 
-**Priority mapping:** high → `--md-warning`（唯一占用 warning 的语义）· medium / low → 中性
-`--md-on-surface-variant`。error 红仅保留给逾期/破坏性操作，不用于优先级。
+### 强调族
 
-**Health levels:** good → `--md-success` · warning / attention / pending-instruction → `--md-warning`
-(incl. the former orange "external driver" state) · critical → `--md-error`. No purple status; night/quiet
-states use `primary-container`.
+| 族 | 本色 / 其上文字 | 容器色 / 其上文字 | 用在哪 |
+|---|---|---|---|
+| primary | `--md-primary` / `--md-on-primary` | `--md-primary-container` / `-on-…` | 当前区域最重要的那一个操作；进行中；选中 |
+| secondary | `--md-secondary` | `--md-secondary-container` | 次要操作（tonal）、导航选中指示器、辅助标签 |
+| tertiary | `--md-tertiary` | `--md-tertiary-container` | 需要第三种强调时 |
+| success | `--md-success` | `--md-success-container` | 完成、健康 |
+| warning | `--md-warning` | `--md-warning-container` | 注意、待处理、中优先级 |
+| error | `--md-error` | `--md-error-container` | 延期、失败、高优先级、破坏性操作 |
+| accent 1–6 | `--md-accent-N` | `--md-accent-N-container` / `-on-container` | 任务分类、数据系列 |
 
-**Elevation:** flat chrome = surface-container-low + 1px outline-variant. Floating chrome
-(dialogs/dropdowns) = surface-container-high + `--md-shadow-2`. Prefer color-elevation over
-shadow; Apple never shadows cards.
+规则：
 
-## 3. Typography
+- **主色稀缺**：同一屏里实心主按钮通常只有一个。
+- 状态 / 优先级 / 分类 / 选中，用「容器色 + 容器上的文字色」；实心（本色）只给需要立刻注意的少数地方。
+- 文字色只用 `on-surface`（正文）、`on-surface-variant`（次要）、`outline`（占位 / 禁用）。
+- 不靠颜色单独表达状态：芯片里保留文字或图标。
 
-Font stack: `system-ui, -apple-system, 'SF Pro Text', 'SF Pro Display', 'PingFang SC', 'Helvetica Neue', 'Inter', 'Segoe UI', Roboto, sans-serif`.
+状态芯片统一用 `global.css` 的 `.md-chip--<tone>`：
+`primary` `secondary` `tertiary` `success` `warning` `error` `neutral` `accent-1..6`，实心为 `solid-primary` / `solid-error`。
 
-Weights: **400 body / 500 labels / 600 titles / 700 品牌与展示点缀**. Body 14px, minimum 12px.
+任务分类固定映射：新功能→1，排错修复→2，重构→3，测试→4，文档→5，运维部署→6，未分类→`neutral`。
 
-| Token | Size/Weight | Leading | Tracking | Use |
-|---|---|---|---|---|
-| `--md-text-display` | 28/600 | 1.2 | -0.374px | Page titles |
-| `--md-text-title-lg` | 20/600 | 1.3 | -0.36px | Card titles, dialog titles |
-| `--md-text-title-md` | 16/600 | 1.4 | -0.31px | In-card subheads |
-| `--md-text-title-sm` | 14/600 | 1.43 | -0.224px | List item titles, nav links |
-| `--md-text-body-lg` | 16/400 | 1.5 | -0.31px | Description paragraphs |
-| `--md-text-body` | 14/400 | 1.5 | -0.224px | Default UI / table / forms |
-| `--md-text-body-sm` | 12/400 | 1.5 | -0.12px | Metadata, timestamps |
-| `--md-text-label` | 14/500 | 1.2 | -0.224px | Buttons, inputs labels |
-| `--md-text-label-sm` | 12/500 | 1.3 | -0.12px | Table header, chips |
-| `--md-text-caption` | 11/500 | 1.4 | 0 | Overline/eyebrow |
+### 状态层
 
-Negative tracking ≥14px (Apple tight), 0 at/or below 12px.
+悬停 8% / 焦点 10% / 按下 10%（主色 12%）/ 拖拽 16%，颜色取组件自身的「其上文字色」。
+全局类 `.md-state` 已封装；自己写时用 `color-mix(in srgb, <on 色> 8%, transparent)`。
 
-## 4. Shapes & Spacing
+## 3. 字阶（M3 type scale）
 
-- Radius: `--md-radius-xs` 4 (tags) · `sm` 8 (inputs) · `md` 12 (small cards) · `lg` 16 (cards) · `xl` 28 (dialogs) · `pill` 9999 (buttons, chips, progress).
-- Spacing: 4px base → `--md-space-xxs 4` · `xs 8` · `sm 12` · `md 16` · `lg 24` · `xl 32` · `xxl 48` · `section 80`.
-- Density: tables/boards/chips = MD3 compact (32–40px rows, 8–12px card padding). Page headers
-  & sections = Apple generous (24–48px around headers).
+| 用途 | 令牌 |
+|---|---|
+| 页面标题 | `--md-type-headline-sm`（24 / 32，400） |
+| 顶栏标题 | `--md-type-title-lg`（22 / 28，400） |
+| 分区标题、卡片标题 | `--md-type-title-md`（16 / 24，500） |
+| 小标题 | `--md-type-title-sm`（14 / 20，500） |
+| 正文 | `--md-type-body-md`（14 / 20） |
+| 次要说明 | `--md-type-body-sm`（12 / 16） |
+| 按钮、芯片 | `--md-type-label-lg`（14 / 20，500） |
+| 紧凑芯片 | `--md-type-label-md`（12 / 16，500） |
+| 展示数字 | `--md-type-display-sm` 及以上 |
 
-## 5. Components
+标题字重 ≤500；600 只用于紧凑表格头，700 只用于展示数字。
 
-- **Button primary:** pill, `primary` bg/`on-primary` text, 40px tall, hover = `--md-primary-hover` overlay, focus = 2px primary ring, active = `scale(.98)`.
-- **Button tonal** (secondary action): pill, `primary-container`/`on-primary-container`.
-- **Button outlined/text:** outline-variant border or transparent; `primary` text.
-- **Input:** outlined — transparent bg, 1px `outline-variant` (hover `outline`), focus 2px `primary`, height 40px, radius `sm`.
-- **Card:** `surface-container-low` + 1px `outline-variant` + radius `lg` + padding `md`/`lg`. Elevated card = pure `surface` + `shadow-1`.
-- **Table:** header `label-sm`/`on-surface-variant` on `surface`; row hover `surface-container-low`; separator 1px `outline-variant`.
-- **Chip/Tag/Progress:** chips pill on `surface-container-highest`; tags `xs` on `surface-variant`; linear progress pill on `surface-container-highest` track.
-- **Nav:** top-app-bar 56px, `surface` @ 72% + blur(20px) saturate(180%) 1px outline-variant bottom; active link `on-surface` + 2px primary underline, inactive `on-surface-variant`.
-- **Dialog:** `surface-container-high`, radius `xl`, `shadow-2`.
+## 4. 形状、间距、高度
 
-## 6. Motion
+- 形状：extra-small 4 / small 8 / medium 12 / large 16 / extra-large 28 / full。
+  卡片 12、芯片 8、按钮 full、输入框 4、对话框 28。**不要把所有东西都做成药丸形**。
+- 间距 4px 基准：`--md-space-1..8`（4/8/12/16/24/32/48/64）。分区间 24，卡片内 16。
+- 高度：`--md-elevation-0..5`。卡片无阴影；浮层用 2；对话框用 3。
+- 点击区 ≥40×40（图标按钮 `.md-icon-btn`）。
 
-- Standard: `200ms cubic-bezier(0.2,0,0,1)`. Emphasized: `300ms cubic-bezier(0.05,0.7,0.1,1)`. Press: `scale(.98)`, 100ms.
-- Theme switch: instant attribute swap (no transition that delays); chart components re-render.
-- Respect `prefers-reduced-motion`.
+## 5. 控件选型
 
-## 7. Anti-patterns (Do Not)
+| 场景 | 用什么 |
+|---|---|
+| 区域主操作 | 实心按钮（`el-button type="primary"`） |
+| 次要操作 | tonal（`el-button plain` → secondary-container） |
+| 低强调 / 行内 | 文字按钮（`el-button text` / `.md-btn--text`） |
+| 筛选 | `.md-chip--filter`，选中 `.is-selected` |
+| 只读状态 | `.md-chip--<tone>` |
+| 顶层导航 | 导航栏（宽屏 ≥840）/ 底部导航栏（窄屏）——不用页签承载不相关的目的地 |
+| 同级视图切换 | `el-tabs`（secondary-container 指示器药丸） |
+| 输入 | 填充式（无边框，底部状态线） |
+| 提示 / 建议 | `.md-callout--<tone>` |
 
-- No hardcoded hex in components; charts must read computed token values & re-render on theme change.
-- No second accent color; no violet/magenta status colors.
-- Don't use weight 700 for body/content — reserve it for brand & display accents only (hierarchy tops at 600).
-- Don't uppercase body text or use 1.5px letter-spacing links like the BMW "LEARN MORE" style.
-- Don't use `radius-none` (0px) rectangles; controls are `sm`/pill, cards `lg`.
-- Don't shadow cards/rows — raise via surface-container ladder.
-- Don't ship a light-only palette: every surface/status/outline token has a dark variant.
-- Don't use pure black (#000) for text or surfaces; use ink/surface tokens.
-- **Enforced by a gate**: `frontend/tests/design-tokens.spec.ts` (run by `npm test`) fails on any hex/rgb/hsl
-  literal, raw shadow/radius/font-size, or weight >600 outside `tokens.css`, and on color tokens missing a
-  dark value. Genuine exceptions carry `design-audit: allow <reason>` on the same line.
+## 6. 动效
+
+短 100–200ms、中 250–400ms，标准缓动 `cubic-bezier(0.2, 0, 0, 1)`；尊重 `prefers-reduced-motion`。
+动效只用来解释状态变化，不做装饰。
+
+## 7. 反模式（闸门与评审都会拦）
+
+- 给分区 / 工具条 / 卡片描边；卡片套卡片；到处加阴影。
+- 一屏多个实心主按钮；主色用在大面积正文或无关容器上。
+- 用颜色而不配文字表达状态；出现第二套蓝、紫色状态色。
+- 顶层目的地放在页签里；芯片当按钮或主导航用。
+- 把所有控件都做成药丸形；只用「大圆角 + 淡彩 + 阴影」冒充 Material。
+- 在组件里写死颜色 / 阴影 / 圆角 / 字号；>600 的标题字重。
+- 混入 Material 2 的规则（下划线页签、描边输入框、悬浮阴影卡片）。
+
+## 8. 闸门
+
+`cd frontend && npx vitest run tests/design-tokens.spec.ts`。失败时逐行列出：颜色字面量、裸阴影 / 圆角 / 字号、
+超标字重、分区细边框、引用了不存在的令牌、字面色缺少深色值。
+确需例外，在同一行写 `design-audit: allow <原因>`。

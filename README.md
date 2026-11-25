@@ -2,7 +2,7 @@
 
 任务 / 项目管理与进度追踪 Web 应用。前后端分离架构，前端 Vue 3 + TypeScript，后端 Python FastAPI，全容器化部署（Docker Compose）。
 
-UI 遵循 **Apple × Material Design 3 设计系统**（见根目录 [`DESIGN.md`](./DESIGN.md)，支持浅色/深色双主题）。
+UI 遵循 **Material Design 3 设计系统**（见根目录 [`DESIGN.md`](./DESIGN.md)，支持浅色/深色双主题）。
 
 ## 技术栈
 
@@ -50,7 +50,7 @@ UI 遵循 **Apple × Material Design 3 设计系统**（见根目录 [`DESIGN.md
 ├── docker-compose.yml           # 生产编排
 ├── docker-compose.override.yml  # 开发编排（热更新）
 ├── .env.example                 # 环境变量模板
-├── DESIGN.md                    # Apple×MD3 设计系统（UI 唯一设计源）
+├── DESIGN.md                    # Material Design 3 设计系统（UI 唯一设计源）
 ├── docs/                        # 项目文档（架构/数据模型/API/前端/部署/开发）
 ├── skills/hpf-work-manager/     # AI 接入技能包（SKILL.md + 工具参考，分发到其他机器）
 ├── scripts/e2e_check.py         # 端到端 API 验证（41 项断言）
@@ -111,14 +111,13 @@ npm run dev            # http://localhost:8080，/api 自动代理到 :8000
 
 ## 设计系统
 
-UI 视觉规范由根目录 `DESIGN.md`（Apple × Material Design 3）约束，前端通过 `src/design/tokens.css` 落地为 `--md-*` CSS 变量，组件一律引用变量、禁止内联 hex。要点：
+UI 视觉规范由根目录 `DESIGN.md`（Material Design 3）约束。一句话：**扁平、克制，靠色块与间距分层级，边框只留给少数必要的控件**。页面改造时按 `docs/design/M3-页面改造规范.md` 操作。
 
-- **主色**：Apple Action Blue `#0066cc`（唯一行动色，深色主题 `#4ea0ff`）；**形状**：MD3 圆角阶梯（控件 `sm`/pill，卡片 `lg`，弹窗 `xl`）
-- **字体**：系统字体栈（SF Pro Text / PingFang SC / Inter），400 正文 / 500 标签 / 600 标题
-- **无卡片阴影**：深度来自 surface-container 色阶 + hairline 分隔线，仅悬浮 chrome 用阴影
-- 状态色映射：done→success 绿 / 进行中→primary 蓝 / 待办→on-surface-variant 灰 / **延期→error 红**
-- 健康度三级：good→success / warning→warning / critical→error，浅底用 `*-tint`、光晕用 `*-glow`，深色主题自动取深色值
-- **机器闸门**：`cd frontend && npx vitest run tests/design-tokens.spec.ts` —— 组件层出现 hex/rgb 颜色、裸阴影/圆角/字号、>600 字重即失败并逐行列出；确需例外在该行写 `design-audit: allow 原因`
+- **颜色**：角色色由官方算法从种子色生成（`node frontend/scripts/gen-m3-tokens.mjs`），深浅两套成对；状态 / 优先级 / 分类一律「容器色 + 该容器上的文字色」成对使用；主色只给当前区域最重要的那一个操作
+- **层级**：间距与标题 → 表面色阶（填充式卡片）→ 分隔线 → 浮层阴影；分区、工具条、卡片不描边
+- **导航**：顶层目的地在导航栏（宽屏）/ 底部导航栏（窄屏），顶栏只留标题与状态
+- **控件**：填充式输入框、tonal / 实心 / 描边 / 文字四级按钮、药丸指示器页签
+- **机器闸门**：`cd frontend && npx vitest run tests/design-tokens.spec.ts` —— 组件层出现 hex/rgb 颜色、裸阴影/圆角/字号、>600 字重、**分区细边框**、不存在的令牌即失败并逐行列出；确需例外在该行写 `design-audit: allow 原因`
 
 ## 说明与范围外
 
