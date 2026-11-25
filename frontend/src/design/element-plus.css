@@ -154,18 +154,18 @@
 }
 .el-input__wrapper,
 .el-select__wrapper {
-  box-shadow: 0 0 0 1px var(--md-outline-variant) inset;
+  box-shadow: var(--md-ring-1); 
   min-height: var(--md-input-height);
   background-color: transparent;
   font-weight: var(--md-weight-regular);
   transition: box-shadow var(--md-duration-standard) var(--md-ease-standard);
 }
 .el-input__wrapper:hover,
-.el-select__wrapper:hover { box-shadow: 0 0 0 1px var(--md-outline) inset; }
+.el-select__wrapper:hover { box-shadow: var(--md-ring-1-hover);  }
 .el-input__wrapper.is-focus,
-.el-select__wrapper.is-focus { box-shadow: 0 0 0 2px var(--md-primary) inset; }
-.el-textarea__inner { box-shadow: 0 0 0 1px var(--md-outline-variant) inset; }
-.el-textarea__inner:hover { box-shadow: 0 0 0 1px var(--md-outline) inset; }
+.el-select__wrapper.is-focus { box-shadow: var(--md-ring-2);  }
+.el-textarea__inner { box-shadow: var(--md-ring-1);  }
+.el-textarea__inner:hover { box-shadow: var(--md-ring-1-hover);  }
 
 /* ---- 弹窗/下拉：MD3 表面 ---- */
 .el-dialog {
@@ -278,8 +278,7 @@
 .el-pagination.is-background .el-pager li { border-radius: var(--md-radius-pill); }
 
 /* ---- 加载遮罩 ---- */
-.el-loading-mask { background-color: rgba(0, 0, 0, 0.06); }
-[data-theme='dark'] .el-loading-mask { background-color: rgba(0, 0, 0, 0.4); }
+.el-loading-mask { background-color: var(--md-scrim); }
 
 /* ---- 对话框标题 ---- */
 .el-dialog__title {

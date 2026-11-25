@@ -864,7 +864,7 @@ watch(pid, load)
 .task-card {
   background-color: var(--md-surface);
   border: 1px solid var(--md-outline-variant);
-  border-left: 3px solid var(--md-outline);
+  border-left: var(--md-accent-bar-width) solid var(--md-outline);
   border-radius: var(--md-radius-lg);
   padding: var(--md-space-4);
   cursor: grab;

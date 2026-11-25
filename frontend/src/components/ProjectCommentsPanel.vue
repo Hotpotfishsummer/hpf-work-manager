@@ -198,15 +198,15 @@ watch(
 
 .pcp-lead {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--md-text-label-md);
   line-height: 1.6;
-  color: var(--md-on-surface-variant, #555);
+  color: var(--md-on-surface-variant);
 }
 
 .pcp-composer {
-  background: var(--md-surface, #fff);
-  border: 1px solid var(--md-outline-variant, #e8eaee);
-  border-radius: 10px;
+  background: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-md);
   padding: 10px;
 }
 
@@ -218,8 +218,8 @@ watch(
 }
 
 .pcp-kbd-hint {
-  font-size: 12px;
-  color: var(--md-on-surface-variant, #777);
+  font-size: var(--md-text-body-sm);
+  color: var(--md-on-surface-variant);
 }
 
 .pcp-list {
@@ -234,26 +234,26 @@ watch(
   align-items: center;
   gap: 10px;
   padding: 18px 12px;
-  border: 1px dashed var(--md-outline-variant, #dfe3e8);
-  border-radius: 10px;
-  font-size: 13px;
-  color: var(--md-on-surface-variant, #666);
+  border: 1px dashed var(--md-outline-variant);
+  border-radius: var(--md-radius-md);
+  font-size: var(--md-text-label-md);
+  color: var(--md-on-surface-variant);
 }
 
 .pcp-empty-icon {
-  font-size: 20px;
+  font-size: var(--md-text-title-lg);
 }
 
 .pcp-item {
-  background: var(--md-surface, #fff);
-  border: 1px solid var(--md-outline-variant, #e8eaee);
-  border-left: 3px solid var(--md-primary, #0066cc);
-  border-radius: 10px;
+  background: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  border-left: var(--md-accent-bar-width) solid var(--md-primary);
+  border-radius: var(--md-radius-md);
   padding: 10px 12px;
 }
 
 .pcp-item.is-resolved {
-  border-left-color: #52c41a;
+  border-left-color: var(--md-success);
   opacity: 0.78;
 }
 
@@ -261,17 +261,17 @@ watch(
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
-  color: var(--md-on-surface-variant, #666);
+  font-size: var(--md-text-body-sm);
+  color: var(--md-on-surface-variant);
 }
 
 .pcp-author {
-  font-weight: 600;
-  color: var(--md-on-surface, #333);
+  font-weight: var(--md-weight-semibold);
+  color: var(--md-on-surface);
 }
 
 .pcp-resolved-tag {
-  color: #389e0d;
+  color: var(--md-on-success-container);
 }
 
 .pcp-item-actions {
@@ -283,33 +283,33 @@ watch(
 .pcp-icon-btn {
   width: 24px;
   height: 24px;
-  border-radius: 6px;
+  border-radius: var(--md-radius-sm);
   border: 1px solid transparent;
   background: transparent;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--md-text-label-md);
   line-height: 1;
-  color: var(--md-on-surface-variant, #666);
+  color: var(--md-on-surface-variant);
 }
 
 .pcp-icon-btn:hover {
-  background: var(--md-surface-container, #eef0f3);
+  background: var(--md-surface-container);
 }
 
 .pcp-icon-btn.ok:hover {
-  color: #389e0d;
+  color: var(--md-on-success-container);
 }
 
 .pcp-icon-btn.danger:hover {
-  color: #cf1322;
+  color: var(--md-on-error-container);
 }
 
 .pcp-content {
   margin: 6px 0 0;
-  font-size: 13px;
+  font-size: var(--md-text-label-md);
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
-  color: var(--md-on-surface, #222);
+  color: var(--md-on-surface);
 }
 </style>

@@ -418,8 +418,8 @@ watch(pid, load)
 }
 
 .section-help {
-  font-size: 16px;
-  color: var(--md-on-surface-variant, #888);
+  font-size: var(--md-text-body-lg);
+  color: var(--md-on-surface-variant);
   cursor: help;
   vertical-align: middle;
   margin-left: 4px;
@@ -508,7 +508,7 @@ watch(pid, load)
   color: var(--md-primary);
 }
 .weighted-help {
-  font-size: 13px;
+  font-size: var(--md-text-label-md);
   color: var(--md-on-surface-variant);
   cursor: help;
 }

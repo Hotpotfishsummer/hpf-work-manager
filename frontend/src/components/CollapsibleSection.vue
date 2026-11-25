@@ -45,16 +45,16 @@ function toggle() {
 
 <style scoped>
 .fold-section {
-  background: var(--md-surface-container-low, #f7f8fa);
-  border: 1px solid var(--md-outline-variant, #e8eaee);
-  border-radius: 12px;
+  background: var(--md-surface-container-low);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-md);
   margin-bottom: 14px;
   overflow: hidden;
   transition: border-color 0.2s ease;
 }
 
 .fold-section:hover {
-  border-color: var(--md-outline, #c3c6cc);
+  border-color: var(--md-outline);
 }
 
 .fold-header {
@@ -72,7 +72,7 @@ function toggle() {
 }
 
 .fold-chevron {
-  color: var(--md-on-surface-variant, #666);
+  color: var(--md-on-surface-variant);
   transition: transform 0.2s ease;
 }
 
@@ -87,29 +87,29 @@ function toggle() {
   flex-shrink: 0;
 }
 
-.tone-todo .fold-dot { background: #0066cc; }
-.tone-running .fold-dot { background: #fa8c16; box-shadow: 0 0 6px rgba(250, 140, 22, 0.6); }
-.tone-done .fold-dot { background: #52c41a; }
-.tone-neutral .fold-dot { background: var(--md-outline, #999); }
+.tone-todo .fold-dot { background: var(--md-primary); }
+.tone-running .fold-dot { background: var(--md-warning-fill); box-shadow: var(--md-glow-warning); }
+.tone-done .fold-dot { background: var(--md-success); }
+.tone-neutral .fold-dot { background: var(--md-outline); }
 
 .fold-title {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--md-text-body);
+  font-weight: var(--md-weight-semibold);
   white-space: nowrap;
 }
 
 .fold-count {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--md-text-body-sm);
+  font-weight: var(--md-weight-semibold);
   padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--md-surface-container, #eaecf0);
-  color: var(--md-on-surface-variant, #44474d);
+  border-radius: var(--md-radius-pill);
+  background: var(--md-surface-container);
+  color: var(--md-on-surface-variant);
 }
 
 .fold-hint {
-  font-size: 12px;
-  color: var(--md-on-surface-variant-2, #61686f);
+  font-size: var(--md-text-body-sm);
+  color: var(--md-on-surface-variant-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

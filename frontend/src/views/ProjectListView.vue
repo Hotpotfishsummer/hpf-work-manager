@@ -297,7 +297,7 @@ onMounted(load)
   border-radius: var(--md-radius-md);
 }
 .photo-badge {
-  font-size: 40px;
+  font-size: var(--md-text-display-lg);
   font-weight: var(--md-weight-bold);
   color: var(--md-primary);
 }

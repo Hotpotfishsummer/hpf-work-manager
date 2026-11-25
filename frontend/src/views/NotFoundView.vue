@@ -25,7 +25,7 @@ const router = useRouter()
   padding: var(--md-space-7) var(--md-space-4);
 }
 .nf-code {
-  font-size: 80px;
+  font-size: var(--md-text-display-lg);
   font-weight: var(--md-weight-bold);
   color: var(--md-primary);
   letter-spacing: 2px;

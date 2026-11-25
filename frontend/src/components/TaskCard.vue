@@ -166,7 +166,7 @@ function formatTime(ts: string) {
 }
 
 .task-card.is-active {
-  border-left: 3px solid var(--md-warning);
+  border-left: var(--md-accent-bar-width) solid var(--md-warning);
 }
 
 .task-card.is-done {
@@ -216,7 +216,7 @@ function formatTime(ts: string) {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--md-warning);
+  background: var(--md-warning-fill);
   animation: pulse 1.5s infinite;
 }
 

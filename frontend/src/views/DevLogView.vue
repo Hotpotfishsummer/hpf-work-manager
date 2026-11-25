@@ -630,7 +630,7 @@ watch(pid, () => {
   color: var(--md-on-surface-variant);
   flex-wrap: wrap;
 }
-.git-ref { font-family: var(--md-font-mono, monospace); }
+.git-ref { font-family: var(--md-font-mono); }
 .log-content {
   margin: var(--md-space-2) 0 0;
   font-size: var(--md-text-body-sm);
