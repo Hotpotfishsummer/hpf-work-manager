@@ -595,11 +595,17 @@ function sectionHint(tone: string): string {
 }
 
 // 正在筛选 / 搜索时把三个分区都撑开，免得「筛完没结果」看起来像数据丢了
+let foldBeforeFilter: FoldState | null = null
 watch(hasActiveFilter, (active) => {
   if (active) {
+    // 先记下用户原本的开合习惯，筛选结束后还回去，别把「已完成保持折叠」永久冲掉
+    foldBeforeFilter ??= { ...fold }
     fold.running = true
     fold.todo = true
     fold.done = true
+  } else if (foldBeforeFilter) {
+    Object.assign(fold, foldBeforeFilter)
+    foldBeforeFilter = null
   }
 })
 
