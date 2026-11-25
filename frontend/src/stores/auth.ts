@@ -1,47 +1,34 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { authApi } from '@/api'
 import type { User } from '@/types'
 
-const TOKEN_KEY = 'hpf_token'
-const USER_KEY = 'hpf_user'
-
-function readStoredUser(): User | null {
-  try {
-    const raw = localStorage.getItem(USER_KEY)
-    return raw ? (JSON.parse(raw) as User) : null
-  } catch {
-    return null
-  }
+const defaultAdmin: User = {
+  id: 1,
+  username: 'admin',
+  email: 'admin@example.com',
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref<string | null>(localStorage.getItem(TOKEN_KEY))
-  const user = ref<User | null>(readStoredUser())
+  // 内网/Tailscale 安全访问模式：无需登录，默认持有管理员身份
+  const token = ref<string | null>('tailnet-mode-token')
+  const user = ref<User | null>(defaultAdmin)
 
-  const username = computed(() => user.value?.username ?? '')
+  const username = computed(() => user.value?.username ?? 'admin')
 
-  async function login(username: string, password: string) {
-    const res = await authApi.login({ username, password })
-    token.value = res.access_token
-    user.value = res.user
-    localStorage.setItem(TOKEN_KEY, res.access_token)
-    localStorage.setItem(USER_KEY, JSON.stringify(res.user))
+  async function login(_username: string, _password: string) {
+    user.value = defaultAdmin
+    token.value = 'tailnet-mode-token'
   }
 
-  async function register(username: string, email: string, password: string) {
-    const res = await authApi.register({ username, email, password })
-    token.value = res.access_token
-    user.value = res.user
-    localStorage.setItem(TOKEN_KEY, res.access_token)
-    localStorage.setItem(USER_KEY, JSON.stringify(res.user))
+  async function register(_username: string, _email: string, _password: string) {
+    user.value = defaultAdmin
+    token.value = 'tailnet-mode-token'
   }
 
   function logout() {
-    token.value = null
-    user.value = null
-    localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(USER_KEY)
+    // 免鉴权模式下保持登录
+    user.value = defaultAdmin
+    token.value = 'tailnet-mode-token'
   }
 
   return { token, user, username, login, register, logout }

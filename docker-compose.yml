@@ -1,5 +1,5 @@
 # 生产编排：frontend(nginx) + backend(uvicorn) + postgres + backup
-# 用法：cp .env.example .env 并修改密钥后 docker compose up -d --build
+# 安全策略：端口仅绑定 127.0.0.1 与 Tailscale IP (100.69.225.112)，免除公网暴露风险
 
 services:
   postgres:
@@ -26,14 +26,33 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-hpf}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hpf}
       POSTGRES_DB: ${POSTGRES_DB:-hpf_work}
+      # pg_dump 只认 PGPASSWORD，不认 POSTGRES_PASSWORD。
+      # 缺这一行会让备份静默产出 20 字节的空 gzip（2026-10-16 → 11-25 事故）。
+      PGPASSWORD: ${POSTGRES_PASSWORD:-hpf}
     volumes:
       - pgdata:/var/lib/postgresql/data:ro
       - ./backups:/backups
+    # 备份策略：先写临时文件 → 校验非空 → 再原子改名落盘。
+    # 失败时不覆盖已有备份，只在日志里报错，避免「空文件顶替好文件」。
     command: >
       sh -c "
         while true; do
-          pg_dump -h postgres -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\" | gzip > /backups/hpf_$$(date +%F_%H-%M-%S).sql.gz &&
-          find /backups -type f -name 'hpf_*.sql.gz' -mtime +7 -delete;
+          ts=$$(date +%F_%H-%M-%S);
+          tmp=/backups/.hpf_$${ts}.sql.gz.part;
+          if pg_dump -h postgres -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\" | gzip > \"$$tmp\"; then
+            size=$$(wc -c < \"$$tmp\");
+            if [ \"$$size\" -gt 1024 ]; then
+              mv \"$$tmp\" \"/backups/hpf_$${ts}.sql.gz\";
+              echo \"[backup] OK hpf_$${ts}.sql.gz ($${size} bytes)\";
+              find /backups -type f -name 'hpf_*.sql.gz' -mtime +7 -delete;
+            else
+              rm -f \"$$tmp\";
+              echo \"[backup] FAILED: dump only $${size} bytes (<1024), discarded\" >&2;
+            fi
+          else
+            rm -f \"$$tmp\";
+            echo \"[backup] FAILED: pg_dump exited non-zero\" >&2;
+          fi;
           sleep 86400;
         done
       "
@@ -54,6 +73,9 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-10080}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
       MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-}
+      MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
+    volumes:
+      - /home/hotpotfish/dsh-workspace/projects:/workspace/projects:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
@@ -65,13 +87,6 @@ services:
         condition: service_healthy
     networks:
       - app
-    # ============================================================
-    # AI 工具接入：
-    # - 生产默认不暴露后端端口，站在 nginx 后面（前端 8080 已反代 /api 与 /mcp）
-    # - 如需让 AI 工具直接连后端（例如 8080 未配 HTTPS 反代），取消下面注释：
-    #   ports:
-    #     - "8000:8000"
-    # ============================================================
 
   frontend:
     build: ./frontend
@@ -87,7 +102,8 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "${FRONTEND_PORT:-8080}:80"
+      - "127.0.0.1:${FRONTEND_PORT:-8088}:80"
+      - "100.69.225.112:${FRONTEND_PORT:-8088}:80"
     networks:
       - app
 

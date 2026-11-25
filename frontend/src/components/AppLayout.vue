@@ -1,121 +1,120 @@
 <template>
   <div class="app-layout">
-    <!-- top-nav：Apple 风格半透明毛玻璃吸顶导航 -->
+    <!-- 极简毛玻璃顶栏 (Linear / Vercel 现代工作台风格) -->
     <header class="top-nav">
-      <div class="page-container nav-inner">
-        <router-link to="/projects" class="brand">
-          <svg class="brand-mark" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
-            <circle cx="12" cy="12" r="11" fill="none" stroke="currentColor" stroke-width="1.6" />
-            <path d="M12 3.5c2.4 2.2 3.6 5.2 3.6 8.5s-1.2 6.3-3.6 8.5c-2.4-2.2-3.6-5.2-3.6-8.5S9.6 5.7 12 3.5Z" fill="currentColor" />
-            <path d="M3.5 12h17" stroke="currentColor" stroke-width="1.4" />
-          </svg>
-          <span class="brand-name">HPF WORK MANAGER</span>
+      <div class="nav-inner">
+        <!-- 左侧 Brand 与 Harness 状态 -->
+        <router-link to="/" class="brand">
+          <span class="brand-icon">⚡</span>
+          <span class="brand-title">HARNESS PILOT</span>
+          <span class="harness-badge" title="DeepSeek Harness MCP 运行正常">
+            <span class="pulse-dot"></span>
+            dsh Linked
+          </span>
         </router-link>
 
-        <nav class="nav-menu">
-          <router-link to="/projects" class="nav-item">项目</router-link>
-          <router-link to="/dashboard" class="nav-item">进度</router-link>
-          <router-link to="/keys" class="nav-item">API Keys</router-link>
+        <!-- 中间核心导航 Tabs -->
+        <nav class="nav-tabs">
+          <router-link to="/" class="tab-item" :class="{ 'is-active': isCockpitRoute }">
+            🎯 任务看板
+          </router-link>
+          <router-link to="/ideas" class="tab-item" active-class="is-active">
+            💡 灵感推演
+          </router-link>
+          <router-link to="/quota" class="tab-item" active-class="is-active">
+            ⚡ 算力调度
+          </router-link>
+          <router-link to="/projects" class="tab-item" :class="{ 'is-active': isProjectsRoute }">
+            📁 项目管理
+          </router-link>
         </nav>
 
-        <div class="nav-actions">
-          <button class="search-btn" title="搜索 (⌘K)" @click="openCmdK">
-            <el-icon><Search /></el-icon>
-            <span>搜索</span>
-            <kbd class="search-kbd">⌘K</kbd>
+        <!-- 右侧状态胶囊与工具栏 -->
+        <div class="nav-right">
+          <!-- 迷你 5h 配额胶囊 -->
+          <button class="mini-quota-capsule" :class="quotaStatus" title="点击查看 5h 算力详情" @click="router.push('/quota')">
+            <span class="capsule-icon">⚡</span>
+            <span class="capsule-text">{{ quota.remaining_percent ?? 100 }}%</span>
+            <span class="capsule-timer">{{ quota.minutes_left ?? 0 }}m</span>
           </button>
-          <GlobalSearch ref="globalSearchRef" />
+
+          <!-- 简洁通知中心 -->
           <NotificationBell />
-          <button class="theme-toggle" :title="theme.scheme === 'dark' ? '切换到浅色' : '切换到深色'" @click="toggleTheme">
+
+          <!-- 主题切换 -->
+          <button class="icon-btn" :title="theme.scheme === 'dark' ? '切换浅色' : '切换深色'" @click="toggleTheme">
             <el-icon v-if="theme.scheme === 'dark'"><Sunny /></el-icon>
             <el-icon v-else><Moon /></el-icon>
           </button>
 
-          <el-dropdown trigger="click" @command="onUserCommand">
-            <span class="nav-item user-chip">
-              <el-icon><User /></el-icon>
-              <span class="user-name">{{ authStore.username }}</span>
-            </span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="logout">退出登录</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <!-- Tailnet 状态标记 -->
+          <div class="tailnet-chip" title="Tailscale 内网免密安全访问">
+            <span class="lock-icon">🔒</span>
+            <span>100.69.225.112</span>
+          </div>
         </div>
       </div>
     </header>
 
-    <main class="page-body">
+    <main class="page-content">
       <router-view />
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Moon, Search, Sunny, User } from '@element-plus/icons-vue'
-import { onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import GlobalSearch from '@/components/GlobalSearch.vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Moon, Sunny } from '@element-plus/icons-vue'
 import NotificationBell from '@/components/NotificationBell.vue'
-import { useAuthStore } from '@/stores/auth'
 import { useNotifications } from '@/stores/notifications'
 import { useThemeStore } from '@/stores/theme'
+import http from '@/api/http'
 
+const route = useRoute()
 const router = useRouter()
-const authStore = useAuthStore()
 const theme = useThemeStore()
-const globalSearchRef = ref<InstanceType<typeof GlobalSearch> | null>(null)
 const { connect: connectNotifications, disconnect: disconnectNotifications } = useNotifications()
 
-// 登录状态下启动全局通知 SSE；登出即断开
-onMounted(() => {
-  if (authStore.token) connectNotifications()
+const quota = ref<any>({})
+let quotaTimer: number | null = null
+
+const isCockpitRoute = computed(() => route.path === '/')
+const isProjectsRoute = computed(() => route.path.startsWith('/projects'))
+
+const quotaStatus = computed(() => {
+  const p = quota.value.remaining_percent ?? 100
+  if (p <= 10) return 'critical'
+  if (p <= 30) return 'warning'
+  return 'good'
 })
 
-function openCmdK() {
-  const el = globalSearchRef.value?.$el as HTMLElement | undefined
-  const input = el?.querySelector('input') as HTMLInputElement | undefined
-  if (input) {
-    input.focus()
-    input.value = ''
-    input.dispatchEvent(new Event('input', { bubbles: true }))
-  }
+async function fetchMiniQuota() {
+  try {
+    const res: any = await http.get('/quota')
+    if (res) quota.value = res
+  } catch {}
 }
 
-let onKeydown: ((e: KeyboardEvent) => void) | null = null
 onMounted(() => {
-  onKeydown = (e: KeyboardEvent) => {
-    const tag = (e.target as HTMLElement)?.tagName?.toLowerCase()
-    if (tag === 'input' || tag === 'textarea' || tag === 'select') return
-    if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
-      e.preventDefault()
-      openCmdK()
-    }
-  }
-  document.addEventListener('keydown', onKeydown)
+  connectNotifications()
+  fetchMiniQuota()
+  quotaTimer = window.setInterval(fetchMiniQuota, 45000)
 })
 
 onUnmounted(() => {
-  if (onKeydown) document.removeEventListener('keydown', onKeydown)
   disconnectNotifications()
+  if (quotaTimer) clearInterval(quotaTimer)
 })
 
 function toggleTheme() {
   theme.setMode(theme.scheme === 'dark' ? 'light' : 'dark')
 }
-
-function onUserCommand(cmd: string) {
-  if (cmd === 'logout') {
-    authStore.logout()
-    router.push('/login')
-  }
-}
 </script>
 
 <style scoped>
 .app-layout {
-  min-height: 100%;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: var(--md-surface);
@@ -124,131 +123,178 @@ function onUserCommand(cmd: string) {
 .top-nav {
   position: sticky;
   top: 0;
-  z-index: 100;
-  height: var(--md-nav-height);
-  background-color: color-mix(in srgb, var(--md-surface) 82%, transparent);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: 1px solid var(--md-outline-variant);
+  z-index: 1000;
+  height: 52px;
+  background-color: color-mix(in srgb, var(--md-surface) 86%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--md-outline-variant, #e2e4e8);
 }
 
 .nav-inner {
+  max-width: 1400px;
   height: 100%;
+  margin: 0 auto;
+  padding: 0 24px;
   display: flex;
   align-items: center;
-  gap: var(--md-space-6);
+  justify-content: space-between;
 }
 
+/* Brand */
 .brand {
   display: flex;
   align-items: center;
-  gap: var(--md-space-1);
+  gap: 10px;
+  text-decoration: none;
   color: var(--md-on-surface);
-}
-.brand:hover { color: var(--md-primary); }
-.brand-mark { color: var(--md-primary); }
-.brand-name {
-  font-size: var(--md-text-label-lg);
-  font-weight: var(--md-weight-bold);
-  letter-spacing: 0.3px;
 }
 
-.nav-menu {
-  display: flex;
-  gap: var(--md-space-5);
-  margin-left: var(--md-space-5);
+.brand-icon {
+  font-size: 18px;
+  color: var(--md-primary, #0066cc);
 }
-.nav-item {
-  font-size: var(--md-text-label-lg);
-  font-weight: 400;
-  letter-spacing: 0.3px;
-  color: var(--md-on-surface);
-  padding: var(--md-space-1) 0;
-  border-bottom: 2px solid transparent;
-  transition: border-color 0.15s ease, color 0.15s ease;
-}
-.nav-item.router-link-active {
-  color: var(--md-on-surface);
-  border-bottom-color: var(--md-primary);
-}
-.nav-item:hover { color: var(--md-primary); }
 
-.nav-actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: var(--md-space-2);
+.brand-title {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--md-on-surface);
 }
-.search-btn {
+
+.harness-badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--md-space-2);
-  padding: var(--md-space-1) var(--md-space-3);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-sm);
-  background: transparent;
-  color: var(--md-on-surface-variant);
-  cursor: pointer;
-  font-size: var(--md-text-label-md);
-  transition: border-color 0.15s ease, color 0.15s ease;
-}
-.search-btn:hover {
-  border-color: var(--md-outline);
-  color: var(--md-on-surface);
-}
-.search-kbd {
-  font-family: var(--md-font-mono, monospace);
+  gap: 5px;
   font-size: 11px;
-  padding: 1px var(--md-space-1);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: 4px;
-  color: var(--md-on-surface-variant);
-  background: var(--md-surface-container-high);
+  padding: 2px 8px;
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+  border: 1px solid rgba(82, 196, 26, 0.3);
+  border-radius: 999px;
+  font-weight: 500;
 }
-.theme-toggle {
-  width: var(--md-control-height);
-  height: var(--md-control-height);
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  background: #52c41a;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(82, 196, 26, 0.8);
+}
+
+/* Tabs */
+.nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--md-surface-container, #f1f2f4);
+  padding: 3px;
+  border-radius: 8px;
+}
+
+.tab-item {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--md-on-surface-variant, #666);
+  text-decoration: none;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.tab-item:hover {
+  color: var(--md-on-surface, #111);
+}
+
+.tab-item.is-active {
+  background: var(--md-surface, #ffffff);
+  color: var(--md-primary, #0066cc);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Right Tools */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mini-quota-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--md-surface-container, #f1f2f4);
+  border: 1px solid var(--md-outline-variant, #e0e2e8);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--md-on-surface, #222);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mini-quota-capsule:hover {
+  background: var(--md-surface-container-high, #e4e6ea);
+  border-color: #0066cc;
+}
+
+.mini-quota-capsule.critical {
+  background: rgba(255, 77, 79, 0.1);
+  border-color: #ff9999;
+}
+
+.capsule-icon { color: #fa8c16; font-size: 12px; }
+.capsule-text { font-weight: 700; }
+.capsule-timer {
+  font-size: 11px;
+  color: var(--md-on-surface-variant, #666);
+  background: var(--md-surface, #ffffff);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.icon-btn {
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-full);
-  background-color: transparent;
-  color: var(--md-on-surface-variant);
+  border: 1px solid var(--md-outline-variant, #e0e2e8);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--md-on-surface-variant, #555);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: all 0.15s ease;
 }
-.theme-toggle:hover {
-  background-color: var(--md-surface-container-high);
-  color: var(--md-on-surface);
-  border-color: var(--md-outline);
+
+.icon-btn:hover {
+  background: var(--md-surface-container, #f1f2f4);
+  color: var(--md-on-surface, #111);
 }
-.user-chip {
+
+.tailnet-chip {
   display: inline-flex;
   align-items: center;
-  gap: var(--md-space-1);
-  cursor: pointer;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--md-on-surface-variant, #777);
+  background: var(--md-surface-container-low, #f8f9fa);
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--md-outline-variant, #eaecef);
 }
-.user-name { font-weight: var(--md-weight-medium); }
 
-.page-body {
+.lock-icon { font-size: 11px; }
+
+.page-content {
   flex: 1;
-  padding-bottom: var(--md-space-7);
 }
 
-/* ---- 移动端适配（P4-2）---- */
 @media (max-width: 900px) {
-  .nav-inner { gap: var(--md-space-3); }
-  .brand-name { display: none; }        /* 保留 logo，省 ~150px */
-  .nav-menu { margin-left: 0; gap: var(--md-space-3); }
-  .search-btn span:not(.search-kbd) { display: none; }
-  .search-kbd { display: none; }
-  .search-btn { padding: var(--md-space-1); }
-  .global-search { width: 170px; }
-}
-@media (max-width: 560px) {
-  .global-search, .search-btn { display: none; }  /* 极小屏收起搜索，保导航可读 */
-  .nav-menu { gap: var(--md-space-4); }
-  .nav-item { font-size: var(--md-text-label-md); }
+  .brand-title, .harness-badge, .tailnet-chip { display: none; }
+  .nav-tabs { gap: 2px; }
+  .tab-item { padding: 4px 8px; font-size: 12px; }
 }
 </style>

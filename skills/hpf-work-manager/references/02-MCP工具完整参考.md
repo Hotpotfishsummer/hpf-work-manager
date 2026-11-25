@@ -1,4 +1,4 @@
-# 02 · MCP 工具完整参考（38 个）
+# 02 · MCP 工具完整参考（44 个）
 
 > 全部工具的签名、参数、返回值与示例。以服务端实际实现为准
 > （源码：`backend/app/mcp_server.py`）。工具只操作**当前认证用户**的数据。
@@ -318,6 +318,87 @@ log_progress(project_id=1, title="完成 JWT 签发与校验", git_ref="a1b2c3d"
 - 参数：`comment_id: int`
 - 返回：`str`，如 `"评论 7 已删除"`
 - 约束：仅限删除自己项目内的评论。
+
+---
+
+## 七、AI Driver & 双重认证协同（6）
+
+### 39. `get_manager_status` — 查询管理器状态与驱动模式
+- 参数：无
+- 返回：
+  ```json
+  {
+    "ok": true,
+    "driver_mode": "DUAL_CERTIFIED", // 或 "EXTERNAL_DRIVEN"
+    "mode_description": "双重认证协同模式 (Dual-Agent Consensus Active)",
+    "has_internal_tokens": true,
+    "quota": {
+      "remaining_percent": 85,
+      "weekly_remaining_percent": 92,
+      "minutes_left": 142,
+      "reset_time_str": "21:30:00",
+      "is_night_shift": false,
+      "suggestion": "5h额度状态良好（剩余 85%）"
+    },
+    "guidelines": "内部 MiniMax 算力充足。外部 Agent 在此模式下提交的规划提案将经过内部架构师模型的交叉校验...",
+    "active_workspace": "/workspace/projects"
+  }
+  ```
+- 用途：外部 Agent 在发起任务规划前探活，判断当前是双重认证还是单驱降级。
+
+### 40. `get_next_steps` — 获取项目高价值落地推演建议
+- 参数：`project_name: str`（代码库目录名）
+- 返回：`TaskItem[]`（包含 title, category, priority, description, estimated_hours, reason, certified_by）
+- 机制：内部算力充沛时由 MiniMax 架构师推演；算力耗尽时自动降级为代码库结构启发式规则推演（零 Token，永远可用）。
+
+### 41. `propose_task_plan` — 外部规划提案与双重认证审查
+- 参数：
+  - `project_name: str`（目标项目名）
+  - `tasks: list[dict]`（提案任务列表，含 title, description, category, priority, estimated_hours 等）
+  - `agent_role_or_id: str = "external_agent"`（外部 Agent 代号）
+  - `rationale: str = ""`（提案动机理由）
+  - `auto_create: bool = false`（审查通过后是否直接建档落入项目看板）
+- 返回：
+  ```json
+  {
+    "ok": true,
+    "driver_mode": "DUAL_CERTIFIED",
+    "audit_status": "APPROVED", // 或 MODIFIED / REJECTED
+    "audit_summary": "已通过内部模型双重认证审核，消除 1 处冗余并完善测试断言标准。",
+    "certified_tasks": [...],
+    "created_task_ids": [101, 102],
+    "project_name": "my-app"
+  }
+  ```
+
+### 42. `verify_and_complete_task` — 任务交付核销与证据绑定
+- 参数：
+  - `task_id: int`（任务编号）
+  - `git_ref: str`（真实 Git Commit Hash 或分支）
+  - `verification_evidence: str`（测试执行结果、覆盖率或核心代码变更片段，≥5字符）
+  - `summary: str = ""`（完成总结）
+- 返回：
+  ```json
+  {
+    "ok": true,
+    "task_id": 42,
+    "task_name": "实现搜索接口",
+    "status": "done",
+    "dev_log_id": 89,
+    "git_ref": "4a9fbf0",
+    "certified": true,
+    "message": "任务「实现搜索接口」已完成双重认证归档，并生成关联 DevLog 凭证！"
+  }
+  ```
+- 约束：杜绝虚标 done；必须带 git 证据，自动落成 `entry_type="progress"` DevLog 并广播 SSE。
+
+### 43. `brainstorm_ideas` — MVP 项目灵感孵化
+- 参数：`theme: str = "实用生产力工具"`
+- 返回：`IdeaItem[]`（含 title, tagline, problem, tech_stack, mvp_features, initial_task_prompt）
+
+### 44. `sync_local_projects` — 扫描并自动建档服务器本地项目
+- 参数：无
+- 返回：`{"ok": true, "synced_count": 2, "created_projects": ["vocab-app"], "total_local": 25}`
 
 ---
 

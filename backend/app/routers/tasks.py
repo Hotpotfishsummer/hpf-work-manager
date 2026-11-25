@@ -47,6 +47,61 @@ async def _get_task(db: DbDep, user: CurrentUser, task_id: int) -> Task:
     return task
 
 
+@router.get("/tasks", response_model=list[TaskOut])
+async def list_all_tasks(
+    user: CurrentUser,
+    db: DbDep,
+    project_id: int | None = Query(default=None),
+    status_filter: str | None = Query(default=None, alias="status"),
+    priority: str | None = Query(default=None, description="low/medium/high"),
+    search: str | None = Query(default=None, max_length=100),
+    sort: str | None = Query(default=None),
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+):
+    stmt = (
+        select(Task)
+        .join(Project, Task.project_id == Project.id)
+        .where(Project.owner_id == user.id)
+    )
+    if project_id is not None:
+        stmt = stmt.where(Task.project_id == project_id)
+    if status_filter:
+        stmt = stmt.where(Task.status == status_filter)
+    if priority:
+        stmt = stmt.where(Task.priority == priority)
+    if search:
+        pat = f"%{search.lower()}%"
+        stmt = stmt.where(
+            or_(func.lower(Task.name).like(pat), func.lower(Task.description).like(pat))
+        )
+    if sort == "priority_desc":
+        stmt = stmt.order_by(
+            case(
+                (Task.priority == "high", 0),
+                (Task.priority == "medium", 1),
+                (Task.priority == "low", 2),
+                else_=3,
+            ),
+            Task.id.desc(),
+        )
+    else:
+        stmt = stmt.order_by(Task.id.desc())
+
+    tasks = (await db.execute(stmt.offset(offset).limit(limit))).scalars().all()
+    return [to_out(t) for t in tasks]
+
+
+@router.post("/tasks", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
+async def create_task_global(
+    payload: TaskCreate,
+    user: CurrentUser,
+    db: DbDep,
+    project_id: int = Query(default=1),
+):
+    return await create_task(project_id, payload, user, db)
+
+
 @router.get("/projects/{project_id}/tasks", response_model=list[TaskOut])
 async def list_tasks(
     project_id: int,

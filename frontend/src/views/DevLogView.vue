@@ -189,6 +189,7 @@
 </template>
 
 <script setup lang="ts">
+import { copyText } from '@/utils/clipboard'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -522,7 +523,7 @@ function downloadReport() {
 }
 
 async function copyReport() {
-  await navigator.clipboard.writeText(reportText.value)
+  await copyText(reportText.value)
   ElMessage.success('已复制 Markdown')
 }
 

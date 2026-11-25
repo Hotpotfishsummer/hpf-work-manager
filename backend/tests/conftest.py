@@ -17,6 +17,9 @@ os.environ.setdefault("MCP_ALLOWED_HOSTS", "testserver,localhost")
 # （environment 默认 production 会因默认 SECRET_KEY 触发 fail-fast）
 os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("SECRET_KEY", "test-only-secret-key-0123456789abcdef0123456789abcdef")
+# 测试跑「强制鉴权」模式：生产默认的内网免鉴权会回退到 admin，
+# 那样所有 401 用例都会误判通过，认证回归就测不出来了。
+os.environ.setdefault("AUTH_REQUIRED", "true")
 
 
 @pytest_asyncio.fixture(scope="function")

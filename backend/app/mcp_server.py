@@ -69,15 +69,16 @@ current_username: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 )
 
 def _allowed_hosts() -> list[str]:
-    """MCP DNS 防重绑定允许的 Host 列表。显式配置优先，否则从 CORS 源推导。"""
+    """MCP DNS 防重绑定允许的 Host 列表。包含本地回环与 Tailscale 信任域。"""
+    hosts = {"localhost", "localhost:8088", "127.0.0.1", "127.0.0.1:8088", "100.69.225.112", "100.69.225.112:8088"}
     if settings.mcp_allowed_hosts.strip():
-        return [h.strip() for h in settings.mcp_allowed_hosts.split(",") if h.strip()]
-    hosts = set()
+        for h in settings.mcp_allowed_hosts.split(","):
+            if h.strip():
+                hosts.add(h.strip())
     for raw in settings.cors_origin_list:
         host = urlparse(raw).netloc
         if host:
             hosts.add(host)
-    hosts.add("localhost")
     return list(hosts)
 
 
@@ -89,9 +90,9 @@ mcp = FastMCP(
         allowed_hosts=_allowed_hosts(),
     ),
     instructions=(
-        "HPF 任务/项目管理与进度追踪 MCP 服务。"
-        "提供项目、里程碑、任务、依赖与统计数据的读写能力，"
-        "AI 工具可在编码过程中自动维护任务状态与进度。"
+        "HPF 任务/项目管理、5h额度雷达与双重认证协同 MCP 服务。"
+        "提供项目、里程碑、任务、依赖、DevLog，以及外驱双重认证协同与下一步推演规划能力。"
+        "AI 工具可在编码过程中自动维护任务状态、进行规划交叉审查与防幻觉核销。"
     ),
 )
 
@@ -1083,6 +1084,228 @@ async def resolve_dev_log(log_id: int) -> dict:
         return to_dict(log)
 
 
+# =====================================================================
+# 7. AI Driver & 双重认证协同工具（6 个）
+# =====================================================================
+
+
+@mcp.tool()
+async def get_manager_status() -> dict:
+    """查询管理器当前算力配额与 Agent 驱动模式（双重认证 DUAL_CERTIFIED vs 外部单驱 EXTERNAL_DRIVEN）及行动指南。"""
+    from app.services.ideator import get_active_workspace
+    from app.services.quota import quota_service
+
+    mode_info = await quota_service.get_driver_mode()
+    return {
+        "ok": True,
+        "driver_mode": mode_info["driver_mode"],
+        "mode_description": mode_info["mode_desc"],
+        "has_internal_tokens": mode_info["has_internal_tokens"],
+        "quota": mode_info["quota_status"],
+        "guidelines": mode_info["guidelines"],
+        "active_workspace": str(get_active_workspace()),
+    }
+
+
+@mcp.tool()
+async def get_next_steps(project_name: str) -> list[dict]:
+    """获取指定项目的下一步高价值落地任务建议。内部有额度时由 MiniMax 架构师推演，额度耗尽时自动降级为代码库启发式规则推演。"""
+    from app.services.ideator import ideator_service
+
+    return await ideator_service.generate_next_steps(project_name)
+
+
+@mcp.tool()
+async def propose_task_plan(
+    project_name: str,
+    tasks: list[dict],
+    agent_role_or_id: str = "external_agent",
+    rationale: str = "",
+    auto_create: bool = False,
+) -> dict:
+    """【双重认证核心】外部 Agent 提交多项任务规划提案。
+    内部 Token 充足时由 MiniMax 架构师交叉审查，纠偏低端模型的理解偏差与幻觉；
+    内部 Token 耗尽时由确定性工程护栏校验。若 auto_create=True 则直接将认证任务建档落入看板。
+    """
+    from app.services.ideator import ideator_service
+
+    username = _username()
+    review_result = await ideator_service.review_task_proposal(
+        project_name=project_name,
+        proposed_tasks=tasks,
+        agent_role_or_id=agent_role_or_id,
+        rationale=rationale,
+    )
+
+    created_task_ids = []
+    if auto_create and review_result.get("ok"):
+        async with AsyncSessionLocal() as db:
+            user = await _get_user(db, username)
+            proj = (
+                await db.execute(
+                    select(Project).where(
+                        Project.owner_id == user.id,
+                        Project.name == project_name,
+                    )
+                )
+            ).scalar_one_or_none()
+            if not proj:
+                local_projs = ideator_service.list_projects()
+                found_desc = next(
+                    (p["description"] for p in local_projs if p["name"] == project_name),
+                    f"服务器本地项目 {project_name}",
+                )
+                proj = Project(
+                    name=project_name[:120],
+                    description=found_desc[:500] if found_desc else None,
+                    owner_id=user.id,
+                    status="active",
+                )
+                db.add(proj)
+                await db.commit()
+                await db.refresh(proj)
+                await publish(proj.id, "created", "project", proj.id)
+
+            for t in review_result.get("certified_tasks", []):
+                new_task = Task(
+                    project_id=proj.id,
+                    name=t.get("title", "未命名任务")[:200],
+                    description=t.get("description", "")[:1000],
+                    status="todo",
+                    priority=t.get("priority", "medium")
+                    if t.get("priority") in ["low", "medium", "high"]
+                    else "medium",
+                    progress=0,
+                    estimated_hours=t.get("estimated_hours", 2),
+                )
+                db.add(new_task)
+                await db.commit()
+                await db.refresh(new_task)
+                created_task_ids.append(new_task.id)
+                await publish(proj.id, "created", "task", new_task.id)
+
+    return {
+        **review_result,
+        "created_task_ids": created_task_ids,
+        "project_name": project_name,
+    }
+
+
+@mcp.tool()
+async def verify_and_complete_task(
+    task_id: int,
+    git_ref: str,
+    verification_evidence: str,
+    summary: str = "",
+) -> dict:
+    """【双重认证核销】外部 Agent 交付完成任务。
+    必须提供真实 git commit hash 与验收测试凭证，杜绝低端模型凭假设标记完成。
+    成功后自动盖章标记 done 并生成关联 DevLog 交付记录与 SSE 事件广播。
+    """
+    from app.services.tasks import apply_status_transition
+
+    username = _username()
+    async with AsyncSessionLocal() as db:
+        user = await _get_user(db, username)
+        task = (
+            await db.execute(
+                select(Task)
+                .join(Project, Task.project_id == Project.id)
+                .where(Task.id == task_id, Project.owner_id == user.id)
+            )
+        ).scalar_one_or_none()
+        if not task:
+            raise ValueError(f"任务 {task_id} 不存在或无权操作")
+
+        # 标记完成
+        apply_status_transition(task, "done")
+        db.add(task)
+
+        session_id = await _attach_session(db, task.project_id, None)
+
+        # 自动生成 DevLog 交付记录
+        log = DevLog(
+            project_id=task.project_id,
+            session_id=session_id,
+            entry_type="progress",
+            title=f"完成工单: {task.name}",
+            content=f"【完成总结】{summary or task.name}\n\n【验收验证凭证】\n{verification_evidence}",
+            git_ref=git_ref[:100],
+            author=username,
+            related_task_ids=[task.id],
+        )
+        db.add(log)
+        await db.commit()
+        await db.refresh(task)
+        await db.refresh(log)
+
+        await publish(task.project_id, "updated", "task", task.id)
+        await publish(task.project_id, "created", "log", log.id)
+
+        return {
+            "ok": True,
+            "task_id": task.id,
+            "task_name": task.name,
+            "status": task.status,
+            "dev_log_id": log.id,
+            "git_ref": git_ref,
+            "certified": True,
+            "message": f"任务「{task.name}」已完成双重认证归档，并生成关联 DevLog 凭证！",
+        }
+
+
+@mcp.tool()
+async def brainstorm_ideas(theme: str = "实用生产力工具") -> list[dict]:
+    """创意孵化：根据主题构思具有高实用价值的 MVP 新项目点子与首步 Prompt（支持无额度降级备选）。"""
+    from app.services.ideator import ideator_service
+
+    return await ideator_service.brainstorm_ideas(theme)
+
+
+@mcp.tool()
+async def sync_local_projects() -> dict:
+    """扫描服务器本地代码库目录，自动将尚未建档的本地项目批量导入为独立的 Project。"""
+    from app.services.ideator import ideator_service
+
+    username = _username()
+    local_projs = ideator_service.list_projects()
+    async with AsyncSessionLocal() as db:
+        user = await _get_user(db, username)
+        existing_projs = (
+            await db.execute(select(Project).where(Project.owner_id == user.id))
+        ).scalars().all()
+        existing_names = {p.name for p in existing_projs}
+
+        created = []
+        for lp in local_projs:
+            name = lp["name"]
+            if name not in existing_names:
+                desc = lp.get("description") or f"服务器本地项目 {name}"
+                p = Project(
+                    name=name,
+                    description=desc[:500] if desc else None,
+                    owner_id=user.id,
+                    status="active",
+                )
+                db.add(p)
+                created.append(name)
+
+        if created:
+            await db.commit()
+            for p in (
+                await db.execute(select(Project).where(Project.owner_id == user.id))
+            ).scalars().all():
+                if p.name in created:
+                    await publish(p.id, "created", "project", p.id)
+
+        return {
+            "ok": True,
+            "synced_count": len(created),
+            "created_projects": created,
+            "total_local": len(local_projs),
+        }
+
+
 def get_mcp_app():
     """返回可挂载到 FastAPI 的 ASGI 应用（Starlette）。"""
     return mcp.streamable_http_app()
@@ -1099,4 +1322,4 @@ def _username() -> str:
     username = current_username.get()
     if not username:
         raise ValueError("未认证：请提供有效的 API Key")
-    return username
+    return username

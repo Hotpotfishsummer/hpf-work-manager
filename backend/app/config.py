@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     mcp_path: str = "/mcp"
     # MCP DNS 防重绑定的允许 Host（逗号分隔）；空则从 CORS_ORIGINS 推导
     mcp_allowed_hosts: str = ""
+    # 是否强制 REST 认证。默认 false = Tailscale/Localhost 内网免鉴权（回退 admin）；
+    # 对外暴露或公网反代时必须置 true，否则任何人都以 admin 身份读写全部数据。
+    auth_required: bool = False
     # 展示时区：逾期/今日完成/快照/燃尽分桶等"日历今天"语义统一按该时区判定
     display_timezone: str = "Asia/Shanghai"
 

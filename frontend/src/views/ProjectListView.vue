@@ -6,10 +6,16 @@
         <h1 class="page-title">项目</h1>
         <p class="page-sub">Projects · 管理你的全部项目与进度</p>
       </div>
-      <el-button type="primary" size="large" @click="openCreate">
-        <el-icon style="margin-right: var(--md-space-1)"><Plus /></el-icon>
-        新建项目
-      </el-button>
+      <div style="display: flex; gap: var(--md-space-3);">
+        <el-button size="large" :loading="syncing" @click="syncLocalProjects">
+          <el-icon style="margin-right: var(--md-space-1)"><Refresh /></el-icon>
+          同步本地项目库
+        </el-button>
+        <el-button type="primary" size="large" @click="openCreate">
+          <el-icon style="margin-right: var(--md-space-1)"><Plus /></el-icon>
+          新建项目
+        </el-button>
+      </div>
     </div>
 
     <!-- 状态筛选 -->
@@ -98,15 +104,34 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, MoreFilled } from '@element-plus/icons-vue'
+import { Plus, MoreFilled, Refresh } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { projectApi } from '@/api'
+import http from '@/api/http'
 import type { Project } from '@/types'
 
 const router = useRouter()
 const projects = ref<Project[]>([])
 const loading = ref(false)
 const saving = ref(false)
+const syncing = ref(false)
+
+async function syncLocalProjects() {
+  syncing.value = true
+  try {
+    const res: any = await http.post('/ideator/sync-projects')
+    if (res && res.synced_count > 0) {
+      ElMessage.success(`成功导入 ${res.synced_count} 个本地独立代码库项目！`)
+    } else {
+      ElMessage.info('本地代码库已全部同步建档为独立项目')
+    }
+    await load()
+  } catch (err: any) {
+    ElMessage.error(err.response?.data?.detail || '同步项目失败')
+  } finally {
+    syncing.value = false
+  }
+}
 const dialogVisible = ref(false)
 const editing = ref<Project | null>(null)
 const statusFilter = ref<'active' | 'archived'>('active')

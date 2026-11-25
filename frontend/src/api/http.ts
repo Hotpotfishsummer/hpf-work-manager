@@ -3,44 +3,30 @@ import { ElMessage } from 'element-plus'
 
 const http = axios.create({
   baseURL: import.meta.env.VITE_API_BASE || '/api',
-  timeout: 15000,
+  timeout: 120000,
 })
 
-// 请求拦截：附加 JWT
+// 请求拦截：附加缺省 JWT 占位
 http.interceptors.request.use((config) => {
-  const token = localStorage.getItem('hpf_token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
+  config.headers.Authorization = 'Bearer tailnet-mode-token'
   return config
 })
 
-// 响应拦截：401 跳登录；统一错误提示
+// 响应拦截：统一错误提示（免鉴权模式不强制重定向到登录页）
 http.interceptors.response.use(
   (res) => res.data,
   async (error: AxiosError<{ detail?: string | Array<{ loc: string[]; msg: string; type: string }> }>) => {
-    if (error.response?.status === 401) {
-      // 关键：同步清空 Pinia store 的 token ref（而非仅 localStorage），
-      // 否则路由守卫读到旧值会把 /login 弹回 /dashboard，形成 401 循环
-      const { useAuthStore } = await import('@/stores/auth')
-      const authStore = useAuthStore()
-      authStore.logout()
-      const { default: router } = await import('@/router')
-      const current = router.currentRoute.value
-      if (current.path !== '/login') {
-        router.push({ path: '/login', query: { redirect: current.fullPath } })
-      }
+    const detail = error.response?.data?.detail
+    let message: string
+    if (Array.isArray(detail)) {
+      message = detail.map((d) => d.msg).join('；') || '请求参数有误'
+    } else if (typeof detail === 'string') {
+      message = detail
     } else {
-      const detail = error.response?.data?.detail
-      let message: string
-      if (Array.isArray(detail)) {
-        // FastAPI 422 校验错误：[{ loc, msg, type }, ...]
-        message = detail.map((d) => d.msg).join('；') || '请求参数有误'
-      } else if (typeof detail === 'string') {
-        message = detail
-      } else {
-        message = '请求失败，请稍后重试'
-      }
+      message = '请求失败，请稍后重试'
+    }
+    // 忽略部分 404 / 401 弹窗干扰
+    if (error.response?.status !== 401) {
       ElMessage.error(message)
     }
     return Promise.reject(error)

@@ -43,8 +43,8 @@ export const authApi = {
 
 /* ---- 项目 ---- */
 export const projectApi = {
-  list: (status?: 'active' | 'archived') =>
-    http.get<Project[], Project[]>('/projects', status ? { params: { status } } : undefined),
+  list: (status?: 'active' | 'archived', limit = 200) =>
+    http.get<Project[], Project[]>('/projects', { params: { ...(status ? { status } : {}), limit } }),
   get: (id: number) => http.get<Project, Project>(`/projects/${id}`),
   create: (data: ProjectCreate) => http.post<Project, Project>('/projects', data),
   update: (id: number, data: ProjectUpdate) =>

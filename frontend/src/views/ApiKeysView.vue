@@ -73,6 +73,7 @@
 </template>
 
 <script setup lang="ts">
+import { copyText } from '@/utils/clipboard'
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { keyApi } from '@/api'
@@ -119,25 +120,7 @@ function fmtDate(d: string | null) {
 }
 
 async function copyKey(text: string) {
-  try {
-    await navigator.clipboard.writeText(text)
-  } catch {
-    // 非安全上下文（http）或剪贴板不可用时退回传统方案
-    const ta = document.createElement('textarea')
-    ta.value = text
-    ta.style.position = 'fixed'
-    ta.style.opacity = '0'
-    document.body.appendChild(ta)
-    ta.select()
-    try {
-      document.execCommand('copy')
-    } catch {
-      ElMessage.error('复制失败，请手动复制')
-      document.body.removeChild(ta)
-      return
-    }
-    document.body.removeChild(ta)
-  }
+  await copyText(text)
   ElMessage.success('已复制')
 }
 

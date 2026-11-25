@@ -17,10 +17,12 @@ from app.routers import (
     comments,
     dev_logs,
     events,
+    ideator,
     keys,
     milestones,
     notifications,
     projects,
+    quota,
     search,
     stats,
     tasks,
@@ -51,19 +53,19 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="HPF Work Manager API",
-    description="任务/项目管理与进度追踪 API（FastAPI + PostgreSQL）",
-    version="0.2.0",
+    title="HPF Work Manager API (HarnessPilot)",
+    description="任务/项目管理、5h额度雷达与AI规划推演 API（Tailscale/Localhost 无鉴权模式）",
+    version="0.3.0",
     lifespan=lifespan,
 )
 
-# 请求日志：JSON 结构化输出，含 request_id / latency_ms（先于 CORS 注册以覆盖全部请求）
+# 请求日志：JSON 结构化输出
 app.add_middleware(RequestLoggingMiddleware)
 
 # slowapi 装饰器从 app.state.limiter 取实例
 app.state.limiter = limiter
 
-# CORS：生产走 nginx 同源反代；dev 走 vite proxy；白名单兜底
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -73,7 +75,6 @@ app.add_middleware(
 )
 
 
-# ---- 全局异常归一：DB 约束/数据错误转 4xx，不泄露堆栈 ----
 def _err(status: int, code: str, detail: str) -> JSONResponse:
     return JSONResponse(status_code=status, content={"detail": detail, "code": code})
 
@@ -115,11 +116,12 @@ app.include_router(dev_logs.router, prefix=API_PREFIX)
 app.include_router(events.router, prefix=API_PREFIX)
 app.include_router(notifications.router, prefix=API_PREFIX)
 app.include_router(comments.router, prefix=API_PREFIX)
+app.include_router(quota.router, prefix=API_PREFIX)
+app.include_router(ideator.router, prefix=API_PREFIX)
 
 
 @app.get("/api/health", tags=["health"])
 async def health(db: AsyncSession = Depends(get_db)):
-    # DB 感知探活：SELECT 1 失败返回 503，供 compose healthcheck 使用
     from sqlalchemy.exc import SQLAlchemyError
 
     try:
@@ -132,10 +134,9 @@ async def health(db: AsyncSession = Depends(get_db)):
         )
 
 
-# ---- MCP 端点挂载 ----
+# ---- MCP 端点挂载（内网免鉴权）----
 if settings.mcp_enabled:
     from app.mcp_auth import MCPAuthMiddleware
     from app.mcp_server import get_mcp_app
 
-    # 认证中间件仅作用于 MCP 应用，不污染全局 REST
     app.mount(settings.mcp_path, MCPAuthMiddleware(get_mcp_app()))

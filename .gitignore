@@ -48,3 +48,7 @@ backups/
 .DS_Store
 Thumbs.db
 *.log
+.env.bak-*
+
+# 部署时生成的 env 备份（含真实密码与签名密钥，绝不入库）
+hpf_env_*.bak

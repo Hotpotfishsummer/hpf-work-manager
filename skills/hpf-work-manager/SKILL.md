@@ -10,46 +10,59 @@ description: >
 # HPF Work Manager · MCP 使用技能
 
 HPF Work Manager 是一个**任务 / 项目管理与进度追踪服务**。它对外暴露一个 **MCP Server**（Streamable HTTP），
-共 **38 个工具**，覆盖：项目、里程碑、任务、任务依赖、任务评论、进度统计，以及 DevLog 开发记录与开发会话。
+共 **44 个工具**，覆盖：AI 驱动与双重认证协同、项目、里程碑、任务、任务依赖、任务评论、进度统计，以及 DevLog 开发记录与开发会话。
 AI 编码工具可在编码过程中自动维护任务状态、记录开发过程，并实时同步到 Web 前端。
 
-本技能用于**让其他机器上的 AI 工具接入并操作该服务**（不是本仓库的二次开发指南）。
+本技能用于**让其他机器上的外部 AI Agent 接入并操作该服务**（不是本仓库的二次开发指南）。
 
 ---
 
 ## 1. 快速接入（30 秒）
 
-前置条件只有两样：
+连接端点与认证方式：
 
-| 需要 | 获取方式 |
-|---|---|
-| MCP 端点地址 | `https://<你的域名>/mcp`（与 Web 前端同源，nginx 已反代） |
-| API Key | 登录 Web 前端 → 「API Keys」→ 新建（形如 `hpf_ab12cd_<64位hex>`，**仅显示一次**） |
+| 环境 | MCP 端点 URL | 认证要求 |
+|---|---|---|
+| **Tailscale 局域专网 (推荐)** | `http://100.69.225.112:8088/mcp` | **免鉴权**（自动以 admin 身份执行）或可选带 API Key |
+| **服务器宿主本地** | `http://127.0.0.1:8088/mcp` | **免鉴权**（自动以 admin 身份执行） |
+| **公网域名 / 反向代理** | `https://<你的域名>/mcp` | 携带 Header `Authorization: Bearer <API Key>` |
 
-然后按你的工具配置一个 HTTP MCP server：
+各主流客户端配置极简范例：
 
-- **Claude Code**（`.mcp.json`）：
+- **Claude Code 一键命令**：
+  ```bash
+  claude mcp add --transport http hpf-work-manager http://100.69.225.112:8088/mcp
+  ```
+- **Cursor IDE**：
+  项目根目录 `.cursor/mcp.json`：
   ```json
   {
     "mcpServers": {
-      "hpf-work-manager": {
-        "type": "http",
-        "url": "https://<你的域名>/mcp",
-        "headers": { "Authorization": "Bearer hpf_ab12cd_<你的API Key>" }
-      }
+      "hpf-work-manager": { "url": "http://100.69.225.112:8088/mcp" }
     }
   }
   ```
-- **Cursor**：Settings → MCP Servers → Add；Type=`HTTP`，URL=`https://<你的域名>/mcp`，Header=`Authorization: Bearer hpf_ab12cd_<你的API Key>`。
-- 认证头同样支持 **JWT**（`Bearer <jwt>`），二选一。
+- **Windsurf**：在 `~/.codeium/windsurf/mcp_config.json` 中配置 `"serverUrl": "http://100.69.225.112:8088/mcp"`。
+- **Cline / Roo Code**：在 `cline_mcp_settings.json` 中填入该 URL 即可。
 
-详细步骤、端点说明、安全注意事项见 [`references/01-连接与认证.md`](references/01-连接与认证.md)。
+详细多客户端步骤、端点说明与排障见 [`references/01-连接与认证.md`](references/01-连接与认证.md)。
 
 ---
 
-## 2. 工具速查（38 个）
+## 2. 工具速查（44 个）
 
 > 完整签名、参数、返回值与示例见 [`references/02-MCP工具完整参考.md`](references/02-MCP工具完整参考.md)。
+> 双重认证协同机制与外驱规范详见 [`references/06-双重认证与外驱协同协议.md`](references/06-双重认证与外驱协同协议.md)。
+
+### AI Driver & 双重认证协同（6）
+| 工具 | 作用 |
+|---|---|
+| `get_manager_status` | 查询管理器算力配额与 Agent 驱动模式（双重认证 DUAL_CERTIFIED vs 外部单驱 EXTERNAL_DRIVEN）及行动指南 |
+| `get_next_steps` | 获取指定项目的下一步落地建议（内部有额度时模型推演，额度耗尽时自动降级为代码库启发式规则推演） |
+| `propose_task_plan` | 【双重认证核心】提交多项任务规划提案；由内部架构师交叉审查（防幻觉与劣质规划）或规则护栏校验，可选直接写入看板 |
+| `verify_and_complete_task` | 【双重认证核销】交付完成任务；必须提供真实 git commit hash 与验收测试凭证，自动完成并写入关联 DevLog |
+| `brainstorm_ideas` | 创意孵化：按主题生成具有高实用价值的 MVP 新项目点子与首步 Prompt（支持无额度降级备选） |
+| `sync_local_projects` | 扫描服务器本地代码库目录，自动将尚未建档的本地项目批量导入为独立的 Project |
 
 ### 项目（5）
 | 工具 | 作用 |
@@ -146,6 +159,13 @@ DevLog 记录"开发过程"，任务/里程碑管"结果"。写记录前先开�
 工具失败时返回一条描述性错误（如"任务 42 不存在""related_task_ids 中存在不属于该项目的任务"）。
 收到错误先自查：ID 是否正确、枚举是否合法、依赖/关联是否属于本项目。
 
+### 3.5 双重认证协同与防劣质规划约定（重要）
+- **开工前感知模式**：会话启动时先调用 `get_manager_status`。
+  - `driver_mode="DUAL_CERTIFIED"`：说明内部 MiniMax 算力充足。新规划批量提交建议走 `propose_task_plan`，让内部架构师模型交叉审核（消除低端模型幻觉与不合理安排）。
+  - `driver_mode="EXTERNAL_DRIVEN"`：说明内部额度耗尽，已降级为确定性规则护栏模式。外部 Agent 承担完整规划职责，须明确工时与验收标准。
+- **任务完成必须提供核验凭证**：
+  严禁未核验代码凭假设标 done。推荐使用 `verify_and_complete_task` 工具，必须提供真实的 `git_ref`（commit hash）与 `verification_evidence`（测试结果/改动凭证），管理器将自动完成任务并生成关联的 DevLog 交付记录。
+
 ---
 
 ## 4. 推荐工作流（详见 references/05）
@@ -154,11 +174,13 @@ DevLog 记录"开发过程"，任务/里程碑管"结果"。写记录前先开�
 
 **日常编码**：
 ```
+get_manager_status                                  # 探活：确认当前驱动模式与算力余量
 list_projects → get_project_state(project_id)      # 恢复上下文
 start_dev_session(project_id, title)                # 记录本次会话
 list_tasks(status="todo"/"in_progress") + list_tasks(overdue=true)  # 拉全量开放任务
-... 对每张开放任务：get_task → 在仓库核验(代码+git) → 据实 update_task(progress) / 确证完成标 done
-... 本次新做且无对应旧任务的工作 → create_task
+... 对每张开放任务：get_task → 在仓库核验(代码+git) → 据实 update_task(progress)
+... 本次完成工作 → verify_and_complete_task(task_id, git_ref, verification_evidence)
+... 新规划推演/批量提案 → propose_task_plan / get_next_steps
 ... 随手写 → log_progress / log_difficulty / log_todo ...
 end_dev_session(session_id, summary)                # 收口
 get_dev_report(project_id)                          # 出阶段汇报
@@ -166,7 +188,7 @@ get_dev_report(project_id)                          # 出阶段汇报
 
 > 开发中对**所有开放任务（todo / in_progress / 逾期）**都要做状态审计：先 `list_tasks` 拉全量，
 > 再逐一 `get_task` 并在仓库核验真实完成情况（读相关代码 + `git log`/`git diff` 找对应 commit），
-> **据实更新 `progress`（部分完成填 1–99%），确证已合并/落地才 `update_task(status="done", git_ref=commit)`**。
+> **据实更新 `progress`（部分完成填 1–99%），确证已合并/落地走 `verify_and_complete_task` 盖章归档**。
 > 状态变更必须有代码 + git 证据，绝不凭假设标 done，也绝不 `delete_task`。
 
 **汇报**：`get_project_stats_mcp`（进度）+ `get_burndown_mcp`（趋势）+ `get_dev_report`（过程）。
@@ -180,7 +202,9 @@ get_dev_report(project_id)                          # 出阶段汇报
 | 文档 | 内容 |
 |---|---|
 | [`01-连接与认证`](references/01-连接与认证.md) | 端点、API Key、MCP 客户端配置、安全与防重绑定 |
-| [`02-MCP工具完整参考`](references/02-MCP工具完整参考.md) | 全部 38 个工具：签名/参数/枚举/返回/示例 |
+| [`02-MCP工具完整参考`](references/02-MCP工具完整参考.md) | 全部 44 个工具：签名/参数/枚举/返回/示例 |
 | [`03-数据模型与状态机`](references/03-数据模型与状态机.md) | 实体字段、枚举、自动派生、级联与隔离 |
 | [`04-DevLog开发记录协议`](references/04-DevLog开发记录协议.md) | 条目类型约束、会话生命周期、写作规范 |
 | [`05-AI编码工作流`](references/05-AI编码工作流.md) | 推荐 AI 使用流程与端到端场景 |
+| [`06-双重认证与外驱协同协议`](references/06-双重认证与外驱协同协议.md) | 双重认证、外驱降级安全护栏、提案审查与核销协议 |
+
