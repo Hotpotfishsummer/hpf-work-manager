@@ -1,0 +1,179 @@
+{
+  "schema": "agent-harness/feature-list@1",
+  "project": {
+    "name": "hpf-work-manager MD3 贯彻",
+    "description": "前端组件层全面令牌化并以闸门防回归",
+    "stack": "Vue 3 + Element Plus + Vite + vitest",
+    "created_at": "2026-11-25T20:40:00+08:00"
+  },
+  "category_values": [
+    "core",
+    "functional",
+    "style",
+    "ui",
+    "integration",
+    "performance",
+    "security",
+    "api",
+    "docs"
+  ],
+  "features": [
+    {
+      "id": "F001",
+      "category": "core",
+      "priority": "critical",
+      "description": "规范闸门：vitest 用例扫描 src/**/*.vue|css|ts，设计目录以外出现 hex/rgb()/hsl 字面量、非令牌阴影/圆角/字号、>600 字重即失败，并逐文件列出命中行",
+      "steps": [
+        "`cd frontend && npx vitest run tests/design-tokens.spec.ts` 退出码 0",
+        "闸门报告中列出的违规数 = 0"
+      ],
+      "passes": false,
+      "blocked": false,
+      "notes": ""
+    },
+    {
+      "id": "F002",
+      "category": "core",
+      "priority": "critical",
+      "description": "补齐语义令牌：成功/警告/错误三级及其容器色、发光态、信息条底色等深浅双值令牌加入 tokens.css，并同步写入 DESIGN.md 色彩角色表",
+      "steps": [
+        "tokens.css 中每个新令牌在 :root 与 [data-theme=dark] 均有定义",
+        "DESIGN.md §2 含全部新令牌行",
+        "vitest 令牌对称性用例通过"
+      ],
+      "passes": false,
+      "blocked": false,
+      "notes": ""
+    },
+    {
+      "id": "F003",
+      "category": "ui",
+      "priority": "critical",
+      "description": "任务看板与任务卡（TaskBoardView.vue、TaskCard.vue）完全令牌化：状态/优先级/分类色走角色令牌，深色主题下文字与底色对比正常",
+      "steps": [
+        "闸门用例对这两个文件 0 命中",
+        "看板页浅/深主题截图目检无白底黑字反转错误"
+      ],
+      "passes": false,
+      "blocked": false,
+      "notes": ""
+    },
+    {
+      "id": "F004",
+      "category": "ui",
+      "priority": "critical",
+      "description": "导航骨架（AppLayout.vue、LiveIndicator.vue、GlobalSearch.vue、NotificationBell.vue）令牌化：品牌区、顶栏、搜索浮层阴影与胶囊文字",
+      "steps": [
+        "闸门用例对这四个文件 0 命中",
+        "任意页面浅/深主题截图顶栏无破相"
+      ],
+      "passes": false,
+      "blocked": false,
+      "notes": ""
+    },
+    {
+      "id": "F005",
+      "category": "ui",
+      "priority": "critical",
+      "description": "驾驶舱（CockpitView.vue）令牌化：三级健康度色、状态统计芯片、Agent 卡片、指示通道标签全部映射到 success/warning/error/primary 角色，去掉紫色与第二蓝",
+      "steps": [
+        "闸门用例对该文件 0 命中",
+        "驾驶舱页浅/深主题截图目检通过"
+      ],
+      "passes": false,
+      "blocked": false,
+      "notes": ""
+    },
+    {
+      "id": "F006",
+      "category": "ui",
+      "priority": "high",
+      "description": "算力雷达（QuotaView.vue、QuotaRadar.vue）令牌化：good/warning/critical、策略徽章、进度条、行动建议框；字重收敛到 ≤600（展示数字除外用 bold 令牌）",
+      "steps": [
+        "闸门用例对这两个文件 0 命中",
+        "算力雷达页浅/深主题截图目检通过"
+      ],
+      "passes": false,
+      "blocked": false,
+      "notes": ""
+    },
+    {
+      "id": "F007",
+      "category": "ui",
+      "priority": "high",
+      "description": "灵感工坊（IdeaLabView.vue）令牌化：徽章、代码片段底、首步 Prompt 卡片；字重收敛",
+      "steps": [
+        "闸门用例对该文件 0 命中",
+        "灵感工坊页浅/深主题截图目检通过"
+      ],
+      "passes": false,
+      "blocked": false,
+      "notes": ""
+    },
+    {
+      "id": "F008",
+      "category": "ui",
+      "priority": "medium",
+      "description": "其余零散违规（ProjectCommentsPanel.vue、CollapsibleSection.vue、gantt.css、ProjectDetailView.vue、element-plus.css、global.css、各 view 的裸字号）令牌化",
+      "steps": [
+        "闸门用例全仓 0 命中",
+        "`npm run build` 退出码 0"
+      ],
+      "passes": false,
+      "blocked": false,
+      "notes": ""
+    },
+    {
+      "id": "F009",
+      "category": "ui",
+      "priority": "medium",
+      "description": "图表调色同步：chartColors 补 warning / 容器色 getter，ECharts 与甘特图在主题切换后重绘为新令牌色",
+      "steps": [
+        "切换主题后图表线条颜色 = 对应令牌计算值（截图对比）",
+        "vue-tsc 0 error"
+      ],
+      "passes": false,
+      "blocked": false,
+      "notes": ""
+    },
+    {
+      "id": "F010",
+      "category": "style",
+      "priority": "medium",
+      "description": "间距与密度：padding/margin/gap 的 4px 基准裸值替换为 --md-space-* 令牌（calc 与 hairline 1px 边框除外）",
+      "steps": [
+        "`rg '(padding|margin|gap)[a-z-]*:[^;]*\\d+px' frontend/src -g '*.vue'` 命中仅剩非 4px 栅格值或 calc",
+        "vitest 全绿、build 0"
+      ],
+      "passes": false,
+      "blocked": false,
+      "notes": ""
+    },
+    {
+      "id": "F011",
+      "category": "docs",
+      "priority": "medium",
+      "description": "文档同步：DESIGN.md 反模式节加「闸门」条目，README 设计章节指向闸门用例，CHANGELOG 记录；AGENTS.md 中过时的「BMW 风格」描述改为 Apple × MD3",
+      "steps": [
+        "rg 'BMW' AGENTS.md README.md DESIGN.md 无残留",
+        "git diff 中三份文档均已更新"
+      ],
+      "passes": false,
+      "blocked": false,
+      "notes": ""
+    },
+    {
+      "id": "F012",
+      "category": "integration",
+      "priority": "high",
+      "description": "双主题视觉验收：vite dev + Playwright 对登录后主要页面（看板、驾驶舱、算力雷达、灵感工坊、项目列表、甘特）在浅/深主题各截一张，存 docs/assets/design-audit/ 并逐张目检",
+      "steps": [
+        "截图文件 12 张存在",
+        "progress.md Evidence 段列出每张的目检结论"
+      ],
+      "passes": false,
+      "blocked": false,
+      "notes": ""
+    }
+  ]
+}

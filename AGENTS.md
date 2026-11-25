@@ -33,4 +33,20 @@
 | 部署与更新 | `docs/05-部署指南.md`、`docs/06-开发指南.md` 第 7 节 |
 | 生产环境信息（本地） | `.workbuddy/DEPLOY.md` |
 | MCP 接入技能包 | `skills/hpf-work-manager/` |
-| 设计规范 | `DESIGN.md`（BMW 风格 token，禁内联 hex） |
+| 设计规范 | `DESIGN.md`（Apple × MD3 角色令牌，禁内联 hex） |
+
+<!-- agent-harness:begin -->
+## agent-harness 契约（本 worktree 分支 `feat/md3-design-consistency`）
+
+事实来源三件套：`app_spec.md` / `feature_list.json` / `progress.md`（本文件只是入口）。
+
+- **开工前必读**：`progress.md` → `feature_list.json`（未通过项）→ `git log --oneline -20`。
+- 只允许改 feature 的 `passes` / `notes` / `blocked`；`description` 与 `steps` **永不改**。
+- `passes: true` 之前必须有**实际跑过的** evidence（命令输出 / 测试结果 / 截图路径）。
+- `blocked: true` 或以 `⚠️ 待用户裁决` 开头的 feature：不要动；汇报里单独列「需要你裁决的 N 项」。
+- **用户没说开工就不要开工。** 只有 3 类问题必须立刻问：改系统级配置 / 删数据 / 花钱。
+- 每个 feature 完成 = 1 个 commit，`feat(F005): xxx`，写 why 不写 what。
+- 收尾前跑 `bash init.sh && bash check.sh`，两个都绿才算收口。
+- **本分支不合并、不 push、不重建容器**：合并与部署由用户裁决。
+- 规范闸门：`cd frontend && npx vitest run tests/design-tokens.spec.ts`；色值只准出现在 `src/design/tokens.css`。
+<!-- agent-harness:end -->
