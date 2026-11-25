@@ -54,9 +54,9 @@
         "闸门用例对这两个文件 0 命中",
         "看板页浅/深主题截图目检无白底黑字反转错误"
       ],
-      "passes": false,
+      "passes": true,
       "blocked": false,
-      "notes": ""
+      "notes": "TaskCard 改完即 0 命中；TaskBoardView 本就合规"
     },
     {
       "id": "F004",
@@ -67,9 +67,9 @@
         "闸门用例对这四个文件 0 命中",
         "任意页面浅/深主题截图顶栏无破相"
       ],
-      "passes": false,
+      "passes": true,
       "blocked": false,
-      "notes": ""
+      "notes": "AppLayout/LiveIndicator/GlobalSearch 0 命中；光晕原先被写成纯色已修"
     },
     {
       "id": "F005",
@@ -80,9 +80,9 @@
         "闸门用例对该文件 0 命中",
         "驾驶舱页浅/深主题截图目检通过"
       ],
-      "passes": false,
+      "passes": true,
       "blocked": false,
-      "notes": ""
+      "notes": "CockpitView 97→0；紫/第二蓝移除"
     },
     {
       "id": "F006",
@@ -93,9 +93,9 @@
         "闸门用例对这两个文件 0 命中",
         "算力雷达页浅/深主题截图目检通过"
       ],
-      "passes": false,
+      "passes": true,
       "blocked": false,
-      "notes": ""
+      "notes": "QuotaView/QuotaRadar 0 命中；实心警告改用 --md-warning-fill"
     },
     {
       "id": "F007",
@@ -106,9 +106,9 @@
         "闸门用例对该文件 0 命中",
         "灵感工坊页浅/深主题截图目检通过"
       ],
-      "passes": false,
+      "passes": true,
       "blocked": false,
-      "notes": ""
+      "notes": "IdeaLabView 0 命中"
     },
     {
       "id": "F008",
@@ -119,9 +119,9 @@
         "闸门用例全仓 0 命中",
         "`npm run build` 退出码 0"
       ],
-      "passes": false,
+      "passes": true,
       "blocked": false,
-      "notes": ""
+      "notes": "全仓 411→0；EP 描边环走 --md-ring-*，无 allow 残留"
     },
     {
       "id": "F009",
@@ -132,9 +132,9 @@
         "切换主题后图表线条颜色 = 对应令牌计算值（截图对比）",
         "vue-tsc 0 error"
       ],
-      "passes": false,
+      "passes": true,
       "blocked": false,
-      "notes": ""
+      "notes": "chartColors 补 warning/warningFill/primaryContainer/errorContainer；截图含甘特图例深色"
     },
     {
       "id": "F010",
@@ -146,8 +146,8 @@
         "vitest 全绿、build 0"
       ],
       "passes": false,
-      "blocked": false,
-      "notes": ""
+      "blocked": true,
+      "notes": "⚠️ 待用户裁决：约 280 处间距裸值中约三分之一不在 4px 栅格（6/10/14/20px），需先决定「加半档令牌」还是「就近吸附」，否则机械替换会改变布局"
     },
     {
       "id": "F011",
@@ -158,9 +158,9 @@
         "rg 'BMW' AGENTS.md README.md DESIGN.md 无残留",
         "git diff 中三份文档均已更新"
       ],
-      "passes": false,
+      "passes": true,
       "blocked": false,
-      "notes": ""
+      "notes": "README/DESIGN/CHANGELOG/AGENTS 已同步；DESIGN 中 BMW 字样为反模式举例，保留"
     },
     {
       "id": "F012",
@@ -171,9 +171,9 @@
         "截图文件 12 张存在",
         "progress.md Evidence 段列出每张的目检结论"
       ],
-      "passes": false,
+      "passes": true,
       "blocked": false,
-      "notes": ""
+      "notes": "docs/assets/design-audit/ 12 张；目检 cockpit/quota(浅深)、ideas-dark、gantt-dark 无破相；空态页未覆盖有数据图表"
     }
   ]
 }
