@@ -30,7 +30,7 @@
                   :value="p.name"
                 >
                   <span style="float: left">{{ p.name }}</span>
-                  <span style="float: right; color: var(--el-text-color-secondary); font-size: 11px">
+                  <span style="float: right; color: var(--md-on-surface-variant-2); font-size: var(--md-text-caption)">
                     {{ p.is_git ? 'Git' : 'Dir' }}
                   </span>
                 </el-option>
@@ -390,15 +390,15 @@ onMounted(() => {
 }
 
 .page-title {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: var(--md-text-title-lg);
+  font-weight: var(--md-weight-semibold);
   margin: 0 0 6px 0;
   color: var(--md-on-surface);
 }
 
 .page-desc {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--md-text-label-md);
   color: var(--md-on-surface-variant);
   max-width: 800px;
 }
@@ -412,7 +412,7 @@ onMounted(() => {
 .section-card {
   background: var(--md-surface);
   border: 1px solid var(--md-outline-variant);
-  border-radius: 12px;
+  border-radius: var(--md-radius-md);
   padding: 24px;
   min-height: 500px;
 }
@@ -439,7 +439,7 @@ onMounted(() => {
 
 .spark-prefix-icon {
   margin-right: 4px;
-  font-size: 15px;
+  font-size: var(--md-text-body-lg);
 }
 
 .spark-presets-row {
@@ -450,32 +450,32 @@ onMounted(() => {
 }
 
 .presets-label {
-  font-size: 12px;
+  font-size: var(--md-text-body-sm);
   color: var(--md-on-surface-variant);
   font-weight: 500;
 }
 
 .preset-pill {
-  background: var(--md-surface-container, #f1f2f4);
-  border: 1px solid var(--md-outline-variant, #e0e2e8);
-  border-radius: 999px;
+  background: var(--md-surface-container);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-pill);
   padding: 4px 12px;
-  font-size: 12px;
-  color: var(--md-on-surface-variant, #555);
+  font-size: var(--md-text-body-sm);
+  color: var(--md-on-surface-variant);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .preset-pill:hover {
-  background: var(--md-surface-container-high, #e4e6ea);
-  border-color: #0066cc;
-  color: #0066cc;
+  background: var(--md-surface-container-high);
+  border-color: var(--md-primary);
+  color: var(--md-primary);
 }
 
 .preset-pill.is-active {
-  background: rgba(0, 102, 204, 0.1);
-  border-color: #0066cc;
-  color: #0066cc;
+  background: var(--md-primary-tint);
+  border-color: var(--md-primary);
+  color: var(--md-primary);
   font-weight: 600;
 }
 
@@ -495,7 +495,7 @@ onMounted(() => {
 }
 
 .proj-picker .label {
-  font-size: 13px;
+  font-size: var(--md-text-label-md);
   font-weight: 500;
   color: var(--md-on-surface);
 }
@@ -507,8 +507,8 @@ onMounted(() => {
 
 .loading-tip {
   margin-top: 16px;
-  font-size: 13px;
-  color: #0066cc;
+  font-size: var(--md-text-label-md);
+  color: var(--md-primary);
 }
 
 .sub-header {
@@ -516,13 +516,13 @@ onMounted(() => {
 }
 
 .sub-header h3 {
-  font-size: 16px;
+  font-size: var(--md-text-title-md);
   margin: 0 0 4px 0;
   color: var(--md-on-surface);
 }
 
 .sub-header .tip {
-  font-size: 12px;
+  font-size: var(--md-text-body-sm);
   color: var(--md-on-surface-variant);
 }
 
@@ -535,7 +535,7 @@ onMounted(() => {
 .task-card {
   background: var(--md-surface-container-low);
   border: 1px solid var(--md-outline-variant);
-  border-radius: 10px;
+  border-radius: var(--md-radius-sm);
   padding: 18px;
   display: flex;
   flex-direction: column;
@@ -543,8 +543,8 @@ onMounted(() => {
 }
 
 .task-card:hover {
-  border-color: #0066cc;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  border-color: var(--md-primary);
+  box-shadow: var(--md-shadow-1);
 }
 
 .badge-row {
@@ -555,33 +555,33 @@ onMounted(() => {
 }
 
 .badge-row .hours {
-  font-size: 11px;
+  font-size: var(--md-text-caption);
   color: var(--md-on-surface-variant);
   margin-left: auto;
 }
 
 .task-title {
-  font-size: 15px;
+  font-size: var(--md-text-body-lg);
   font-weight: 600;
   margin: 0 0 10px 0;
   color: var(--md-on-surface);
 }
 
 .reason-box {
-  background: #fffbe6;
-  border-left: 3px solid #faad14;
+  background: var(--md-warning-container);
+  border-left: var(--md-accent-bar-width) solid var(--md-warning);
   padding: 8px 10px;
-  border-radius: 4px;
-  font-size: 12px;
+  border-radius: var(--md-radius-xs);
+  font-size: var(--md-text-body-sm);
   line-height: 1.45;
   margin-bottom: 12px;
-  color: #333;
+  color: var(--md-on-warning-container);
 }
 
 .desc-box {
   background: var(--md-surface);
   border: 1px solid var(--md-outline-variant);
-  border-radius: 6px;
+  border-radius: var(--md-radius-sm);
   padding: 10px;
   margin-bottom: 16px;
   flex: 1;
@@ -595,7 +595,7 @@ onMounted(() => {
 }
 
 .desc-label {
-  font-size: 11px;
+  font-size: var(--md-text-caption);
   font-weight: 600;
   color: var(--md-on-surface-variant);
 }
@@ -603,15 +603,15 @@ onMounted(() => {
 .text-copy-btn {
   background: none;
   border: none;
-  color: #0066cc;
+  color: var(--md-primary);
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--md-text-caption);
   padding: 0;
 }
 .text-copy-btn:hover { text-decoration: underline; }
 
 .desc-content {
-  font-size: 12px;
+  font-size: var(--md-text-body-sm);
   line-height: 1.5;
   color: var(--md-on-surface);
   white-space: pre-wrap;
@@ -639,7 +639,7 @@ onMounted(() => {
 .idea-card {
   background: var(--md-surface-container-low);
   border: 1px solid var(--md-outline-variant);
-  border-radius: 12px;
+  border-radius: var(--md-radius-md);
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -650,41 +650,41 @@ onMounted(() => {
 }
 
 .idea-title {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: var(--md-text-title-md);
+  font-weight: var(--md-weight-semibold);
   margin: 0 0 4px 0;
   color: var(--md-on-surface);
 }
 
 .idea-tagline {
-  font-size: 13px;
-  color: #0066cc;
+  font-size: var(--md-text-label-md);
+  color: var(--md-primary);
   font-style: italic;
 }
 
 .idea-section {
   margin-bottom: 10px;
-  font-size: 13px;
+  font-size: var(--md-text-label-md);
   line-height: 1.45;
 }
 
 .sec-label { font-weight: 600; color: var(--md-on-surface); }
 .sec-text { color: var(--md-on-surface-variant); }
-.code-font { font-family: var(--md-font-mono, monospace); background: var(--md-surface); padding: 1px 4px; border-radius: 3px; }
+.code-font { font-family: var(--md-font-mono); background: var(--md-surface); padding: 1px 4px; border-radius: var(--md-radius-xs); }
 
 .mvp-list {
   margin: 4px 0 0 18px;
   padding: 0;
-  font-size: 12px;
+  font-size: var(--md-text-body-sm);
   color: var(--md-on-surface-variant);
 }
 
 .prompt-preview {
   background: var(--md-surface);
   border: 1px dashed var(--md-outline-variant);
-  border-radius: 6px;
+  border-radius: var(--md-radius-sm);
   padding: 10px;
-  font-size: 12px;
+  font-size: var(--md-text-body-sm);
   margin-top: 8px;
   margin-bottom: 14px;
 }
@@ -696,13 +696,13 @@ onMounted(() => {
   margin-bottom: 4px;
 }
 
-.p-label { font-weight: 600; color: var(--md-on-surface-variant); font-size: 11px; }
+.p-label { font-weight: 600; color: var(--md-on-surface-variant); font-size: var(--md-text-caption); }
 
 .prompt-preview code {
   color: var(--md-on-surface);
   word-break: break-all;
   white-space: pre-wrap;
-  font-size: 11px;
+  font-size: var(--md-text-caption);
 }
 
 .idea-footer {
@@ -718,7 +718,7 @@ onMounted(() => {
   padding: 60px 20px;
 }
 
-.empty-placeholder .icon { font-size: 44px; margin-bottom: 12px; }
-.empty-placeholder .title { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: var(--md-on-surface); }
-.empty-placeholder .sub { font-size: 13px; color: var(--md-on-surface-variant); max-width: 480px; margin: 0 auto; }
+.empty-placeholder .icon { font-size: var(--md-text-display-xl); margin-bottom: 12px; }
+.empty-placeholder .title { font-size: var(--md-text-title-md); font-weight: 600; margin-bottom: 6px; color: var(--md-on-surface); }
+.empty-placeholder .sub { font-size: var(--md-text-label-md); color: var(--md-on-surface-variant); max-width: 480px; margin: 0 auto; }
 </style>
