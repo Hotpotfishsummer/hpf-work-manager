@@ -62,7 +62,7 @@ const tooltip = computed(() => {
 
 .live-dot.connected {
   background-color: var(--md-status-done);
-  box-shadow: 0 0 6px var(--md-status-done);
+  box-shadow: var(--md-glow-success);
 }
 
 .live-dot.disconnected {
@@ -72,7 +72,7 @@ const tooltip = computed(() => {
 
 .live-dot.reconnectable {
   background-color: var(--md-status-overdue);
-  box-shadow: 0 0 6px var(--md-status-overdue);
+  box-shadow: var(--md-glow-error);
   animation: pulse 1.5s ease-in-out infinite;
 }
 

@@ -320,7 +320,7 @@ onUnmounted(() => {
 }
 
 .result-icon {
-  font-size: 16px;
+  font-size: var(--md-text-body-lg);
   flex-shrink: 0;
 }
 
