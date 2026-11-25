@@ -1,10 +1,10 @@
 <template>
   <div class="cockpit-container" v-loading="loading">
     <!-- 顶部状态看板与快捷调度条 -->
-    <section class="cockpit-hero">
+    <section class="cockpit-hero md-section">
       <div class="hero-left">
         <div class="quota-row">
-          <div class="quota-pill" :class="quotaLevel" @click="router.push('/quota')">
+          <div class="quota-pill md-chip md-chip--sm md-state" :class="quotaLevel" @click="router.push('/quota')">
             <span class="live-dot" :class="quotaLevel"></span>
             <span class="pill-label">5h 算力窗口:</span>
             <strong>{{ quota.remaining_percent ?? 100 }}%</strong>
@@ -40,7 +40,7 @@
           <el-icon><CopyDocument /></el-icon>
           🌙 夜班指令包 (Prompt)
         </el-button>
-        <el-button size="default" circle @click="loadData" :loading="loading" title="刷新看板">
+        <el-button size="default" text circle @click="loadData" :loading="loading" title="刷新看板" aria-label="刷新看板">
           <el-icon><Refresh /></el-icon>
         </el-button>
       </div>
@@ -55,22 +55,22 @@
             <el-option label="🌐 全部项目 (All Projects)" :value="0" />
             <el-option v-for="p in projects" :key="p.id" :label="p.name" :value="p.id" />
           </el-select>
-          <el-button size="default" :loading="syncingProjects" @click="syncLocalProjects" title="扫描服务器本地目录，自动将新代码库建档为独立项目">
+          <el-button size="default" text :loading="syncingProjects" @click="syncLocalProjects" title="扫描服务器本地目录，自动将新代码库建档为独立项目">
             📥 同步本地项目库
           </el-button>
-          <el-button size="default" @click="openDirections()" title="给项目留工作方向 / 指示：下一次接手该项目的 Agent 会读到">
+          <el-button size="default" text @click="openDirections()" title="给项目留工作方向 / 指示：下一次接手该项目的 Agent 会读到">
             💬 项目指示
           </el-button>
         </div>
 
         <div class="filter-item">
           <span class="item-label">优先级:</span>
-          <el-select v-model="filterPriority" placeholder="全部" style="width: 110px" size="default">
-            <el-option label="全部" value="all" />
-            <el-option label="🔴 高优" value="high" />
-            <el-option label="🟡 中优" value="medium" />
-            <el-option label="🟢 低优" value="low" />
-          </el-select>
+          <div class="chip-group" role="group" aria-label="按优先级筛选">
+            <button type="button" class="md-chip md-chip--filter" :class="{ 'is-selected': filterPriority === 'all' }" :aria-pressed="filterPriority === 'all'" @click="filterPriority = 'all'">全部</button>
+            <button type="button" class="md-chip md-chip--filter" :class="{ 'is-selected': filterPriority === 'high' }" :aria-pressed="filterPriority === 'high'" @click="filterPriority = 'high'">🔴 高优</button>
+            <button type="button" class="md-chip md-chip--filter" :class="{ 'is-selected': filterPriority === 'medium' }" :aria-pressed="filterPriority === 'medium'" @click="filterPriority = 'medium'">🟡 中优</button>
+            <button type="button" class="md-chip md-chip--filter" :class="{ 'is-selected': filterPriority === 'low' }" :aria-pressed="filterPriority === 'low'" @click="filterPriority = 'low'">🟢 低优</button>
+          </div>
         </div>
 
         <div class="search-item">
@@ -87,36 +87,37 @@
       </div>
 
       <div class="stats-badges">
-        <el-checkbox v-model="filterHasDirections" title="只看所属项目有未处理指示的任务">
+        <button type="button" class="md-chip md-chip--filter" :class="{ 'is-selected': filterHasDirections }" :aria-pressed="filterHasDirections" title="只看所属项目有未处理指示的任务" @click="filterHasDirections = !filterHasDirections">
           💬 仅看有指示的项目
-        </el-checkbox>
-        <span class="stat-chip todo">待调度: <strong>{{ todoTasks.length }}</strong></span>
-        <span class="stat-chip in-progress">执行中: <strong>{{ inProgressTasks.length }}</strong></span>
-        <span class="stat-chip done">已完成: <strong>{{ doneTasks.length }}</strong></span>
+        </button>
+        <span class="stat-chip md-chip md-chip--sm md-chip--primary">待调度 <strong>{{ todoTasks.length }}</strong></span>
+        <span class="stat-chip md-chip md-chip--sm md-chip--warning">执行中 <strong>{{ inProgressTasks.length }}</strong></span>
+        <span class="stat-chip md-chip md-chip--sm md-chip--success">已完成 <strong>{{ doneTasks.length }}</strong></span>
       </div>
     </section>
 
     <!-- 分类筛选：点标签即筛选 -->
-    <section class="category-bar">
-      <button type="button" class="cat-chip" :class="{ active: filterCategory === 'all' }" @click="filterCategory = 'all'">
+    <section class="category-bar" role="group" aria-label="按分类筛选">
+      <button type="button" class="md-chip md-chip--filter cat-chip" :class="{ 'is-selected': filterCategory === 'all' }" :aria-pressed="filterCategory === 'all'" @click="filterCategory = 'all'">
         全部 <strong>{{ tasks.length }}</strong>
       </button>
       <button
         v-for="c in TASK_CATEGORIES"
         :key="c.value"
         type="button"
-        class="cat-chip"
-        :class="{ active: filterCategory === c.value }"
+        class="md-chip md-chip--filter cat-chip"
+        :class="{ 'is-selected': filterCategory === c.value }"
+        :aria-pressed="filterCategory === c.value"
         @click="filterCategory = c.value"
       >{{ c.icon }} {{ c.label }} <strong>{{ categoryCounts[c.value] || 0 }}</strong></button>
-      <button type="button" class="cat-chip" :class="{ active: filterCategory === UNCATALOGUED }" @click="filterCategory = UNCATALOGUED">
+      <button type="button" class="md-chip md-chip--filter cat-chip" :class="{ 'is-selected': filterCategory === UNCATALOGUED }" :aria-pressed="filterCategory === UNCATALOGUED" @click="filterCategory = UNCATALOGUED">
         📎 未分类 <strong>{{ categoryCounts[UNCATALOGUED] || 0 }}</strong>
       </button>
       <el-button v-if="hasActiveFilter" link size="small" @click="clearFilters">清空筛选</el-button>
     </section>
 
     <!-- 项目指示条：有「未处理指示」的项目 -->
-    <section v-if="directionSummaries.length" class="directions-strip">
+    <section v-if="directionSummaries.length" class="directions-strip md-callout md-callout--warning">
       <span class="directions-label">💬 项目指示</span>
       <button
         v-for="d in directionSummaries"
@@ -141,7 +142,7 @@
       v-model:open="fold.running"
       :hint="inProgressTasks.length === 0 ? '' : sectionHint('running')"
     >
-      <template #actions><el-button link size="small" type="primary" @click="openCreateModal('in_progress')"><el-icon><Plus /></el-icon> 添加</el-button></template>
+      <template #actions><el-button text size="small" @click="openCreateModal('in_progress')"><el-icon><Plus /></el-icon> 添加</el-button></template>
       <div v-if="inProgressTasks.length === 0" class="col-empty"><div class="empty-icon">⚡</div><div class="empty-text">当前无执行中任务</div><div class="empty-sub">从「待调度」里点「▶ 开始执行」，再把 Prompt 粘给 dsh</div></div>
       <div v-if="inProgressTasks.length" class="task-grid">
         <template v-for="task in inProgressTasks" :key="task.id">
@@ -166,8 +167,8 @@
       v-model:open="fold.todo"
       :hint="todoTasks.length === 0 ? '' : sectionHint('todo')"
     >
-      <template #actions><el-button link size="small" type="primary" @click="openCreateModal('todo')"><el-icon><Plus /></el-icon> 添加</el-button></template>
-      <div v-if="todoTasks.length === 0" class="col-empty"><div class="empty-icon">📂</div><div class="empty-text">待办池为空</div><el-button link size="small" type="primary" @click="router.push('/ideas')">前往灵感工坊推演任务 →</el-button></div>
+      <template #actions><el-button text size="small" @click="openCreateModal('todo')"><el-icon><Plus /></el-icon> 添加</el-button></template>
+      <div v-if="todoTasks.length === 0" class="col-empty"><div class="empty-icon">📂</div><div class="empty-text">待办池为空</div><el-button size="small" type="primary" plain @click="router.push('/ideas')">前往灵感工坊推演任务 →</el-button></div>
       <div v-if="todoTasks.length" class="task-grid">
         <template v-for="task in todoTasks" :key="task.id">
 <TaskCard
@@ -207,7 +208,7 @@
         </template>
       </div>
       <div v-if="doneTasks.length > DONE_PREVIEW" class="done-more">
-        <el-button link type="primary" @click="expandedDone = !expandedDone">
+        <el-button text type="primary" @click="expandedDone = !expandedDone">
           {{ expandedDone ? '收起（只看最近 ' + DONE_PREVIEW + ' 条）' : '展开全部 ' + doneTasks.length + ' 条' }}
         </el-button>
       </div>
@@ -894,106 +895,93 @@ onMounted(() => {
 
 <style scoped>
 .cockpit-container {
-  max-width: 1400px;
+  max-width: var(--md-content-max);
   margin: 0 auto;
-  padding: 20px 24px;
+  padding: var(--md-space-3) var(--md-space-5) var(--md-space-7);
 }
 
-/* 顶部状态 Hero */
+/* 顶部状态：只靠间距与标题分组，不套框 */
 .cockpit-hero {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--md-surface-container);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-md);
-  padding: 14px 20px;
-  margin-bottom: 20px;
-  box-shadow: var(--md-shadow-1);
+  flex-wrap: wrap;
+  gap: var(--md-space-3);
+  padding: var(--md-space-2) 0 var(--md-space-5);
 }
 
 .hero-left {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--md-space-2);
 }
 
 .quota-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--md-space-2);
   flex-wrap: wrap;
 }
 
+/* 驱动模式：只读状态芯片（双重认证=primary，外部驱动=warning） */
 .driver-mode-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  border-radius: var(--md-radius-pill);
-  padding: 4px 12px;
-  font-size: var(--md-text-body-sm);
-  font-weight: var(--md-weight-semibold);
+  gap: var(--md-space-1);
+  padding: 0 var(--md-space-3);
+  height: 24px;
+  border-radius: var(--md-shape-small);
+  font-size: var(--md-type-label-md);
+  font-weight: var(--md-weight-medium);
   cursor: default;
-  border: 1px solid transparent;
-  transition: all 0.2s ease;
 }
 
 .driver-mode-pill.dual {
-  background: var(--md-primary-tint);
-  color: var(--md-primary);
-  border-color: color-mix(in srgb, var(--md-primary) 25%, transparent);
+  background: var(--md-primary-container);
+  color: var(--md-on-primary-container);
 }
 
 .driver-mode-pill.external {
-  background: var(--md-warning-tint);
-  color: var(--md-warning);
-  border-color: color-mix(in srgb, var(--md-warning) 25%, transparent);
+  background: var(--md-warning-container);
+  color: var(--md-on-warning-container);
 }
 
+/* 算力窗口：可点的状态芯片（md-chip 提供底色，这里只管手势） */
 .quota-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--md-surface-container-lowest);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-pill);
-  padding: 4px 14px;
-  font-size: var(--md-text-label-md);
   cursor: pointer;
   width: fit-content;
-  transition: all 0.2s ease;
 }
 
 .quota-pill:hover {
-  border-color: var(--md-primary);
-  transform: translateY(-1px);
+  text-decoration: underline;
 }
 
 .live-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
-.live-dot.good { background: var(--md-success); box-shadow: var(--md-glow-success); }
-.live-dot.warning { background: var(--md-warning-fill); box-shadow: var(--md-glow-warning); }
-.live-dot.critical { background: var(--md-error); box-shadow: var(--md-glow-error); }
+.live-dot.good { background: var(--md-success); }
+.live-dot.warning { background: var(--md-warning); }
+.live-dot.critical { background: var(--md-error); }
 
 .pill-label { color: var(--md-on-surface-variant); }
-.pill-divider { color: var(--md-outline-variant); }
-.pill-timer { font-size: var(--md-text-body-sm); color: var(--md-on-surface-variant); }
+.pill-divider { color: var(--md-outline); }
+.pill-timer { font-size: var(--md-type-label-md); color: var(--md-on-surface-variant); }
 
 .hero-subtext {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: var(--md-text-body-sm);
+  gap: var(--md-space-2);
+  font-size: var(--md-type-body-sm);
 }
 
 .night-badge {
   background: var(--md-primary-container);
   color: var(--md-on-primary-container);
-  padding: 2px 8px;
-  border-radius: var(--md-radius-xs);
+  padding: 2px var(--md-space-2);
+  border-radius: var(--md-shape-extra-small);
   font-weight: var(--md-weight-medium);
 }
 
@@ -1004,89 +992,68 @@ onMounted(() => {
 .hero-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: var(--md-space-2);
 }
 
-/* 筛选工具栏 */
+/* 筛选工具栏：无外框，一行可换行的筛选控件 */
 .filter-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
-  background: var(--md-surface-container-lowest);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-sm);
-  padding: 10px 16px;
+  flex-wrap: wrap;
+  gap: var(--md-space-2) var(--md-space-4);
+  padding: var(--md-space-2) 0 var(--md-space-4);
 }
 
 .filter-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: var(--md-space-2) var(--md-space-4);
 }
 
 .filter-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--md-space-2);
+}
+
+.chip-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--md-space-1);
 }
 
 .item-label {
-  font-size: var(--md-text-label-md);
+  font-size: var(--md-type-label-md);
   color: var(--md-on-surface-variant);
 }
 
 .stats-badges {
   display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: var(--md-space-2);
 }
 
-.stat-chip {
-  font-size: var(--md-text-body-sm);
-  padding: 3px 10px;
-  border-radius: var(--md-radius-md);
-  background: var(--md-surface-container);
-  color: var(--md-on-surface-variant);
-}
-
-.stat-chip.todo strong { color: var(--md-primary); }
-.stat-chip.in-progress strong { color: var(--md-warning); }
-.stat-chip.done strong { color: var(--md-success); }
-
-/* 3 列看板流水线 */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/* ---------- 分区内容 ---------- */
 .col-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 40px 10px;
+  gap: var(--md-space-1);
+  padding: var(--md-space-6) var(--md-space-3);
   text-align: center;
   color: var(--md-on-surface-variant);
 }
 
-.empty-icon { font-size: var(--md-text-display); margin-bottom: 8px; }
-.empty-text { font-size: var(--md-text-label-md); font-weight: var(--md-weight-medium); }
-.empty-sub { font-size: var(--md-text-body-sm); margin-top: 4px; color: var(--md-outline); }
+.empty-icon { font-size: var(--md-type-display-sm); line-height: 1; margin-bottom: var(--md-space-1); }
+.empty-text { font-size: var(--md-type-title-sm); font-weight: var(--md-weight-medium); color: var(--md-on-surface); }
+.empty-sub { font-size: var(--md-type-body-sm); color: var(--md-on-surface-variant); }
+.col-empty .el-button { margin-top: var(--md-space-2); }
+
 .form-label-with-btn {
   display: flex;
   align-items: center;
@@ -1098,32 +1065,32 @@ onMounted(() => {
 .form-row-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: var(--md-space-4);
 }
 
 .preset-buttons {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--md-space-2);
+  margin-bottom: var(--md-space-2);
   flex-wrap: wrap;
 }
 
 .preset-label {
-  font-size: var(--md-text-body-sm);
+  font-size: var(--md-type-body-sm);
   color: var(--md-on-surface-variant);
 }
 
 .batch-tip {
-  font-size: var(--md-text-label-md);
+  font-size: var(--md-type-label-md);
   color: var(--md-on-surface-variant);
   line-height: 1.5;
-  margin-bottom: 12px;
+  margin-bottom: var(--md-space-3);
 }
 
 .batch-prompt-input textarea {
   font-family: var(--md-font-mono);
-  font-size: var(--md-text-body-sm);
+  font-size: var(--md-type-body-sm);
   line-height: 1.5;
 }
 
@@ -1131,114 +1098,70 @@ onMounted(() => {
 .task-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-  gap: 12px;
+  gap: var(--md-space-3);
   align-items: start;
 }
 
-.col-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 26px 12px;
-  border: 1px dashed var(--md-outline-variant);
-  border-radius: var(--md-radius-md);
-  background: var(--md-surface-container-lowest);
-  margin-bottom: 12px;
-}
-
-.empty-icon { font-size: var(--md-text-display); margin-bottom: 4px; }
-.empty-text { font-size: var(--md-text-label-md); font-weight: var(--md-weight-medium); }
-.empty-sub { font-size: var(--md-text-body-sm); margin-top: 4px; color: var(--md-outline); }
-
 .done-more {
   text-align: center;
-  padding-top: 6px;
+  padding-top: var(--md-space-2);
 }
 
-/* ---------- 分类筛选条 ---------- */
+/* ---------- 分类筛选条：全部是筛选芯片，选中态由 .is-selected 表达 ---------- */
 .category-bar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.cat-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border-radius: var(--md-radius-pill);
-  border: 1px solid var(--md-outline-variant);
-  background: var(--md-surface-container-lowest);
-  color: var(--md-on-surface-variant);
-  font-size: var(--md-text-label-md);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.cat-chip:hover {
-  border-color: var(--md-primary);
-  color: var(--md-primary);
-}
-
-.cat-chip.active {
-  background: var(--md-primary);
-  border-color: var(--md-primary);
-  color: var(--md-on-primary);
+  gap: var(--md-space-1);
+  padding: 0 0 var(--md-space-3);
 }
 
 .cat-chip strong {
-  font-weight: var(--md-weight-semibold);
+  font-weight: var(--md-weight-medium);
   opacity: 0.75;
 }
 
-/* ---------- 项目指示条 ---------- */
+/* ---------- 项目指示条：色调提示块 ---------- */
 .directions-strip {
-  display: flex;
-  align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 14px;
-  padding: 8px 12px;
-  border-radius: var(--md-radius-md);
-  border: 1px solid var(--md-warning-container-strong);
-  background: var(--md-warning-tint);
+  gap: var(--md-space-2);
+  margin-bottom: var(--md-space-4);
+  padding: var(--md-space-2) var(--md-space-3);
 }
 
 .directions-label {
-  font-size: var(--md-text-label-md);
-  font-weight: var(--md-weight-semibold);
-  color: var(--md-on-warning-container);
-  margin-right: 4px;
+  font-size: var(--md-type-label-md);
+  font-weight: var(--md-weight-medium);
+  margin-right: var(--md-space-1);
 }
 
 .direction-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 10px 3px 12px;
-  border-radius: var(--md-radius-pill);
-  border: 1px solid color-mix(in srgb, var(--md-warning) 35%, transparent);
-  background: var(--md-surface-container-lowest);
-  font-size: var(--md-text-label-md);
+  gap: var(--md-space-1);
+  padding: var(--md-space-1) var(--md-space-3);
+  border-radius: var(--md-shape-small);
+  border: 0;
+  background: var(--md-surface-container-high);
+  font: inherit;
+  font-size: var(--md-type-label-md);
   color: var(--md-on-surface);
   cursor: pointer;
+  transition: background-color var(--md-duration-short-2) var(--md-ease-standard);
 }
 
 .direction-chip:hover {
-  border-color: var(--md-warning);
+  background: var(--md-surface-container-highest);
 }
 
 .direction-chip.current {
-  box-shadow: 0 0 0 var(--md-ring-width) color-mix(in srgb, var(--md-warning) 25%, transparent);
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
 }
 
 .direction-chip.cleared {
-  border-color: var(--md-outline-variant);
-  color: var(--md-on-surface-variant-2);
+  color: var(--md-on-surface-variant);
+  opacity: 0.72;
 }
 
 .chip-name {
@@ -1254,34 +1177,34 @@ onMounted(() => {
   justify-content: center;
   min-width: 20px;
   height: 20px;
-  padding: 0 6px;
-  border-radius: var(--md-radius-pill);
-  background: var(--md-warning-fill);
-  color: var(--md-on-warning-fill);
-  font-size: var(--md-text-body-sm);
-  font-weight: var(--md-weight-semibold);
+  padding: 0 var(--md-space-1);
+  border-radius: var(--md-shape-full);
+  background: var(--md-warning-container);
+  color: var(--md-on-warning-container);
+  font-size: var(--md-type-label-sm);
+  font-weight: var(--md-weight-medium);
 }
 
 .direction-chip.cleared .chip-count {
-  background: var(--md-success);
+  background: var(--md-success-container);
+  color: var(--md-on-success-container);
 }
 
 .directions-drawer {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--md-space-3);
 }
 
 .drawer-opt-count {
   float: right;
-  font-size: var(--md-text-body-sm);
-  color: var(--md-warning);
+  font-size: var(--md-type-body-sm);
+  color: var(--md-on-warning);
 }
 
 @media (max-width: 720px) {
-  .cockpit-container { padding: 12px; }
-  .filter-toolbar, .cockpit-hero { flex-direction: column; align-items: stretch; gap: 10px; }
-  .filter-left { flex-wrap: wrap; }
+  .cockpit-container { padding: var(--md-space-3); }
+  .cockpit-hero { align-items: stretch; }
   .task-grid { grid-template-columns: 1fr; }
 }
 </style>

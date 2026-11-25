@@ -1,12 +1,12 @@
 <template>
-  <section class="fold-section" :class="[`tone-${tone}`, { 'is-open': open }]">
-    <button type="button" class="fold-header" :aria-expanded="open" @click="toggle">
+  <section class="fold-section md-section" :class="[`tone-${tone}`, { 'is-open': open }]">
+    <button type="button" class="fold-header md-section__head" :aria-expanded="open" @click="toggle">
       <el-icon class="fold-chevron"><ArrowRight /></el-icon>
       <span class="fold-dot"></span>
-      <span class="fold-title">{{ title }}</span>
-      <span v-if="count !== null" class="fold-count">{{ count }}</span>
+      <span class="fold-title md-section__title">{{ title }}</span>
+      <span v-if="count !== null" class="fold-count md-chip md-chip--sm" :class="'md-chip--' + toneChip">{{ count }}</span>
       <span v-if="hint && !open" class="fold-hint">{{ hint }}</span>
-      <span class="fold-actions" @click.stop>
+      <span class="fold-actions md-section__actions" @click.stop>
         <slot name="actions"></slot>
       </span>
     </button>
@@ -17,6 +17,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { ArrowRight } from '@element-plus/icons-vue'
 
 /**
@@ -38,42 +39,30 @@ const props = withDefaults(
 
 const emit = defineEmits<{ (e: 'update:open', open: boolean): void }>()
 
+/** 分区色调 → 计数芯片色调（待办 primary、执行中 warning、完成 success、中性 neutral） */
+const toneChip = computed(() => (props.tone === 'todo' ? 'primary' : props.tone === 'running' ? 'warning' : props.tone === 'done' ? 'success' : 'neutral'))
+
 function toggle() {
   emit('update:open', !props.open)
 }
 </script>
 
 <style scoped>
-.fold-section {
-  background: var(--md-surface-container-low);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-md);
-  margin-bottom: 14px;
-  overflow: hidden;
-  transition: border-color 0.2s ease;
-}
-
-.fold-section:hover {
-  border-color: var(--md-outline);
-}
-
+/* 分区：无外框、无底色，靠标题 + 间距分组（.md-section 负责间距） */
 .fold-header {
   width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border: none;
+  border: 0;
   background: transparent;
   cursor: pointer;
   text-align: left;
   font: inherit;
   color: inherit;
+  border-radius: var(--md-shape-small);
 }
 
 .fold-chevron {
   color: var(--md-on-surface-variant);
-  transition: transform 0.2s ease;
+  transition: transform var(--md-duration-short-2) var(--md-ease-standard);
 }
 
 .is-open .fold-chevron {
@@ -88,28 +77,17 @@ function toggle() {
 }
 
 .tone-todo .fold-dot { background: var(--md-primary); }
-.tone-running .fold-dot { background: var(--md-warning-fill); box-shadow: var(--md-glow-warning); }
+.tone-running .fold-dot { background: var(--md-warning); }
 .tone-done .fold-dot { background: var(--md-success); }
 .tone-neutral .fold-dot { background: var(--md-outline); }
 
 .fold-title {
-  font-size: var(--md-text-body);
-  font-weight: var(--md-weight-semibold);
   white-space: nowrap;
 }
 
-.fold-count {
-  font-size: var(--md-text-body-sm);
-  font-weight: var(--md-weight-semibold);
-  padding: 1px 8px;
-  border-radius: var(--md-radius-pill);
-  background: var(--md-surface-container);
-  color: var(--md-on-surface-variant);
-}
-
 .fold-hint {
-  font-size: var(--md-text-body-sm);
-  color: var(--md-on-surface-variant-2);
+  font-size: var(--md-type-body-sm);
+  color: var(--md-on-surface-variant);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -117,14 +95,11 @@ function toggle() {
 }
 
 .fold-actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  gap: var(--md-space-1);
   flex-shrink: 0;
 }
 
 .fold-body {
-  padding: 4px 16px 16px;
+  padding: 0;
 }
 </style>

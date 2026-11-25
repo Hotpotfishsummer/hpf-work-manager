@@ -1,33 +1,35 @@
 <template>
-  <div class="task-card" :class="{ 'is-active': running, 'is-done': done }">
+  <div class="task-card md-card" :class="{ 'is-active': running, 'is-done': done }">
     <div class="card-meta">
       <span
-        class="project-tag clickable"
+        class="project-tag clickable md-chip md-chip--sm md-chip--secondary md-state"
         title="点击仅筛选该项目的工单"
         @click="emit('filter-project', task.project_id)"
       >{{ projectName }}</span>
 
-      <el-tag size="small" :type="priorityTag(task.priority)" effect="light">
+      <span class="md-chip md-chip--sm" :class="priorityClass(task.priority)">
         {{ priorityLabel(task.priority) }}
-      </el-tag>
+      </span>
 
-      <span class="category-tag" :title="category ? '分类：' + categoryLabel(category) : '未分类（点「··· → 编辑工单」可设置）'">
+      <span class="category-tag md-chip md-chip--sm" :class="categoryClass(category)" :title="category ? '分类：' + categoryLabel(category) : '未分类（点「··· → 编辑工单」可设置）'">
         {{ categoryIcon(category) }} {{ categoryLabel(category) }}
       </span>
 
-      <span v-if="task.estimated_hours && !done" class="hours-tag">⏱️ {{ task.estimated_hours }}h</span>
+      <span v-if="task.estimated_hours && !done" class="hours-tag" title="预估工时">⏱️ {{ task.estimated_hours }}h</span>
 
       <span
         v-if="directionCount > 0 && !done"
-        class="direction-badge"
+        class="direction-badge md-chip md-chip--sm md-chip--warning md-state"
+        role="button"
+        tabindex="0"
         title="该项目有负责人的未处理指示（复制 Prompt 时会自动带上）。点击查看 / 补充"
         @click="emit('open-directions', task.project_id)"
       >💬 {{ directionCount }}</span>
 
-      <span v-if="running" class="running-indicator"><span class="pulse-ring"></span> 开发中</span>
+      <span v-if="running" class="running-indicator md-chip md-chip--sm md-chip--warning"><span class="pulse-ring"></span> 开发中</span>
 
       <template v-if="done">
-        <span class="done-check">✓ 已完成</span>
+        <span class="done-check md-chip md-chip--sm md-chip--success">✓ 已完成</span>
         <span v-if="task.completed_at" class="time-done">{{ formatTime(task.completed_at) }}</span>
       </template>
     </div>
@@ -37,24 +39,25 @@
     <div v-if="task.description && !done" class="prompt-preview">
       <div class="prompt-header">
         <span>Agent Prompt 预览</span>
-        <button class="mini-copy-btn" @click.stop="emit('copy')">📋 复制</button>
+        <button type="button" class="mini-copy-btn md-btn md-btn--text md-btn--sm" @click.stop="emit('copy')">📋 复制</button>
       </div>
       <div class="prompt-text">{{ task.description }}</div>
     </div>
 
     <div class="card-footer" :class="{ 'done-footer': done }">
       <template v-if="done">
-        <el-button size="small" link @click="emit('command', 'backlog')">↩ 重启任务</el-button>
+        <el-button size="small" text @click="emit('command', 'backlog')">↩ 重启任务</el-button>
         <el-button size="small" link type="danger" @click="emit('command', 'delete')">删除</el-button>
       </template>
 
       <template v-else>
-        <button class="action-btn copy-btn" @click="emit('copy')">📋 复制 Prompt</button>
+        <button type="button" class="action-btn copy-btn md-btn md-btn--tonal md-btn--sm" @click="emit('copy')">📋 复制 Prompt</button>
         <div class="footer-right">
           <el-button
             v-if="running"
             size="small"
             type="success"
+            plain
             @click="emit('command', 'done')"
           >✓ 完成</el-button>
           <el-button
@@ -130,10 +133,18 @@ const running = computed(() => props.task.status === 'in_progress')
 const done = computed(() => props.task.status === 'done')
 const category = computed(() => props.task.category ?? null)
 
-function priorityTag(p: string) {
-  if (p === 'high') return 'danger'
-  if (p === 'medium') return 'warning'
-  return 'info'
+/** 优先级 → 色调芯片：高优 error、中优 warning、低优 neutral */
+function priorityClass(p: string) {
+  if (p === 'high') return 'md-chip--error'
+  if (p === 'medium') return 'md-chip--warning'
+  return 'md-chip--neutral'
+}
+
+/** 分类 → 固定的 accent 1–6 色调芯片（按 TASK_CATEGORIES 顺序），未分类 neutral */
+function categoryClass(c: string | null) {
+  if (!c) return 'md-chip--neutral'
+  const idx = TASK_CATEGORIES.findIndex((x) => x.value === c)
+  return idx >= 0 ? `md-chip--accent-${idx + 1}` : 'md-chip--neutral'
 }
 
 function priorityLabel(p: string) {
@@ -149,22 +160,20 @@ function formatTime(ts: string) {
 </script>
 
 <style scoped>
-/* 卡片样式从主页原样迁入 */
-/* 任务卡片 */
+/* 任务卡片：填充式卡片（.md-card：surface-container-highest / 圆角 12 / 无边框） */
 .task-card {
-  background: var(--md-surface-container-lowest);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-md);
-  padding: 14px;
-  box-shadow: var(--md-shadow-1);
-  transition: all 0.2s ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-space-2);
+  transition: background-color var(--md-duration-short-2) var(--md-ease-standard);
 }
 
 .task-card:hover {
-  box-shadow: var(--md-shadow-2);
-  border-color: var(--md-outline);
+  background-color: var(--md-surface-container-high);
 }
 
+/* 状态强调条（规范允许的强调线）：执行中 = warning */
 .task-card.is-active {
   border-left: var(--md-accent-bar-width) solid var(--md-warning);
 }
@@ -176,47 +185,35 @@ function formatTime(ts: string) {
 .card-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: var(--md-space-1);
 }
 
 .project-tag.clickable {
   cursor: pointer;
-  transition: all 0.15s ease;
 }
+
 .project-tag.clickable:hover {
-  background: var(--md-primary-container);
-  color: var(--md-primary);
-}
-.project-tag {
-  font-size: var(--md-text-caption);
-  color: var(--md-on-surface-variant);
-  background: var(--md-surface-container);
-  padding: 2px 6px;
-  border-radius: var(--md-radius-xs);
+  background-color: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+  --state-color: var(--md-on-primary-container);
 }
 
 .hours-tag {
-  font-size: var(--md-text-caption);
-  color: var(--md-on-surface-variant-2);
   margin-left: auto;
+  font-size: var(--md-type-label-md);
+  color: var(--md-on-surface-variant);
 }
 
 .running-indicator {
   margin-left: auto;
-  font-size: var(--md-text-caption);
-  color: var(--md-warning);
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 
 .pulse-ring {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--md-warning-fill);
+  background: var(--md-on-warning-container);
   animation: pulse 1.5s infinite;
 }
 
@@ -226,60 +223,50 @@ function formatTime(ts: string) {
   100% { transform: scale(0.9); opacity: 1; }
 }
 
-.done-check {
-  font-size: var(--md-text-caption);
-  color: var(--md-success);
-  font-weight: 600;
-}
-
 .time-done {
   margin-left: auto;
-  font-size: var(--md-text-caption);
-  color: var(--md-on-surface-variant-2);
+  font-size: var(--md-type-label-md);
+  color: var(--md-on-surface-variant);
 }
 
 .card-title {
-  font-size: var(--md-text-body);
-  font-weight: 600;
-  margin: 0 0 10px 0;
-  line-height: 1.4;
+  font-size: var(--md-type-title-md);
+  line-height: var(--md-type-title-lh-md);
+  font-weight: var(--md-weight-medium);
+  margin: 0;
   color: var(--md-on-surface);
+  overflow-wrap: anywhere;
 }
 
 .card-title.strike {
   text-decoration: line-through;
-  color: var(--md-on-surface-variant-2);
+  color: var(--md-on-surface-variant);
 }
 
+/* 卡内小块：surface-container-high，不再套边框 */
 .prompt-preview {
-  background: var(--md-surface-container-low);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-sm);
-  padding: 8px 10px;
-  margin-bottom: 12px;
+  background: var(--md-surface-container-high);
+  border-radius: var(--md-shape-small);
+  padding: var(--md-space-2) var(--md-space-3);
 }
 
 .prompt-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: var(--md-text-caption);
-  color: var(--md-on-surface-variant-2);
-  margin-bottom: 4px;
+  gap: var(--md-space-2);
+  font-size: var(--md-type-label-md);
+  color: var(--md-on-surface-variant);
+  margin-bottom: var(--md-space-1);
 }
 
 .mini-copy-btn {
-  background: none;
-  border: none;
-  color: var(--md-primary);
-  cursor: pointer;
-  font-size: var(--md-text-caption);
-  padding: 0;
+  height: 24px;
+  font-size: var(--md-type-label-md);
 }
-.mini-copy-btn:hover { text-decoration: underline; }
 
 .prompt-text {
-  font-size: var(--md-text-body-sm);
+  font-size: var(--md-type-body-sm);
   line-height: 1.4;
   color: var(--md-on-surface);
   white-space: pre-wrap;
@@ -295,71 +282,32 @@ function formatTime(ts: string) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 8px;
-  border-top: 1px dashed var(--md-outline-variant);
+  gap: var(--md-space-2);
+  padding-top: var(--md-space-2);
+  border-top: 1px solid var(--md-outline-variant);
 }
 
 .card-footer.done-footer {
   justify-content: flex-end;
-  gap: 12px;
-}
-
-.action-btn.copy-btn {
-  background: var(--md-surface-container);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-sm);
-  padding: 4px 10px;
-  font-size: var(--md-text-body-sm);
-  color: var(--md-on-surface);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.action-btn.copy-btn:hover {
-  background: var(--md-primary-tint);
-  border-color: var(--md-primary);
-  color: var(--md-primary);
+  gap: var(--md-space-2);
 }
 
 .footer-right {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--md-space-1);
 }
 
 .more-btn {
-  color: var(--md-on-surface-variant-2);
-}
-
-/* ---------- 本轮新增 ---------- */
-.category-tag {
-  font-size: var(--md-text-body-sm);
   color: var(--md-on-surface-variant);
-  white-space: nowrap;
 }
 
 .direction-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 0 7px;
-  height: 20px;
-  border-radius: var(--md-radius-pill);
-  background: var(--md-warning-container);
-  border: 1px solid color-mix(in srgb, var(--md-warning) 40%, transparent);
-  color: var(--md-on-warning-container);
-  font-size: var(--md-text-body-sm);
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
+  font-weight: var(--md-weight-medium);
 }
 
-.direction-badge:hover {
-  background: var(--md-warning-container-strong);
-}
-
-.task-card.is-done .card-meta {
-  /* 已完成卡片没有分类/指示徽标，保持紧凑 */
-  gap: 8px;
+.direction-badge:focus-visible {
+  outline: 2px solid var(--md-primary);
+  outline-offset: 2px;
 }
 </style>
