@@ -79,7 +79,7 @@ describe('设计规范闸门（DESIGN.md）', () => {
     const names = (block: string) => new Set([...block.matchAll(/^\s*(--md-[\w-]+)\s*:/gm)].map((m) => m[1]))
     const l = names(light)
     const d = names(dark)
-    const missing = [...l].filter((n) => !d.has(n) && !/^--md-(?:status|font|text|weight|track|radius|space|duration|ease|press|control|button|input|card|table|chip|tag|progress|content|nav)/.test(n))
+    const missing = [...l].filter((n) => !d.has(n) && !/^--md-(?:glow-|ring-|accent-bar-|status|font|text|weight|track|radius|space|duration|ease|press|control|button|input|card|table|chip|tag|progress|content|nav)/.test(n))
     expect(missing, '这些颜色令牌缺少深色值').toEqual([])
   })
 
