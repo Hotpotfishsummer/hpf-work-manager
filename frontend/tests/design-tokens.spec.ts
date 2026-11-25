@@ -11,6 +11,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import { parse } from '@vue/compiler-sfc'
 
 const SRC = join(__dirname, '..', 'src')
 const TOKEN_FILE = join(SRC, 'design', 'tokens.css')
@@ -46,6 +47,16 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 describe('设计规范闸门（DESIGN.md）', () => {
+  // 每个 .vue 都必须能被编译：类型检查不编译模板与样式，坏掉的标签只有这里能拦住
+  it('全部 .vue 单文件组件可编译', () => {
+    const broken: string[] = []
+    for (const p of walk(SRC)) {
+      if (!p.endsWith('.vue')) continue
+      const { errors } = parse(readFileSync(p, 'utf8'), { filename: p })
+      for (const e of errors) broken.push(`${relative(SRC, p)}  ${typeof e === 'string' ? e : e.message}`)
+    }
+    expect(broken, '这些组件文件结构损坏').toEqual([])
+  })
   const files = walk(SRC).map((p) => relative(SRC, p)).sort()
 
   it('组件层无颜色字面量 / 裸阴影 / 裸圆角 / 裸字号 / 超标字重', () => {

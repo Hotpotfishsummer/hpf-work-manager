@@ -51,7 +51,7 @@
       <div class="filter-left">
         <div class="filter-item">
           <span class="item-label">项目:</span>
-          <el-select v-model="filterProject" placeholder="全部项目" style="width: 220px" size="default" filterable>
+          <el-select v-model="filterProject" placeholder="全部项目" class="project-select" size="default" filterable>
             <el-option label="🌐 全部项目 (All Projects)" :value="0" />
             <el-option v-for="p in projects" :key="p.id" :label="p.name" :value="p.id" />
           </el-select>
@@ -997,6 +997,11 @@ onMounted(() => {
 }
 
 /* 筛选工具栏：无外框，一行可换行的筛选控件 */
+.project-select {
+  width: 220px;
+  max-width: 100%;
+}
+
 .filter-toolbar {
   display: flex;
   align-items: center;
@@ -1017,6 +1022,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: var(--md-space-2);
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .chip-group {

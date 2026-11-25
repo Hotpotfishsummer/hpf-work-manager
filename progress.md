@@ -48,3 +48,17 @@
 
 ### Next Session Should
 - 等用户裁决 F010；合并 `feat/md3-design-consistency` 到 main 与部署由用户决定
+
+## session 2（2026-11-25）· 按 Material Design 3 重构
+
+用户反馈上一轮「满屏细边框、全是同一种颜色」，授权推翻页面架构。参考 material-design-3-ui skill 的方法论（已存入 `docs/design/m3-reference/`）。
+
+- 基础层：官方算法生成的色调调色板 + 表面色阶 + 状态层；控件层全部 M3 形态（F013/F014）
+- 导航：顶栏页签 → 导航栏 / 底部导航栏（F015）
+- 页面：三路并行重排，闸门新增「分区细边框」规则，抓出并清掉 48 处（F016/F017/F018）
+- 文档：DESIGN.md 重写为 M3 设计源（F019）
+
+目检抓到、静态检查漏掉的问题：两个组件的 `</style>` 标签被写坏，整个应用编译失败 → 闸门新增「全部 .vue 可编译」。
+证据：vitest 54/54 通过；vue-tsc 退出码 0；npm run build 成功；docs/assets/design-audit/m3/ 下 6 页 × 深/浅主题 + 1 张窄屏截图，lead 已逐张目检
+
+未做 / 待裁决：合并与部署；甘特图例「待办」无对应条色。

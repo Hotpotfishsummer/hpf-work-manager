@@ -110,6 +110,28 @@
   font-size: var(--md-type-label-md);
 }
 
+/* 默认按钮 = secondary container 的 tonal 按钮。只改变量，不直接写 background-color，
+   否则会盖掉上面各 type 自己的实心配色 */
+.el-button {
+  --el-button-bg-color: var(--md-secondary-container);
+  --el-button-text-color: var(--md-on-secondary-container);
+  --el-button-border-color: transparent;
+  --el-button-hover-bg-color: color-mix(in srgb, var(--md-secondary-container), var(--md-on-secondary-container) 8%);
+  --el-button-hover-text-color: var(--md-on-secondary-container);
+  --el-button-hover-border-color: transparent;
+  --el-button-active-bg-color: color-mix(in srgb, var(--md-secondary-container), var(--md-on-secondary-container) 12%);
+  --el-button-active-text-color: var(--md-on-secondary-container);
+  --el-button-active-border-color: transparent;
+  --el-button-disabled-text-color: color-mix(in srgb, var(--md-on-surface) 38%, transparent);
+  --el-button-disabled-bg-color: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
+  --el-button-disabled-border-color: transparent;
+}
+/* info 类型 = 中性 tonal */
+.el-button--info {
+  --el-button-bg-color: var(--md-surface-container-highest);
+  --el-button-text-color: var(--md-on-surface-variant);
+}
+
 /* filled：primary / success / warning / danger */
 .el-button--primary,
 .el-button--success,
@@ -162,23 +184,11 @@
 .el-button--info.is-plain,
 .el-button--info.is-plain:hover { background-color: var(--md-surface-container-highest); border-color: transparent; color: var(--md-on-surface-variant); }
 
-/* 默认按钮 = secondary container 的 tonal 按钮 */
-.el-button--default,
-.el-button {
-  background-color: var(--md-secondary-container);
-  border-color: transparent;
-  color: var(--md-on-secondary-container);
-}
-.el-button--default:hover,
-.el-button--default:focus {
-  background-color: color-mix(in srgb, var(--md-secondary-container), var(--md-on-secondary-container) 8%);
-  border-color: transparent;
-  color: var(--md-on-secondary-container);
-}
-
 /* 文字按钮 */
 .el-button.is-text,
 .el-button.is-link {
+  --el-button-bg-color: transparent;
+  --el-button-hover-bg-color: color-mix(in srgb, var(--md-primary) 8%, transparent);
   background-color: transparent;
   border-color: transparent;
   color: var(--md-primary);

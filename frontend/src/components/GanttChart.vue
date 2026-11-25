@@ -160,4 +160,4 @@ onThemeChange(() => {
   color: var(--md-on-surface-variant);
 }
 .gantt-container { min-width: 720px; }
-</style></style>
+</style>

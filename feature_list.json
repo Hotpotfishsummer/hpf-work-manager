@@ -166,56 +166,56 @@
       "id": "F013",
       "title": "M3 令牌层重做",
       "description": "用官方算法从种子色生成完整 M3 色调调色板（表面五档、主/次/第三色、成功/警告、6 个强调色族），补状态层/高度/字阶/形状/动效令牌，旧令牌名全部映射到新角色，闸门新增「分区细边框」规则",
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "证据：vitest 54/54 通过；vue-tsc 退出码 0；npm run build 成功；docs/assets/design-audit/m3/ 下 6 页 × 深/浅主题 + 1 张窄屏截图，lead 已逐张目检",
       "blocked": false
     },
     {
       "id": "F014",
       "title": "M3 控件层",
       "description": "Element Plus 与全局基础样式改为 M3 形态：填充式输入框、tonal/实心/描边/文字四级按钮、药丸指示器页签、无描边表格与卡片、浮层只靠阴影",
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "含「实心按钮被默认 tonal 规则盖掉」的修复；证据：vitest 54/54 通过；vue-tsc 退出码 0；npm run build 成功；docs/assets/design-audit/m3/ 下 6 页 × 深/浅主题 + 1 张窄屏截图，lead 已逐张目检",
       "blocked": false
     },
     {
       "id": "F015",
       "title": "导航骨架重构",
       "description": "顶层目的地从顶栏页签改为导航栏（宽屏）/底部导航栏（窄屏），顶栏只留标题与状态；配额/连接状态用色调芯片",
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "窄屏下看板筛选条可换行；证据：vitest 54/54 通过；vue-tsc 退出码 0；npm run build 成功；docs/assets/design-audit/m3/ 下 6 页 × 深/浅主题 + 1 张窄屏截图，lead 已逐张目检",
       "blocked": false
     },
     {
       "id": "F016",
       "title": "任务看板与任务卡",
       "description": "驾驶舱页按 M3 重排：分区靠表面色阶与间距，筛选用筛选芯片，状态/优先级/分类用色调芯片，一组操作只留一个实心按钮；任务卡改填充式",
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "项目筛选保留 el-select（项目数不固定，芯片会撑爆一行）；任务数据无截止日期字段，故无处标延期；证据：vitest 54/54 通过；vue-tsc 退出码 0；npm run build 成功；docs/assets/design-audit/m3/ 下 6 页 × 深/浅主题 + 1 张窄屏截图，lead 已逐张目检",
       "blocked": false
     },
     {
       "id": "F017",
       "title": "项目域页面",
       "description": "项目列表/详情/任务看板/甘特/开发日志/评论面板按 M3 重排，去掉分区细边框",
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "项目列表的筛选由单选组改为筛选芯片，新增 setStatusFilter（赋值后加载，等价原行为）；甘特图例「待办」暂无对应条色；证据：vitest 54/54 通过；vue-tsc 退出码 0；npm run build 成功；docs/assets/design-audit/m3/ 下 6 页 × 深/浅主题 + 1 张窄屏截图，lead 已逐张目检",
       "blocked": false
     },
     {
       "id": "F018",
       "title": "算力与灵感页面",
       "description": "算力雷达、灵感工坊及其图表按 M3 重排，健康度用色调容器表达",
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "进度条轨道用 surface-container-lowest（卡片本身已是 highest）；建议框色调阈值统一为 ≤10 error / ≤30 warning；证据：vitest 54/54 通过；vue-tsc 退出码 0；npm run build 成功；docs/assets/design-audit/m3/ 下 6 页 × 深/浅主题 + 1 张窄屏截图，lead 已逐张目检",
       "blocked": false
     },
     {
       "id": "F019",
       "title": "文档与验收",
       "description": "DESIGN.md 重写为 M3 设计源（含方法论来源），README/CHANGELOG 同步，双主题×宽窄屏截图验收，自审清单打分",
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "证据：vitest 54/54 通过；vue-tsc 退出码 0；npm run build 成功；docs/assets/design-audit/m3/ 下 6 页 × 深/浅主题 + 1 张窄屏截图，lead 已逐张目检",
       "blocked": false
     }
   ]
