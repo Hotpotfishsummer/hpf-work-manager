@@ -1,6 +1,7 @@
 /* ============================================================
-   全局基础样式（Apple × MD3）
-   surface 画布、SF 栈、紧凑密度、Apple 留白的页面节奏
+   全局基础样式 · Material Design 3
+   分层靠「表面色阶 + 间距 + 少量分隔线」，不靠给每个区块描边。
+   可复用的语义类都叫 .md-*，页面请优先用它们，而不是各写一套。
    ============================================================ */
 
 * {
@@ -18,92 +19,336 @@ body,
 body {
   font-family: var(--md-font);
   font-weight: var(--md-weight-regular);
-  font-size: var(--md-text-body);
-  line-height: 1.5;
-  letter-spacing: var(--md-track-body);
+  font-size: var(--md-type-body-md);
+  line-height: var(--md-type-body-lh-md);
+  letter-spacing: var(--md-tracking-body);
   color: var(--md-on-surface);
   background-color: var(--md-surface);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  transition: background-color var(--md-duration-standard) var(--md-ease-standard),
-    color var(--md-duration-standard) var(--md-ease-standard);
 }
 
-h1, h2, h3, h4 {
-  font-family: var(--md-font);
-  font-weight: var(--md-weight-semibold);
-  color: var(--md-ink);
-  letter-spacing: var(--md-track-title);
+/* ---- 字阶：直接对应 M3 type scale ---- */
+h1,
+h2,
+h3,
+h4 {
   margin: 0;
+  color: var(--md-on-surface);
+  font-weight: var(--md-weight-regular);
+}
+h1 {
+  font-size: var(--md-type-headline-sm);
+  line-height: var(--md-type-headline-lh-sm);
+  letter-spacing: var(--md-tracking-headline);
+}
+h2,
+h3 {
+  font-size: var(--md-type-title-md);
+  line-height: var(--md-type-title-lh-md);
+  font-weight: var(--md-weight-medium);
+  letter-spacing: var(--md-tracking-title);
+}
+h4 {
+  font-size: var(--md-type-title-sm);
+  line-height: var(--md-type-title-lh-sm);
+  font-weight: var(--md-weight-medium);
 }
 
 a {
   color: var(--md-primary);
   text-decoration: none;
 }
-a:hover { color: var(--md-primary); text-decoration: underline; }
-
-/* 页面标题（Apple display 28/600/-0.374px） */
-.page-title {
-  font-size: var(--md-text-display);
-  font-weight: var(--md-weight-semibold);
-  line-height: 1.2;
-  letter-spacing: var(--md-track-display);
-  color: var(--md-on-surface);
+a:hover {
+  text-decoration: underline;
 }
 
-/* 页面眉：Apple 留白（section 上下呼吸感） */
+/* ---- 页面骨架 ---- */
+.page {
+  max-width: var(--md-content-max);
+  margin: 0 auto;
+  padding: var(--md-space-2) var(--md-space-5) var(--md-space-7);
+}
 .page-head {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: var(--md-space-lg);
-  padding: var(--md-space-xl) 0 var(--md-space-md);
-}
-
-/* 眉下小字：CAPTION · 描述 */
-.page-sub {
-  margin: var(--md-space-xs) 0 0;
-  font-size: var(--md-text-body-sm);
-  font-weight: var(--md-weight-regular);
-  letter-spacing: var(--md-track-caption);
-  color: var(--md-on-surface-variant);
-}
-
-.head-actions {
-  display: flex;
-  gap: var(--md-space-sm);
   flex-wrap: wrap;
+  gap: var(--md-space-3);
+  padding: var(--md-space-3) 0 var(--md-space-4);
 }
-
-/* MD3 卡片：surface-container-low + lg 圆角 + hairline */
-.md-card {
-  background-color: var(--md-surface-container-low);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-lg);
-  padding: var(--md-card-padding-lg);
+.page-title {
+  font-size: var(--md-type-headline-sm);
+  line-height: var(--md-type-headline-lh-sm);
+  letter-spacing: var(--md-tracking-headline);
   color: var(--md-on-surface);
 }
-
-/* 状态色文字 */
-.status-text-success { color: var(--md-status-done); }
-.status-text-primary { color: var(--md-primary); }
-.status-text-muted { color: var(--md-status-todo); }
-.status-text-error,
-.status-text-danger { color: var(--md-status-overdue); font-weight: var(--md-weight-medium); }
-
-/* 页面内容容器：最大 1440px 居中 */
+.page-sub {
+  margin: var(--md-space-1) 0 0;
+  font-size: var(--md-type-body-md);
+  color: var(--md-on-surface-variant);
+}
+.head-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--md-space-2);
+}
 .page-container {
   max-width: var(--md-content-max);
   margin: 0 auto;
   padding: 0 var(--md-space-lg);
 }
 
-/* 焦点环：MD3 2px 主色 outline */
+/* ---- 分区：只靠间距与标题分组，不套框 ---- */
+.md-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-space-3);
+}
+.md-section + .md-section {
+  margin-top: var(--md-space-5);
+}
+.md-section__head {
+  display: flex;
+  align-items: center;
+  gap: var(--md-space-3);
+  min-height: var(--md-control-height);
+}
+.md-section__title {
+  font-size: var(--md-type-title-md);
+  line-height: var(--md-type-title-lh-md);
+  font-weight: var(--md-weight-medium);
+  color: var(--md-on-surface);
+}
+.md-section__actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--md-space-1);
+}
+
+/* 分隔线：间距不够用时才用，只在行与行之间 */
+.md-divider {
+  height: 1px;
+  border: 0;
+  margin: 0;
+  background-color: var(--md-outline-variant);
+}
+
+/* ---- 卡片：填充式色块，无边框无阴影 ---- */
+.md-card {
+  background-color: var(--md-surface-container-highest);
+  border: 0;
+  border-radius: var(--md-shape-medium);
+  padding: var(--md-card-padding);
+  color: var(--md-on-surface);
+}
+.md-card--low {
+  background-color: var(--md-surface-container-low);
+}
+.md-card--high {
+  background-color: var(--md-surface-container-high);
+}
+/* 浮在内容之上的容器才给阴影 */
+.md-card--elevated,
+.md-elevated {
+  background-color: var(--md-surface-container-low);
+  box-shadow: var(--md-elevation-1);
+}
+
+/* ---- 状态层：悬停/按下时在原色上叠一层，颜色跟随自身文字色 ---- */
+.md-state {
+  --state-color: var(--md-on-surface);
+  position: relative;
+}
+.md-state::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-color: var(--state-color);
+  opacity: 0;
+  transition: opacity var(--md-duration-short-2) var(--md-ease-standard);
+}
+.md-state:hover::before {
+  opacity: 0.08;
+}
+.md-state:focus-visible::before {
+  opacity: 0.1;
+}
+.md-state:active::before {
+  opacity: 0.1;
+}
+.md-state[aria-disabled='true'],
+.md-state:disabled {
+  opacity: 0.38;
+}
+
+/* ---- 按钮（供非 Element Plus 的原生按钮使用）---- */
+.md-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--md-space-2);
+  height: var(--md-control-height);
+  padding: 0 var(--md-space-5);
+  border: 0;
+  border-radius: var(--md-shape-full);
+  font: inherit;
+  font-size: var(--md-type-label-lg);
+  font-weight: var(--md-weight-medium);
+  letter-spacing: var(--md-tracking-label);
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: opacity var(--md-duration-short-2) var(--md-ease-standard);
+}
+.md-btn:active {
+  transform: scale(var(--md-press-scale));
+}
+.md-btn--filled {
+  background-color: var(--md-primary);
+  color: var(--md-on-primary);
+  --state-color: var(--md-on-primary);
+}
+.md-btn--tonal {
+  background-color: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+  --state-color: var(--md-on-secondary-container);
+}
+.md-btn--outlined {
+  background-color: transparent;
+  border: 1px solid var(--md-outline); /* design-audit: allow 描边按钮按 M3 规范用描边 */
+  color: var(--md-primary);
+  --state-color: var(--md-primary);
+}
+.md-btn--text {
+  background-color: transparent;
+  color: var(--md-primary);
+  --state-color: var(--md-primary);
+  padding: 0 var(--md-space-3);
+}
+.md-btn--danger {
+  background-color: var(--md-error);
+  color: var(--md-on-error);
+  --state-color: var(--md-on-error);
+}
+.md-btn--sm {
+  height: var(--md-control-height-sm);
+  padding: 0 var(--md-space-4);
+  font-size: var(--md-type-label-md);
+}
+
+/* ---- 图标按钮：40×40 的点击区 ---- */
+.md-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--md-control-height);
+  height: var(--md-control-height);
+  border: 0;
+  border-radius: var(--md-shape-full);
+  background-color: transparent;
+  color: var(--md-on-surface-variant);
+  --state-color: var(--md-on-surface-variant);
+  font-size: var(--md-type-title-lg);
+  cursor: pointer;
+}
+.md-icon-btn.is-selected {
+  background-color: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+  --state-color: var(--md-on-secondary-container);
+}
+
+/* ---- 芯片：筛选（可选）/ 状态（只读）/ 辅助（动作）---- */
+.md-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--md-chip-height);
+  padding: 0 var(--md-space-3);
+  border: 0;
+  border-radius: var(--md-shape-small);
+  font: inherit;
+  font-size: var(--md-type-label-lg);
+  font-weight: var(--md-weight-medium);
+  letter-spacing: var(--md-tracking-label);
+  white-space: nowrap;
+  cursor: default;
+  color: var(--md-on-surface-variant);
+  background-color: var(--md-surface-container-high);
+  --state-color: var(--md-on-surface-variant);
+}
+/* 紧凑版：卡片里的小标签 */
+.md-chip--sm {
+  height: 24px;
+  padding: 0 var(--md-space-2);
+  font-size: var(--md-type-label-md);
+  gap: 4px;
+}
+/* 筛选芯片未选中：描边（规范允许的少数描边之一） */
+.md-chip--filter {
+  cursor: pointer;
+  background-color: transparent;
+  border: 1px solid var(--md-outline); /* design-audit: allow 筛选芯片未选中态按 M3 规范用描边 */
+  color: var(--md-on-surface-variant);
+}
+.md-chip--filter.is-selected {
+  border-color: transparent;
+  background-color: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+  --state-color: var(--md-on-secondary-container);
+  font-weight: var(--md-weight-medium);
+}
+/* 色调：状态与分类用「容器色 + 容器上的文字色」成对出现 */
+.md-chip--primary { background-color: var(--md-primary-container); color: var(--md-on-primary-container); }
+.md-chip--secondary { background-color: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.md-chip--tertiary { background-color: var(--md-tertiary-container); color: var(--md-on-tertiary-container); }
+.md-chip--success { background-color: var(--md-success-container); color: var(--md-on-success-container); }
+.md-chip--warning { background-color: var(--md-warning-container); color: var(--md-on-warning-container); }
+.md-chip--error { background-color: var(--md-error-container); color: var(--md-on-error-container); }
+.md-chip--neutral { background-color: var(--md-surface-container-high); color: var(--md-on-surface-variant); }
+/* 实心：只在需要强提醒时用，数量要少 */
+.md-chip--solid-primary { background-color: var(--md-primary); color: var(--md-on-primary); }
+.md-chip--solid-error { background-color: var(--md-error); color: var(--md-on-error); }
+.md-chip--accent-1 { background-color: var(--md-accent-1-container); color: var(--md-accent-1-on-container); }
+.md-chip--accent-2 { background-color: var(--md-accent-2-container); color: var(--md-accent-2-on-container); }
+.md-chip--accent-3 { background-color: var(--md-accent-3-container); color: var(--md-accent-3-on-container); }
+.md-chip--accent-4 { background-color: var(--md-accent-4-container); color: var(--md-accent-4-on-container); }
+.md-chip--accent-5 { background-color: var(--md-accent-5-container); color: var(--md-accent-5-on-container); }
+.md-chip--accent-6 { background-color: var(--md-accent-6-container); color: var(--md-accent-6-on-container); }
+
+/* ---- 强调条：提示 / 建议用色调容器，左侧一根强调色 ---- */
+.md-callout {
+  display: flex;
+  gap: var(--md-space-3);
+  align-items: flex-start;
+  padding: var(--md-space-3) var(--md-space-4);
+  border-radius: var(--md-shape-medium);
+  background-color: var(--md-surface-container-high);
+  color: var(--md-on-surface);
+}
+.md-callout--primary { background-color: var(--md-primary-container); color: var(--md-on-primary-container); }
+.md-callout--success { background-color: var(--md-success-container); color: var(--md-on-success-container); }
+.md-callout--warning { background-color: var(--md-warning-container); color: var(--md-on-warning-container); }
+.md-callout--error { background-color: var(--md-error-container); color: var(--md-on-error-container); }
+
+/* ---- 文本 ---- */
+.muted {
+  color: var(--md-on-surface-variant);
+}
+.text-primary { color: var(--md-primary); }
+.text-success { color: var(--md-success); }
+.text-warning { color: var(--md-warning); }
+.text-error,
+.text-danger { color: var(--md-error); }
+
+/* ---- 焦点：2px 主色 ---- */
 :focus-visible {
   outline: 2px solid var(--md-primary);
   outline-offset: 2px;
-  border-radius: var(--md-radius-sm);
 }
 
 @media (prefers-reduced-motion: reduce) {

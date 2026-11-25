@@ -1,118 +1,306 @@
 /* ============================================================
-   Apple × Material Design 3 Design Tokens
-   源自项目根目录 DESIGN.md
-   规则：组件内一律引用 CSS 变量，禁止内联 hex；深浅色双值，按 html[data-theme] 切换。
+   Material Design 3 — Design Tokens
+   唯一设计源：根目录 DESIGN.md。
+   角色色（<m3-generated-*> 标记之间）由官方算法从种子色生成：
+       node scripts/gen-m3-tokens.mjs
+   要换主色只改脚本里的 SEEDS.main 再重跑，不要手改生成区。
+   其余令牌（形状 / 字阶 / 高度 / 状态层 / 动效 / 间距）手写。
+   深浅主题由 html[data-theme='light'|'dark'] 切换。
    ============================================================ */
 
 :root {
-  /* ---- MD3 角色色（种子：Apple Action Blue #0066cc）---- */
-  --md-primary: #0066cc;
+  /* <m3-generated-light> */
+  --md-primary: #415e91;
   --md-on-primary: #ffffff;
-  --md-primary-container: #cfe3ff;
-  --md-on-primary-container: #001b3c;
-  --md-primary-hover: rgba(0, 102, 204, 0.08);
-  --md-primary-active: rgba(0, 102, 204, 0.12);
-  --md-primary-focus: rgba(0, 102, 204, 0.20);
-
-  --md-surface: #f8f9f9;
-  --md-on-surface: #1a1b1f;
-  --md-surface-container-lowest: #ffffff;
-  --md-surface-container-low: #f1f2f4;
-  --md-surface-container: #eaecf0;
-  --md-surface-container-high: #e4e6ea;
-  --md-surface-container-highest: #dfe1e4;
-  --md-on-surface-variant: #44474d;
-  --md-surface-variant: #e0e2e8;
-  --md-on-surface-variant-2: #61686f;
-
-  --md-outline: #73777f;
-  --md-outline-variant: #c3c6cc;
-
+  --md-primary-container: #d7e3ff;
+  --md-on-primary-container: #284777;
+  --md-primary-dim: #355284;
+  --md-secondary: #565e71;
+  --md-on-secondary: #ffffff;
+  --md-secondary-container: #dae2f9;
+  --md-on-secondary-container: #3e4759;
+  --md-tertiary: #705574;
+  --md-on-tertiary: #ffffff;
+  --md-tertiary-container: #fad8fd;
+  --md-on-tertiary-container: #573e5c;
   --md-error: #ba1a1a;
   --md-on-error: #ffffff;
   --md-error-container: #ffdad6;
-  --md-on-error-container: #410002;
+  --md-on-error-container: #93000a;
+  --md-surface: #f9f9ff;
+  --md-on-surface: #191c20;
+  --md-surface-variant: #e0e2ec;
+  --md-on-surface-variant: #44474e;
+  --md-outline: #74777f;
+  --md-outline-variant: #c4c6d0;
+  --md-inverse-surface: #2e3036;
+  --md-inverse-on-surface: #f0f0f7;
+  --md-inverse-primary: #aac7ff;
+  --md-surface-container-lowest: #ffffff;
+  --md-surface-container-low: #f3f3fa;
+  --md-surface-container: #ededf4;
+  --md-surface-container-high: #e7e8ee;
+  --md-surface-container-highest: #e2e2e9;
+  --md-surface-bright: #f9f9ff;
+  --md-surface-dim: #d9d9e0;
 
-  --md-success: #2e7d32;
+  /* success：完成 / 健康（文字用本色，浅底用 container） */
+  --md-success: #37693d;
   --md-on-success: #ffffff;
-  --md-success-container: #a9e6a8;
-  --md-on-success-container: #002105;
+  --md-success-container: #b9f0b8;
+  --md-on-success-container: #1f5027;
 
-  --md-warning: #8a5a00;
+  /* warning：注意 / 待处理（文字用本色，浅底用 container） */
+  --md-warning: #88511e;
   --md-on-warning: #ffffff;
-  --md-warning-container: #ffdfa8;
-  --md-on-warning-container: #2a1900;
+  --md-warning-container: #ffdcc2;
+  --md-on-warning-container: #6c3a06;
 
-  /* Apple 语义补充 */
-  --md-ink: #1d1d1f;
-  --md-parchment: #f5f5f7;
-  --md-on-parchment: #1d1d1f;
+  /* accent 1–6：分类标签、数据系列的容器色 */
+  --md-accent-1: #00696d;
+  --md-accent-1-container: #9cf1f5;
+  --md-accent-1-on-container: #004f52;
+  --md-accent-2: #8e4d31;
+  --md-accent-2-container: #ffdbce;
+  --md-accent-2-on-container: #71361c;
+  --md-accent-3: #64558f;
+  --md-accent-3-container: #e8ddff;
+  --md-accent-3-on-container: #4c3e76;
+  --md-accent-4: #894a67;
+  --md-accent-4-container: #ffd8e6;
+  --md-accent-4-on-container: #6e334f;
+  --md-accent-5: #476730;
+  --md-accent-5-container: #c8eea8;
+  --md-accent-5-on-container: #304f1a;
+  --md-accent-6: #745b0c;
+  --md-accent-6-container: #ffdf91;
+  --md-accent-6-on-container: #594400;
+/* </m3-generated-light> */
 
-  /* 反色表面（深色 hero 横幅 / 卡片，深浅主题均固定为“反相”观感） */
-  --md-inverse-surface: #1d1d1f;
-  --md-inverse-on-surface: #ffffff;
+  color-scheme: light;
 
-  /* 状态映射 */
-  --md-status-todo: var(--md-on-surface-variant);
+  /* ---- 状态层（叠在任意角色色上的交互反馈）---- */
+  --md-state-hover: 8%;
+  --md-state-focus: 10%;
+  --md-state-pressed: 10%;
+  --md-state-pressed-heavy: 12%;
+  --md-state-dragged: 16%;
+  --md-state-disabled-container: 12%;
+  --md-state-disabled-content: 38%;
+
+  /* ---- 高度：阴影只给「浮起来」的东西，卡片靠表面色阶 ---- */
+  --md-elevation-0: none;
+  --md-elevation-1: 0 1px 2px 0 rgba(0, 0, 0, 0.30), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --md-elevation-2: 0 1px 2px 0 rgba(0, 0, 0, 0.30), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --md-elevation-3: 0 1px 3px 0 rgba(0, 0, 0, 0.30), 0 4px 8px 3px rgba(0, 0, 0, 0.15);
+  --md-elevation-4: 0 2px 3px 0 rgba(0, 0, 0, 0.30), 0 6px 10px 4px rgba(0, 0, 0, 0.15);
+  --md-elevation-5: 0 4px 4px 0 rgba(0, 0, 0, 0.30), 0 8px 12px 6px rgba(0, 0, 0, 0.15);
+
+  /* ---- 字体：M3 2021 字阶（字号 / 行高 / 字重）---- */
+  --md-font: 'Inter', system-ui, -apple-system, 'SF Pro Text', 'PingFang SC', 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+  --md-font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+
+  --md-type-display-lg: 57px;  --md-type-display-lh-lg: 64px;
+  --md-type-display-md: 45px;  --md-type-display-lh-md: 52px;
+  --md-type-display-sm: 36px;  --md-type-display-lh-sm: 44px;
+  --md-type-headline-lg: 32px; --md-type-headline-lh-lg: 40px;
+  --md-type-headline-md: 28px; --md-type-headline-lh-md: 36px;
+  --md-type-headline-sm: 24px; --md-type-headline-lh-sm: 32px;
+  --md-type-title-lg: 22px;    --md-type-title-lh-lg: 28px;
+  --md-type-title-md: 16px;    --md-type-title-lh-md: 24px;
+  --md-type-title-sm: 14px;    --md-type-title-lh-sm: 20px;
+  --md-type-body-lg: 16px;     --md-type-body-lh-lg: 24px;
+  --md-type-body-md: 14px;     --md-type-body-lh-md: 20px;
+  --md-type-body-sm: 12px;     --md-type-body-lh-sm: 16px;
+  --md-type-label-lg: 14px;    --md-type-label-lh-lg: 20px;
+  --md-type-label-md: 12px;    --md-type-label-lh-md: 16px;
+  --md-type-label-sm: 11px;    --md-type-label-lh-sm: 16px;
+  --md-weight-regular: 400;
+  --md-weight-medium: 500;
+  --md-weight-semibold: 600;   /* 标题用 400/500，600 仅用于紧凑表格头 */
+  --md-weight-bold: 700;
+  --md-tracking-display: -0.25px;
+  --md-tracking-headline: -0.18px;
+  --md-tracking-title: -0.1px;
+  --md-tracking-body: 0;
+  --md-tracking-label: 0.1px;
+
+  /* ---- 形状 ---- */
+  --md-shape-none: 0px;
+  --md-shape-extra-small: 4px;
+  --md-shape-small: 8px;
+  --md-shape-medium: 12px;
+  --md-shape-large: 16px;
+  --md-shape-large-increased: 28px;
+  --md-shape-extra-large: 28px;
+  --md-shape-extra-large-increased: 32px;
+  --md-shape-full: 9999px;
+
+  /* ---- 间距（4px 基准）---- */
+  --md-space-1: 4px;  --md-space-2: 8px;  --md-space-3: 12px; --md-space-4: 16px;
+  --md-space-5: 24px; --md-space-6: 32px; --md-space-7: 48px; --md-space-8: 64px;
+  --md-space-section: 80px;
+
+  /* ---- 组件尺寸 ---- */
+  --md-control-height: 40px;
+  --md-control-height-sm: 32px;
+  --md-control-height-lg: 48px;
+  --md-top-app-bar-height: 64px;
+  --md-card-padding: 16px;
+  --md-card-padding-lg: 24px;
+  --md-table-row-height: 44px;
+  --md-chip-height: 32px;
+  --md-content-max: 1440px;
+
+  /* ---- 动效（M3 时长 / 缓动）---- */
+  --md-duration-short-2: 100ms;
+  --md-duration-short-4: 200ms;
+  --md-duration-medium-1: 250ms;
+  --md-duration-medium-2: 300ms;
+  --md-duration-medium-4: 400ms;
+  --md-duration-long-2: 500ms;
+  --md-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-ease-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --md-ease-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+  --md-ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-ease-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --md-press-scale: 0.97;
+}
+
+[data-theme='dark'] {
+  /* <m3-generated-dark> */
+  --md-primary: #aac7ff;
+  --md-on-primary: #0b305f;
+  --md-primary-container: #284777;
+  --md-on-primary-container: #d7e3ff;
+  --md-primary-dim: #a7c4fd;
+  --md-secondary: #bec6dc;
+  --md-on-secondary: #283141;
+  --md-secondary-container: #3e4759;
+  --md-on-secondary-container: #dae2f9;
+  --md-tertiary: #ddbce0;
+  --md-on-tertiary: #3f2844;
+  --md-tertiary-container: #573e5c;
+  --md-on-tertiary-container: #fad8fd;
+  --md-error: #ffb4ab;
+  --md-on-error: #690005;
+  --md-error-container: #93000a;
+  --md-on-error-container: #ffdad6;
+  --md-surface: #111318;
+  --md-on-surface: #e2e2e9;
+  --md-surface-variant: #44474e;
+  --md-on-surface-variant: #c4c6d0;
+  --md-outline: #8e9099;
+  --md-outline-variant: #44474e;
+  --md-inverse-surface: #e2e2e9;
+  --md-inverse-on-surface: #2e3036;
+  --md-inverse-primary: #415e91;
+  --md-surface-container-lowest: #0c0e13;
+  --md-surface-container-low: #191c20;
+  --md-surface-container: #1e2025;
+  --md-surface-container-high: #282a2f;
+  --md-surface-container-highest: #33353a;
+  --md-surface-bright: #37393e;
+  --md-surface-dim: #111318;
+
+  /* success：完成 / 健康（文字用本色，浅底用 container） */
+  --md-success: #9dd49e;
+  --md-on-success: #033912;
+  --md-success-container: #1f5027;
+  --md-on-success-container: #b9f0b8;
+
+  /* warning：注意 / 待处理（文字用本色，浅底用 container） */
+  --md-warning: #ffb77c;
+  --md-on-warning: #4d2700;
+  --md-warning-container: #6c3a06;
+  --md-on-warning-container: #ffdcc2;
+
+  /* accent 1–6：分类标签、数据系列的容器色 */
+  --md-accent-1: #80d4d8;
+  --md-accent-1-container: #004f52;
+  --md-accent-1-on-container: #9cf1f5;
+  --md-accent-2: #ffb598;
+  --md-accent-2-container: #71361c;
+  --md-accent-2-on-container: #ffdbce;
+  --md-accent-3: #cebdfe;
+  --md-accent-3-container: #4c3e76;
+  --md-accent-3-on-container: #e8ddff;
+  --md-accent-4: #ffb0d0;
+  --md-accent-4-container: #6e334f;
+  --md-accent-4-on-container: #ffd8e6;
+  --md-accent-5: #acd28f;
+  --md-accent-5-container: #304f1a;
+  --md-accent-5-on-container: #c8eea8;
+  --md-accent-6: #e5c36c;
+  --md-accent-6-container: #594400;
+  --md-accent-6-on-container: #ffdf91;
+/* </m3-generated-dark> */
+
+  color-scheme: dark;
+
+  --md-elevation-1: 0 1px 2px 0 rgba(0, 0, 0, 0.60), 0 1px 3px 1px rgba(0, 0, 0, 0.40);
+  --md-elevation-2: 0 1px 2px 0 rgba(0, 0, 0, 0.60), 0 2px 6px 2px rgba(0, 0, 0, 0.40);
+  --md-elevation-3: 0 1px 3px 0 rgba(0, 0, 0, 0.60), 0 4px 8px 3px rgba(0, 0, 0, 0.40);
+  --md-elevation-4: 0 2px 3px 0 rgba(0, 0, 0, 0.60), 0 6px 10px 4px rgba(0, 0, 0, 0.40);
+  --md-elevation-5: 0 4px 4px 0 rgba(0, 0, 0, 0.60), 0 8px 12px 6px rgba(0, 0, 0, 0.40);
+}
+
+/* ============================================================
+   兼容别名：旧令牌名 → 新 M3 角色。新代码请直接用上面的名字。
+   ============================================================ */
+:root {
+  --md-primary-hover: color-mix(in srgb, var(--md-onPrimary) var(--md-state-hover), transparent);
+  --md-primary-active: color-mix(in srgb, var(--md-onPrimary) var(--md-state-pressed), transparent);
+  --md-primary-focus: color-mix(in srgb, var(--md-onPrimary) var(--md-state-focus), transparent);
+  --md-on-surface-variant-2: var(--md-outline);
+  --md-ink: var(--md-on-surface);
+  --md-parchment: var(--md-surface-container);
+  --md-on-parchment: var(--md-on-surface);
+
+  /* 语义映射 */
+  --md-status-todo: var(--md-onSurfaceVariant);
   --md-status-inprogress: var(--md-primary);
   --md-status-done: var(--md-success);
   --md-status-overdue: var(--md-error);
+  --md-today-highlight: color-mix(in srgb, var(--md-primary) 12%, transparent);
 
-  /* 甘特图今日线（主色 10% 浅底，深浅各自取值） */
-  --md-today-highlight: rgba(0, 102, 204, 0.10);
-
-  /* ---- 语义色的浅底与发光（徽章底 / 实时点光晕，深浅各自取值）---- */
-  --md-primary-tint: rgba(0, 102, 204, 0.10);
-  --md-primary-glow: rgba(0, 102, 204, 0.55);
-  --md-success-tint: rgba(46, 125, 50, 0.12);
-  --md-success-glow: rgba(82, 196, 26, 0.60);
-  --md-warning-tint: rgba(250, 140, 22, 0.12);
-  --md-warning-glow: rgba(250, 173, 20, 0.60);
-  --md-error-tint: rgba(255, 77, 79, 0.10);
-  --md-error-glow: rgba(255, 77, 79, 0.60);
-
-  /* 完整光晕阴影（状态点/脉冲）：颜色取自上面的 *-glow */
+  /* 状态容器的浅底 / 光晕 */
+  --md-primary-tint: color-mix(in srgb, var(--md-primary) 12%, transparent);
+  --md-success-tint: color-mix(in srgb, var(--md-success) 14%, transparent);
+  --md-warning-tint: color-mix(in srgb, var(--md-warning) 16%, transparent);
+  --md-error-tint: color-mix(in srgb, var(--md-error) 12%, transparent);
+  --md-primary-glow: color-mix(in srgb, var(--md-primary) 55%, transparent);
+  --md-success-glow: color-mix(in srgb, var(--md-success) 55%, transparent);
+  --md-warning-glow: color-mix(in srgb, var(--md-warning) 60%, transparent);
+  --md-error-glow: color-mix(in srgb, var(--md-error) 55%, transparent);
+  --md-glow-primary: 0 0 6px var(--md-primary-glow);
   --md-glow-success: 0 0 6px var(--md-success-glow);
   --md-glow-warning: 0 0 6px var(--md-warning-glow);
   --md-glow-error: 0 0 6px var(--md-error-glow);
-  --md-glow-primary: 0 0 6px var(--md-primary-glow);
   --md-glow-blur: 6px;
+  --md-warning-fill: var(--md-warning);
+  --md-on-warning-fill: var(--md-onWarning);
+  --md-warning-container-strong: color-mix(in srgb, var(--md-warning) 22%, var(--md-warning-container));
+  --md-scrim: color-mix(in srgb, var(--md-onSurface) 6%, transparent);
+  --md-scrim-heavy: color-mix(in srgb, var(--md-onSurface) 40%, transparent);
 
-  /* 描边环 / 聚焦环（EP 输入框用 inset box-shadow 充当边框） */
-  --md-ring-1: 0 0 0 1px var(--md-outline-variant) inset;
-  --md-ring-1-hover: 0 0 0 1px var(--md-outline) inset;
+  /* 描边环（输入框用 inset box-shadow 充当边框） */
+  --md-ring-1: 0 0 0 1px var(--md-outline) inset;
+  --md-ring-1-hover: 0 0 0 1px var(--md-onSurface) inset;
   --md-ring-2: 0 0 0 2px var(--md-primary) inset;
   --md-ring-width: 2px;
+  /* 填充式输入框：没有描边，只有底部一根状态线 */
+  --md-field-underline: inset 0 -1px 0 var(--md-on-surface-variant);
+  --md-field-underline-hover: inset 0 -1px 0 var(--md-on-surface);
+  --md-field-underline-focus: inset 0 -2px 0 var(--md-primary);
+  --md-field-underline-error: inset 0 -2px 0 var(--md-error);
   --md-accent-bar-width: 3px;
 
-  /* 警告态的实心填充：进度条/状态点/徽章底。--md-warning 本身是深棕（只适合做文字），
-     实心块用这枚琥珀色，深色主题下与 --md-warning 同为亮黄 */
-  --md-warning-fill: #e69b00;
-  --md-on-warning-fill: #ffffff;
-
-  --md-scrim: rgba(29, 29, 31, 0.06);
-  --md-scrim-heavy: rgba(29, 29, 31, 0.40);
-
-  /* 超大展示数字 / 空态大图标 */
+  /* 字号旧名 → 字阶 */
   --md-text-display-xl: 44px;
-
-  /* 语义色的容器底 + 对应文字（信息条 / 行动建议框，深色下容器转深、文字转亮） */
-  --md-on-success-container: #0a3d0f;
-  --md-on-warning-container: #2a1900;
-  --md-warning-container-strong: #ffe0b2;
-
-  /* ---- 阴影：色阶提升为主，阴影仅悬浮 chrome ---- */
-  --md-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --md-shadow-2: 0 8px 16px rgba(0, 0, 0, 0.14), 0 4px 8px rgba(0, 0, 0, 0.10);
-
-  /* ---- 字体 ---- */
-  --md-font: system-ui, -apple-system, 'SF Pro Text', 'SF Pro Display',
-    'PingFang SC', 'Helvetica Neue', 'Inter', 'Segoe UI', Roboto, sans-serif;
-  --md-font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', ui-monospace, Menlo, Consolas, monospace;
-
+  --md-text-display-lg: 34px;
   --md-text-display: 28px;
   --md-text-display-sm: 28px;
-  --md-text-display-lg: 34px;
   --md-text-title-lg: 20px;
   --md-text-title-md: 16px;
   --md-text-title-sm: 14px;
@@ -121,136 +309,47 @@
   --md-text-body-md: 14px;
   --md-text-body-sm: 12px;
   --md-text-label: 14px;
-  --md-text-label-sm: 12px;
-  --md-text-label-md: 13px;
   --md-text-label-lg: 14px;
+  --md-text-label-md: 13px;
+  --md-text-label-sm: 12px;
   --md-text-caption: 11px;
-
-  --md-weight-regular: 400;
-  --md-weight-medium: 500;
-  --md-weight-semibold: 600;
-  --md-weight-bold: 700;
-
-  --md-track-display: -0.374px;
-  --md-track-title: -0.31px;
-  --md-track-body: -0.224px;
-  --md-track-small: -0.12px;
+  --md-track-display: var(--md-tracking-display);
+  --md-track-title: var(--md-tracking-title);
+  --md-track-body: var(--md-tracking-body);
+  --md-track-small: 0;
   --md-track-caption: 0;
 
-  /* ---- 形状 ---- */
-  --md-radius-xs: 4px;
-  --md-radius-sm: 8px;
-  --md-radius-md: 12px;
-  --md-radius-lg: 16px;
-  --md-radius-xl: 28px;
-  --md-radius-pill: 9999px;
-  --md-radius-full: 9999px;
+  /* 圆角旧名 → 形状 */
+  --md-radius-xs: var(--md-shape-extra-small);
+  --md-radius-sm: var(--md-shape-small);
+  --md-radius-md: var(--md-shape-medium);
+  --md-radius-lg: var(--md-shape-large);
+  --md-radius-xl: var(--md-shape-extra-large);
+  --md-radius-pill: var(--md-shape-full);
+  --md-radius-full: var(--md-shape-full);
 
-  /* ---- 间距（4px 基准）---- */
-  --md-space-1: 4px;
-  --md-space-2: 8px;
-  --md-space-3: 12px;
-  --md-space-4: 16px;
-  --md-space-5: 24px;
-  --md-space-6: 32px;
-  --md-space-xxs: 4px;
-  --md-space-xs: 8px;
-  --md-space-sm: 12px;
-  --md-space-md: 16px;
-  --md-space-lg: 24px;
-  --md-space-xl: 32px;
-  --md-space-7: 56px;
-  --md-space-xxl: 48px;
-  --md-space-section: 80px;
+  /* 间距旧名 */
+  --md-space-xxs: var(--md-space-1); --md-space-xs: var(--md-space-2); --md-space-sm: var(--md-space-3);
+  --md-space-md: var(--md-space-4);  --md-space-lg: var(--md-space-5); --md-space-xl: var(--md-space-6);
+  --md-space-xxl: var(--md-space-7);
 
-  /* ---- 组件 ---- */
-  --md-control-height: 40px;
-  --md-button-padding: 0 20px;
-  --md-input-height: 40px;
-  --md-card-padding: 16px;
-  --md-card-padding-lg: 24px;
-  --md-table-row-height: 40px;
+  /* 高度旧名 */
+  --md-shadow-1: var(--md-elevation-1);
+  --md-shadow-2: var(--md-elevation-2);
+  --md-shadow-3: var(--md-elevation-3);
+
+  /* 动效旧名 */
+  --md-duration-standard: var(--md-duration-short-4);
+  --md-duration-emphasized: var(--md-duration-medium-2);
+  --md-ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+
+  /* 其它旧名 */
+  
+  --md-button-padding: 0 24px;
+  --md-input-height: var(--md-control-height);
   --md-chip-height: 32px;
   --md-tag-padding: 3px 10px;
   --md-progress-height: 8px;
-  --md-content-max: 1440px;
   --md-text-measure: 68ch;
-  --md-nav-height: 56px;
-
-  /* ---- 动效 ---- */
-  --md-duration-standard: 200ms;
-  --md-duration-emphasized: 300ms;
-  --md-ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  --md-ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
-  --md-press-scale: 0.97;
-}
-
-[data-theme='dark'] {
-  --md-primary: #4ea0ff;
-  --md-on-primary: #00305f;
-  --md-primary-container: #004a8f;
-  --md-on-primary-container: #d2e5ff;
-  --md-primary-hover: rgba(78, 160, 255, 0.12);
-  --md-primary-active: rgba(78, 160, 255, 0.20);
-  --md-primary-focus: rgba(78, 160, 255, 0.28);
-
-  --md-surface: #141414;
-  --md-on-surface: #e4e2e6;
-  --md-surface-container-lowest: #0e0e0e;
-  --md-surface-container-low: #1c1c1e;
-  --md-surface-container: #202022;
-  --md-surface-container-high: #2a2a2d;
-  --md-surface-container-highest: #353537;
-  --md-on-surface-variant: #c5c6ca;
-  --md-surface-variant: #434549;
-  --md-on-surface-variant-2: #8f9297;
-
-  --md-outline: #8f9297;
-  --md-outline-variant: #434549;
-
-  --md-error: #ffb4ab;
-  --md-on-error: #690005;
-  --md-error-container: #93000a;
-  --md-on-error-container: #ffdad6;
-
-  --md-success: #a5d6a7;
-  --md-on-success: #0c5a13;
-  --md-success-container: #17631f;
-  --md-on-success-container: #b9f2c0;
-
-  --md-warning: #f5c344;
-  --md-on-warning: #3d2f00;
-  --md-warning-container: #543d00;
-  --md-on-warning-container: #ffdf9f;
-
-  --md-ink: #e4e2e6;
-  --md-parchment: #1a1a1c;
-  --md-on-parchment: #e4e2e6;
-
-  --md-inverse-surface: #f5f5f7;
-  --md-inverse-on-surface: #1d1d1f;
-
-  --md-today-highlight: rgba(78, 160, 255, 0.16);
-
-  --md-primary-tint: rgba(78, 160, 255, 0.16);
-  --md-primary-glow: rgba(78, 160, 255, 0.70);
-  --md-success-tint: rgba(165, 214, 167, 0.16);
-  --md-success-glow: rgba(129, 201, 133, 0.65);
-  --md-warning-tint: rgba(245, 195, 68, 0.16);
-  --md-warning-glow: rgba(245, 195, 68, 0.65);
-  --md-error-tint: rgba(255, 180, 171, 0.16);
-  --md-error-glow: rgba(255, 180, 171, 0.65);
-
-  --md-warning-fill: #f5c344;
-  --md-on-warning-fill: #3d2f00;
-  --md-scrim: rgba(0, 0, 0, 0.40);
-  --md-scrim-heavy: rgba(0, 0, 0, 0.64);
-
-  --md-on-success-container: #b9f2c0;
-  --md-on-warning-container: #ffdf9f;
-  --md-warning-container-strong: #543d00;
-
-
-  --md-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
-  --md-shadow-2: 0 8px 16px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.5);
+  --md-nav-height: var(--md-top-app-bar-height);
 }

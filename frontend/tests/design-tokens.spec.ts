@@ -1,10 +1,11 @@
 /**
- * 设计规范闸门：DESIGN.md（Apple × MD3）的机器强制。
+ * 设计规范闸门：DESIGN.md（Material Design 3）的机器强制。
  *
  * 规则：组件层（src/design/tokens.css 以外）不得出现
  *  - 颜色字面量（hex / rgb() / rgba() / hsl()）
  *  - 非令牌的阴影、圆角、字号
  *  - >600 的字重（展示用粗体必须走 --md-weight-bold 令牌）
+ *  - 分区用的细边框（整圈或左右描边）：层级请用表面色阶 / 间距 / 分隔线表达
  * 确需例外的行（如品牌 SVG 填充）在同行写 `design-audit: allow <原因>`。
  */
 import { describe, expect, it } from 'vitest'
@@ -23,6 +24,7 @@ const RULES: Rule[] = [
   { name: '裸阴影', re: /box-shadow\s*:[^;]*\dpx/, cssOnly: true },
   { name: '裸圆角', re: /border-radius\s*:\s*(?!var\()[^;]*\dpx/, cssOnly: true },
   { name: '裸字号', re: /font-size\s*:\s*(?!var\()[^;]*\dpx/, cssOnly: true },
+  { name: '分区细边框', re: /(?:^|[\s;])border(?:-(?:left|right))?\s*:\s*1px\s+(?:solid|dashed)\s+var\(--md-outline(?:-variant)?\)/, cssOnly: true },
   { name: '字重>600', re: /font-weight\s*:\s*(?!var\()(?:[7-9]00|bold|bolder)\b/, cssOnly: true },
 ]
 
@@ -76,10 +78,17 @@ describe('设计规范闸门（DESIGN.md）', () => {
     const css = readFileSync(TOKEN_FILE, 'utf8')
     const light = css.slice(0, css.indexOf("[data-theme='dark']"))
     const dark = css.slice(css.indexOf("[data-theme='dark']"))
-    const names = (block: string) => new Set([...block.matchAll(/^\s*(--md-[\w-]+)\s*:/gm)].map((m) => m[1]))
-    const l = names(light)
-    const d = names(dark)
-    const missing = [...l].filter((n) => !d.has(n) && !/^--md-(?:glow-|ring-|accent-bar-|status|font|text|weight|track|radius|space|duration|ease|press|control|button|input|card|table|chip|tag|progress|content|nav)/.test(n))
+    // 「字面色」= 值里直接写了 hex / rgb / hsl；引用了其它令牌的（如 color-mix）会自动随主题切换，不算
+    const literalColor = /#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/
+    const colorTokens = (block: string) =>
+      new Set(
+        [...block.matchAll(/^\s*(--md-[\w-]+)\s*:\s*([^;]+);/gm)]
+          .filter((m) => literalColor.test(m[2]))
+          .map((m) => m[1]),
+      )
+    const l = colorTokens(light)
+    const d = colorTokens(dark)
+    const missing = [...l].filter((n) => !d.has(n))
     expect(missing, '这些颜色令牌缺少深色值').toEqual([])
   })
 
