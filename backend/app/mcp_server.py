@@ -32,6 +32,7 @@ from app.schemas import (
     ProjectCreate,
     TaskCreate,
 )
+from app.schemas.task import TASK_CATEGORIES
 from app.services.dev_logs import (
     _attach_session,
     _validate_related_tasks,
@@ -62,6 +63,14 @@ from app.services.tasks import (
     get_project_comment_counts,
     get_project_depends_map,
     get_task_depends,
+)
+from app.services.comments import (
+    comment_to_dict,
+    list_project_comments,
+    list_task_comments,
+    open_direction_counts,
+    owned_comment_project_id,
+    set_resolved,
 )
 from app.utils.time import utcnow
 
@@ -175,6 +184,7 @@ def _task_dict(
         "due_date": t.due_date.isoformat() if t.due_date else None,
         "completed_at": t.completed_at.isoformat() if t.completed_at else None,
         "estimated_hours": t.estimated_hours,
+        "category": t.category,
         "created_at": t.created_at.isoformat() if t.created_at else None,
         "depends_on": sorted(depends_on) if depends_on is not None else [],
         "comment_count": comment_count if comment_count is not None else 0,
@@ -208,16 +218,18 @@ async def list_projects(
             .scalars()
             .all()
         )
-        return [_project_dict(p) for p in rows]
+        counts = await open_direction_counts(db, [p.id for p in rows])
+        return [{**_project_dict(p), "open_directions": counts.get(p.id, 0)} for p in rows]
 
 
 @mcp.tool()
 async def get_project(project_id: int) -> dict:
-    """获取单个项目详情。"""
+    """获取单个项目详情。open_directions=该项目未处理的工作方向指示数（>0 时开工前先读 list_comments(project_id=...)）。"""
     username = _username()
     async with AsyncSessionLocal() as db:
         p = await _require_project(db, username, project_id)
-        return _project_dict(p)
+        counts = await open_direction_counts(db, [p.id])
+        return {**_project_dict(p), "open_directions": counts.get(p.id, 0)}
 
 
 @mcp.tool()
@@ -453,8 +465,10 @@ async def create_task(
     milestone_id: int | None = None, priority: str = "medium",
     status: str = "todo", progress: int = 0, start_date: str | None = None,
     due_date: str | None = None, estimated_hours: int | None = None,
+    category: str | None = None,
 ) -> dict:
-    """在项目中创建任务。project_id 与 name 必填。status=done 时自动 progress=100。"""
+    """在项目中创建任务。project_id 与 name 必填。status=done 时自动 progress=100。
+    category 取 feature/bugfix/refactor/testing/docs/devops 之一（不传=未分类）。"""
     username = _username()
     payload = TaskCreate(
         name=name,
@@ -466,6 +480,7 @@ async def create_task(
         start_date=date.fromisoformat(start_date) if start_date else None,
         due_date=date.fromisoformat(due_date) if due_date else None,
         estimated_hours=estimated_hours,
+        category=category,
     )
     async with AsyncSessionLocal() as db:
         await _require_project(db, username, project_id)
@@ -493,11 +508,12 @@ async def update_task(
     milestone_id: int | None = None, priority: str | None = None,
     status: str | None = None, progress: int | None = None,
     start_date: str | None = None, due_date: str | None = None,
-    estimated_hours: int | None = None,
+    estimated_hours: int | None = None, category: str | None = None,
     add_depends_on: list[int] | None = None,
     remove_depends_on: list[int] | None = None,
 ) -> dict:
     """更新任务。仅更新传入字段；status=done 自动 progress=100。
+    category 取 feature/bugfix/refactor/testing/docs/devops 之一。
     依赖管理：add_depends_on / remove_depends_on 传前置任务 id 列表
     （前者依赖后者；重复添加自动跳过，移除不存在的依赖自动忽略）。
     当前依赖可从 get_task 返回的 depends_on / depends_on_detail 读取。"""
@@ -528,6 +544,10 @@ async def update_task(
         raise ValueError(f"日期格式不合法（应为 YYYY-MM-DD）：{e}") from None
     if estimated_hours is not None:
         updates["estimated_hours"] = estimated_hours
+    if category is not None:
+        if category not in TASK_CATEGORIES:
+            raise ValueError(f"category 必须为 {sorted(TASK_CATEGORIES)} 之一")
+        updates["category"] = category
     async with AsyncSessionLocal() as db:
         task = await _require_task(db, username, task_id)
         if "milestone_id" in updates:
@@ -909,56 +929,122 @@ async def manage_dev_log(
 # ---------- 评论（P5） ----------
 
 
+def _require_anchor(task_id: int | None, project_id: int | None) -> None:
+    """评论必须明确挂在一个锚点上；两个都传会产生歧义，直接拒绝。"""
+    if (task_id is None) == (project_id is None):
+        raise ValueError("task_id 与 project_id 必须且只能传一个")
+
+
+def _validate_comment_content(content: str) -> str:
+    if not content.strip():
+        raise ValueError("评论内容不能为空")
+    if len(content) > 2000:
+        raise ValueError("评论内容不能超过 2000 字符")
+    return content.strip()
+
+
 @mcp.tool()
-async def add_comment(task_id: int, content: str) -> dict:
-    """为任务添加一条评论（1-2000 字符）。"""
+async def add_comment(
+    task_id: int | None = None,
+    project_id: int | None = None,
+    content: str = "",
+    resolve_ids: list[int] | None = None,
+) -> dict:
+    """添加评论，和/或把项目指示标记为已处理。task_id 与 project_id 必须且只能传一个。
+
+    - task_id=任务评论：对单个任务的讨论。
+    - project_id=项目评论：给该项目留「工作方向 / 指示 / 结论」，下次接手该项目的 Agent
+      会在 get_project_state 的 directions 字段里读到（也会随 Prompt 一起下发）。
+      项目负责人用它告诉 Agent 往哪走、别碰什么。
+    - resolve_ids=项目评论 id 列表：指示已落实时一并标记为已处理，避免旧指示反复出现在
+      后续 Agent 的上下文里。只想结单不写新评论时，content 可留空。
+    返回 {comment, resolved_ids}。"""
     username = _username()
+    _require_anchor(task_id, project_id)
+    content = content.strip()
+    if not content and not resolve_ids:
+        raise ValueError("content 与 resolve_ids 至少提供一个")
+    if content:
+        content = _validate_comment_content(content)
     async with AsyncSessionLocal() as db:
-        task = await _require_task(db, username, task_id)
-        if not content.strip():
-            raise ValueError("评论内容不能为空")
-        if len(content) > 2000:
-            raise ValueError("评论内容不能超过 2000 字符")
+        # 先校验锚点归属，再写 —— 他人项目/任务一律按「不存在」拒绝
+        if task_id is not None:
+            anchor_pid = (await _require_task(db, username, task_id)).project_id
+        else:
+            await _require_project(db, username, project_id)
+            anchor_pid = project_id
         user = (
             await db.execute(select(User).where(User.username == username))
         ).scalar_one_or_none()
-        comment = Comment(
-            task_id=task_id, author_id=user.id if user else None, author_username=username,
-            content=content.strip(),
-        )
-        db.add(comment)
-        await db.commit()
-        await db.refresh(comment)
-        await publish(task.project_id, "created", "comment", comment.id)
-        return _comment_dict(comment)
+        owner_id = user.id if user else -1
+
+        created = None
+        if content:
+            comment = Comment(
+                task_id=task_id,
+                project_id=project_id,
+                author_id=user.id if user else None,
+                author_username=username,
+                content=content,
+            )
+            db.add(comment)
+            await db.commit()
+            await db.refresh(comment)
+            await publish(anchor_pid, "created", "comment", comment.id)
+            created = comment
+
+        resolved_ids: list[int] = []
+        for cid in resolve_ids or []:
+            found = await owned_comment_project_id(db, cid, owner_id)
+            if found is None:
+                raise ValueError(f"评论 {cid} 不存在")
+            target, pid = found
+            if target.project_id is None:
+                raise ValueError(f"评论 {cid} 是任务评论，不支持标记已处理")
+            if project_id is not None and target.project_id != project_id:
+                raise ValueError(f"评论 {cid} 不属于项目 {project_id}")
+            await set_resolved(db, target, True)
+            await publish(pid, "updated", "comment", target.id)
+            resolved_ids.append(cid)
+
+        return {
+            "comment": _comment_dict(created) if created is not None else None,
+            "resolved_ids": resolved_ids,
+        }
 
 
 @mcp.tool()
-async def list_comments(task_id: int, offset: int = 0, limit: int = 100) -> list[dict]:
-    """列出任务的评论（按时间升序；offset/limit 分页，上限 500）。"""
+async def list_comments(
+    task_id: int | None = None,
+    project_id: int | None = None,
+    include_resolved: bool = False,
+    offset: int = 0,
+    limit: int = 100,
+) -> list[dict]:
+    """列出评论（按时间升序；offset/limit 分页，上限 500）。task_id 与 project_id 必须且只能传一个。
+
+    project_id=读取项目的「工作方向指示」—— 接手某项目开工前应先读它。
+    默认只返回未处理（include_resolved=False）的项目指示；include_resolved=True 看完整时间线。"""
     username = _username()
+    _require_anchor(task_id, project_id)
     async with AsyncSessionLocal() as db:
-        await _require_task(db, username, task_id)
-        rows = (
-            await db.execute(
-                select(Comment)
-                .where(Comment.task_id == task_id)
-                .order_by(Comment.created_at.asc(), Comment.id.asc())
-                .offset(max(0, offset))
-                .limit(min(max(1, limit), 500))
+        if task_id is not None:
+            await _require_task(db, username, task_id)
+            rows = await list_task_comments(db, task_id)
+        else:
+            await _require_project(db, username, project_id)
+            rows = await list_project_comments(
+                db, project_id, include_resolved=include_resolved
             )
-        ).scalars().all()
-        return [_comment_dict(c) for c in rows]
+        start = max(0, offset)
+        end = start + min(max(1, limit), 500)
+        return [_comment_dict(c) for c in rows[start:end]]
 
 
 def _comment_dict(c: Comment) -> dict:
-    return {
-        "id": c.id,
-        "task_id": c.task_id,
-        "author_username": c.author_username,
-        "content": c.content,
-        "created_at": c.created_at.isoformat() if c.created_at else None,
-    }
+    d = comment_to_dict(c)
+    d["created_at"] = c.created_at.isoformat() if c.created_at else None
+    return d
 
 
 # =====================================================================
@@ -1147,4 +1233,4 @@ def _username() -> str:
     username = current_username.get()
     if not username:
         raise ValueError("未认证：请提供有效的 API Key")
-    return username
+    return username

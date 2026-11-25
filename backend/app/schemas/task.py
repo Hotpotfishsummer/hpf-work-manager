@@ -4,6 +4,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 TASK_STATUS = {"todo", "in_progress", "done"}
 TASK_PRIORITY = {"low", "medium", "high"}
+# 任务分类（与主页「快捷 Prompt」模板一一对应）；None = 未分类
+TASK_CATEGORIES = {"feature", "bugfix", "refactor", "testing", "docs", "devops"}
 
 
 class TaskBase(BaseModel):
@@ -16,6 +18,7 @@ class TaskBase(BaseModel):
     start_date: date | None = None
     due_date: date | None = None
     estimated_hours: int | None = Field(default=None, ge=0)
+    category: str | None = None
 
     @model_validator(mode="after")
     def _check(self) -> "TaskBase":
@@ -23,6 +26,8 @@ class TaskBase(BaseModel):
             raise ValueError(f"status 必须为 {sorted(TASK_STATUS)} 之一")
         if self.priority not in TASK_PRIORITY:
             raise ValueError(f"priority 必须为 {sorted(TASK_PRIORITY)} 之一")
+        if self.category is not None and self.category not in TASK_CATEGORIES:
+            raise ValueError(f"category 必须为 {sorted(TASK_CATEGORIES)} 之一或 null")
         return self
 
 
@@ -40,6 +45,7 @@ class TaskUpdate(BaseModel):
     start_date: date | None = None
     due_date: date | None = None
     estimated_hours: int | None = Field(default=None, ge=0)
+    category: str | None = None
 
     @model_validator(mode="after")
     def _check(self) -> "TaskUpdate":
@@ -47,6 +53,8 @@ class TaskUpdate(BaseModel):
             raise ValueError(f"status 必须为 {sorted(TASK_STATUS)} 之一")
         if self.priority is not None and self.priority not in TASK_PRIORITY:
             raise ValueError(f"priority 必须为 {sorted(TASK_PRIORITY)} 之一")
+        if self.category is not None and self.category not in TASK_CATEGORIES:
+            raise ValueError(f"category 必须为 {sorted(TASK_CATEGORIES)} 之一或 null")
         if "name" in self.model_fields_set and self.name is None:
             raise ValueError("name 不能为空")
         return self

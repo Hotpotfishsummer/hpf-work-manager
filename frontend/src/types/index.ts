@@ -88,6 +88,7 @@ export interface Task {
   due_date: string | null
   completed_at: string | null
   estimated_hours: number | null
+  category?: string | null
   created_at: string
   overdue: boolean
   /** 派生字段：评论数（后端聚合） */
@@ -104,6 +105,7 @@ export interface TaskCreate {
   start_date?: string | null
   due_date?: string | null
   estimated_hours?: number | null
+  category?: string | null
 }
 
 export interface TaskUpdate {
@@ -116,6 +118,7 @@ export interface TaskUpdate {
   start_date?: string | null
   due_date?: string | null
   estimated_hours?: number | null
+  category?: string | null
 }
 
 export interface TaskBulkUpdate {

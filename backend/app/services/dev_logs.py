@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import DevLog, DevSession, Project, Task
 from app.schemas import DevLogStats
 from app.schemas.dev_log import _SEVERITY_TYPES, _STATUS_TYPES
+from app.services.comments import get_open_directions
 from app.utils.time import display_day_bounds_utc, display_today, utcnow
 
 
@@ -237,6 +238,8 @@ async def get_project_state(db: AsyncSession, project_id: int) -> dict:
         "recent_progress": await _logs("progress", None, 5),
         "recent_decisions": await _logs("decision", None, 5),
         "active_session": session_to_dict(open_session) if open_session else None,
+        # 负责人留给本项目的工作方向指示（未处理的）—— 开工前必读
+        "directions": await get_open_directions(db, project_id),
     }
 
 

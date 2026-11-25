@@ -58,6 +58,9 @@
           <el-button size="default" :loading="syncingProjects" @click="syncLocalProjects" title="扫描服务器本地目录，自动将新代码库建档为独立项目">
             📥 同步本地项目库
           </el-button>
+          <el-button size="default" @click="openDirections()" title="给项目留工作方向 / 指示：下一次接手该项目的 Agent 会读到">
+            💬 项目指示
+          </el-button>
         </div>
 
         <div class="filter-item">
@@ -84,189 +87,132 @@
       </div>
 
       <div class="stats-badges">
+        <el-checkbox v-model="filterHasDirections" title="只看所属项目有未处理指示的任务">
+          💬 仅看有指示的项目
+        </el-checkbox>
         <span class="stat-chip todo">待调度: <strong>{{ todoTasks.length }}</strong></span>
         <span class="stat-chip in-progress">执行中: <strong>{{ inProgressTasks.length }}</strong></span>
         <span class="stat-chip done">已完成: <strong>{{ doneTasks.length }}</strong></span>
       </div>
     </section>
 
-    <!-- 3列任务流水线看板 (Agent Kanban Pipeline) -->
-    <div class="kanban-grid">
-      <!-- 列 1: 待调度 / 待办池 -->
-      <div class="kanban-column col-todo">
-        <div class="column-header">
-          <div class="col-title-group">
-            <span class="col-dot dot-todo"></span>
-            <span class="col-title">待调度 / 待办池 (Backlog)</span>
-            <span class="col-badge">{{ todoTasks.length }}</span>
-          </div>
-          <el-button link size="small" type="primary" @click="openCreateModal('todo')">
-            <el-icon><Plus /></el-icon> 添加
-          </el-button>
-        </div>
+    <!-- 分类筛选：点标签即筛选 -->
+    <section class="category-bar">
+      <button type="button" class="cat-chip" :class="{ active: filterCategory === 'all' }" @click="filterCategory = 'all'">
+        全部 <strong>{{ tasks.length }}</strong>
+      </button>
+      <button
+        v-for="c in TASK_CATEGORIES"
+        :key="c.value"
+        type="button"
+        class="cat-chip"
+        :class="{ active: filterCategory === c.value }"
+        @click="filterCategory = c.value"
+      >{{ c.icon }} {{ c.label }} <strong>{{ categoryCounts[c.value] || 0 }}</strong></button>
+      <button type="button" class="cat-chip" :class="{ active: filterCategory === UNCATALOGUED }" @click="filterCategory = UNCATALOGUED">
+        📎 未分类 <strong>{{ categoryCounts[UNCATALOGUED] || 0 }}</strong>
+      </button>
+      <el-button v-if="hasActiveFilter" link size="small" @click="clearFilters">清空筛选</el-button>
+    </section>
 
-        <div class="column-body">
-          <div v-if="todoTasks.length === 0" class="col-empty">
-            <div class="empty-icon">📂</div>
-            <div class="empty-text">待办池为空</div>
-            <el-button link size="small" type="primary" @click="router.push('/ideas')">前往灵感工坊推演任务 →</el-button>
-          </div>
+    <!-- 项目指示条：有「未处理指示」的项目 -->
+    <section v-if="directionSummaries.length" class="directions-strip">
+      <span class="directions-label">💬 项目指示</span>
+      <button
+        v-for="d in directionSummaries"
+        :key="d.project_id"
+        type="button"
+        class="direction-chip"
+        :class="{ cleared: d.open_count === 0, current: d.project_id === filterProject }"
+        :title="d.latest ? d.latest.content.slice(0, 120) : '该项目没有未处理的指示'"
+        @click="openDirections(d.project_id)"
+      >
+        <span class="chip-name">{{ d.project_name }}</span>
+        <span class="chip-count">{{ d.open_count > 0 ? d.open_count : '✓' }}</span>
+      </button>
+    </section>
 
-          <div
-            v-for="task in todoTasks"
-            :key="task.id"
-            class="task-card"
-          >
-            <div class="card-meta">
-              <span class="project-tag clickable" @click="filterProject = task.project_id" title="点击仅筛选该独立项目工单">{{ getProjectName(task.project_id) }}</span>
-              <el-tag size="small" :type="priorityTag(task.priority)" effect="light">
-                {{ priorityLabel(task.priority) }}
-              </el-tag>
-              <span v-if="task.estimated_hours" class="hours-tag">⏱️ {{ task.estimated_hours }}h</span>
-            </div>
+    <!-- 纵向分区：执行中 → 待调度 → 已完成（开合状态记在本地） -->
 
-            <h4 class="card-title">{{ task.name }}</h4>
-
-            <div v-if="task.description" class="prompt-preview">
-              <div class="prompt-header">
-                <span>Agent Prompt 预览</span>
-                <button class="mini-copy-btn" @click.stop="copyPrompt(task)">📋 复制</button>
-              </div>
-              <div class="prompt-text">{{ task.description }}</div>
-            </div>
-
-            <div class="card-footer">
-              <button class="action-btn copy-btn" @click="copyPrompt(task)">
-                📋 复制 Prompt
-              </button>
-              <div class="footer-right">
-                <el-button size="small" type="primary" plain @click="moveToStatus(task, 'in_progress')">
-                  ▶ 开始执行
-                </el-button>
-                <el-dropdown trigger="click" @command="(cmd: string) => handleTaskCommand(cmd, task)">
-                  <el-button size="small" circle text class="more-btn">···</el-button>
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item command="edit">编辑工单</el-dropdown-item>
-                      <el-dropdown-item command="done">直接标记完成</el-dropdown-item>
-                      <el-dropdown-item command="delete" divided style="color: var(--md-error)">删除</el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
-              </div>
-            </div>
-          </div>
-        </div>
+    <CollapsibleSection
+      title="执行中 / Agent Running"
+      :count="inProgressTasks.length"
+      tone="running"
+      v-model:open="fold.running"
+      :hint="inProgressTasks.length === 0 ? '' : sectionHint('running')"
+    >
+      <template #actions><el-button link size="small" type="primary" @click="openCreateModal('in_progress')"><el-icon><Plus /></el-icon> 添加</el-button></template>
+      <div v-if="inProgressTasks.length === 0" class="col-empty"><div class="empty-icon">⚡</div><div class="empty-text">当前无执行中任务</div><div class="empty-sub">从「待调度」里点「▶ 开始执行」，再把 Prompt 粘给 dsh</div></div>
+      <div v-if="inProgressTasks.length" class="task-grid">
+        <template v-for="task in inProgressTasks" :key="task.id">
+<TaskCard
+            :task="task"
+            :project-name="getProjectName(task.project_id)"
+            :direction-count="directionCountFor(task.project_id)"
+            @copy="copyPrompt(task)"
+            @command="(cmd: string) => handleTaskCommand(cmd, task)"
+            @filter-project="(pid: number) => (filterProject = pid)"
+            @open-directions="openDirections"
+          />
+        </template>
       </div>
+      
+    </CollapsibleSection>
 
-      <!-- 列 2: 执行中 / Agent Running -->
-      <div class="kanban-column col-running">
-        <div class="column-header">
-          <div class="col-title-group">
-            <span class="col-dot dot-running"></span>
-            <span class="col-title">执行中 / Agent Running</span>
-            <span class="col-badge">{{ inProgressTasks.length }}</span>
-          </div>
-          <el-button link size="small" type="primary" @click="openCreateModal('in_progress')">
-            <el-icon><Plus /></el-icon> 添加
-          </el-button>
-        </div>
-
-        <div class="column-body">
-          <div v-if="inProgressTasks.length === 0" class="col-empty">
-            <div class="empty-icon">⚡</div>
-            <div class="empty-text">当前无执行中任务</div>
-            <div class="empty-sub">从待办池点击「开始执行」并将 Prompt 粘给 dsh</div>
-          </div>
-
-          <div
-            v-for="task in inProgressTasks"
-            :key="task.id"
-            class="task-card is-active"
-          >
-            <div class="card-meta">
-              <span class="project-tag clickable" @click="filterProject = task.project_id" title="点击仅筛选该独立项目工单">{{ getProjectName(task.project_id) }}</span>
-              <el-tag size="small" :type="priorityTag(task.priority)" effect="light">
-                {{ priorityLabel(task.priority) }}
-              </el-tag>
-              <span class="running-indicator"><span class="pulse-ring"></span> 开发中</span>
-            </div>
-
-            <h4 class="card-title">{{ task.name }}</h4>
-
-            <div v-if="task.description" class="prompt-preview">
-              <div class="prompt-header">
-                <span>Agent Prompt 预览</span>
-                <button class="mini-copy-btn" @click.stop="copyPrompt(task)">📋 复制</button>
-              </div>
-              <div class="prompt-text">{{ task.description }}</div>
-            </div>
-
-            <div class="card-footer">
-              <button class="action-btn copy-btn" @click="copyPrompt(task)">
-                📋 复制 Prompt
-              </button>
-              <div class="footer-right">
-                <el-button size="small" type="success" @click="moveToStatus(task, 'done')">
-                  ✓ 完成
-                </el-button>
-                <el-dropdown trigger="click" @command="(cmd: string) => handleTaskCommand(cmd, task)">
-                  <el-button size="small" circle text class="more-btn">···</el-button>
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item command="backlog">放回待办</el-dropdown-item>
-                      <el-dropdown-item command="edit">编辑工单</el-dropdown-item>
-                      <el-dropdown-item command="delete" divided style="color: var(--md-error)">删除</el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
-              </div>
-            </div>
-          </div>
-        </div>
+    <CollapsibleSection
+      title="待调度 / 待办池 (Backlog)"
+      :count="todoTasks.length"
+      tone="todo"
+      v-model:open="fold.todo"
+      :hint="todoTasks.length === 0 ? '' : sectionHint('todo')"
+    >
+      <template #actions><el-button link size="small" type="primary" @click="openCreateModal('todo')"><el-icon><Plus /></el-icon> 添加</el-button></template>
+      <div v-if="todoTasks.length === 0" class="col-empty"><div class="empty-icon">📂</div><div class="empty-text">待办池为空</div><el-button link size="small" type="primary" @click="router.push('/ideas')">前往灵感工坊推演任务 →</el-button></div>
+      <div v-if="todoTasks.length" class="task-grid">
+        <template v-for="task in todoTasks" :key="task.id">
+<TaskCard
+            :task="task"
+            :project-name="getProjectName(task.project_id)"
+            :direction-count="directionCountFor(task.project_id)"
+            @copy="copyPrompt(task)"
+            @command="(cmd: string) => handleTaskCommand(cmd, task)"
+            @filter-project="(pid: number) => (filterProject = pid)"
+            @open-directions="openDirections"
+          />
+        </template>
       </div>
+      
+    </CollapsibleSection>
 
-      <!-- 列 3: 已完成 (Done) -->
-      <div class="kanban-column col-done">
-        <div class="column-header">
-          <div class="col-title-group">
-            <span class="col-dot dot-done"></span>
-            <span class="col-title">已完成 / Done</span>
-            <span class="col-badge">{{ doneTasks.length }}</span>
-          </div>
-        </div>
-
-        <div class="column-body">
-          <div v-if="doneTasks.length === 0" class="col-empty">
-            <div class="empty-icon">🎯</div>
-            <div class="empty-text">暂无已完成工单</div>
-          </div>
-
-          <div
-            v-for="task in doneTasks"
-            :key="task.id"
-            class="task-card is-done"
-          >
-            <div class="card-meta">
-              <span class="project-tag clickable" @click="filterProject = task.project_id" title="点击仅筛选该独立项目工单">{{ getProjectName(task.project_id) }}</span>
-              <span class="done-check">✓ 已归档</span>
-              <span class="time-done" v-if="task.completed_at">{{ formatTime(task.completed_at) }}</span>
-            </div>
-
-            <h4 class="card-title strike">{{ task.name }}</h4>
-
-            <div class="card-footer done-footer">
-              <el-button size="small" link @click="moveToStatus(task, 'todo')">
-                ↩ 重启任务
-              </el-button>
-              <el-button size="small" link type="danger" @click="deleteTask(task)">
-                删除
-              </el-button>
-            </div>
-          </div>
-        </div>
+    <CollapsibleSection
+      title="已完成 / Done"
+      :count="doneTasks.length"
+      tone="done"
+      v-model:open="fold.done"
+      :hint="visibleDoneTasks.length === 0 ? '' : sectionHint('done')"
+    >
+      <template #actions></template>
+      <div v-if="doneTasks.length === 0" class="col-empty"><div class="empty-icon">🎯</div><div class="empty-text">暂无已完成工单</div></div>
+      <div v-if="visibleDoneTasks.length" class="task-grid">
+        <template v-for="task in visibleDoneTasks" :key="task.id">
+<TaskCard
+            :task="task"
+            :project-name="getProjectName(task.project_id)"
+            :direction-count="directionCountFor(task.project_id)"
+            @copy="copyPrompt(task)"
+            @command="(cmd: string) => handleTaskCommand(cmd, task)"
+            @filter-project="(pid: number) => (filterProject = pid)"
+            @open-directions="openDirections"
+          />
+        </template>
       </div>
-    </div>
+      <div v-if="doneTasks.length > DONE_PREVIEW" class="done-more">
+        <el-button link type="primary" @click="expandedDone = !expandedDone">
+          {{ expandedDone ? '收起（只看最近 ' + DONE_PREVIEW + ' 条）' : '展开全部 ' + doneTasks.length + ' 条' }}
+        </el-button>
+      </div>
+    </CollapsibleSection>
+
 
     <!-- 创建 / 编辑工单弹窗 -->
     <el-dialog
@@ -286,6 +232,11 @@
           </template>
           <el-select v-model="form.project_id" style="width: 100%" filterable>
             <el-option v-for="p in projects" :key="p.id" :label="p.name" :value="p.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="分类（可留空）">
+          <el-select v-model="form.category" style="width: 100%" clearable placeholder="未分类">
+            <el-option v-for="c in TASK_CATEGORIES" :key="c.value" :label="c.icon + ' ' + c.label" :value="c.value" />
           </el-select>
         </el-form-item>
 
@@ -355,16 +306,64 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 项目指示抽屉：留方向、标记已处理 -->
+    <el-drawer v-model="directionsDrawer" title="💬 项目指示" size="520px" append-to-body destroy-on-close>
+      <div class="directions-drawer">
+        <el-select v-model="directionProjectId" style="width: 100%" filterable placeholder="选择项目">
+          <el-option v-for="p in projects" :key="p.id" :label="p.name" :value="p.id">
+            <span>{{ p.name }}</span>
+            <span v-if="directionCountFor(p.id) > 0" class="drawer-opt-count">💬 {{ directionCountFor(p.id) }}</span>
+          </el-option>
+        </el-select>
+        <ProjectCommentsPanel
+          v-if="directionProjectId"
+          :key="directionProjectId"
+          :project-id="directionProjectId"
+          :project-name="getProjectName(directionProjectId)"
+          @changed="loadDirections"
+        />
+      </div>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, CopyDocument, Compass } from '@element-plus/icons-vue'
 import http from '@/api/http'
 import { copyText } from '@/utils/clipboard'
+import { TASK_CATEGORIES, UNCATALOGUED, categoryLabel } from '@/utils/taskCategory'
+import CollapsibleSection from '@/components/CollapsibleSection.vue'
+import TaskCard from '@/components/TaskCard.vue'
+import ProjectCommentsPanel from '@/components/ProjectCommentsPanel.vue'
+
+/* ---------- 开合状态：记在本地，刷新后保持 ---------- */
+const FOLD_KEY = 'hpf_cockpit_fold'
+type FoldState = { running: boolean; todo: boolean; done: boolean }
+function readFold(): FoldState {
+  const defaults: FoldState = { running: true, todo: true, done: false }
+  try {
+    const raw = localStorage.getItem(FOLD_KEY)
+    return raw ? { ...defaults, ...(JSON.parse(raw) as Partial<FoldState>) } : defaults
+  } catch {
+    return defaults
+  }
+}
+const fold = reactive<FoldState>(readFold())
+watch(fold, (v) => {
+  try {
+    localStorage.setItem(FOLD_KEY, JSON.stringify(v))
+  } catch {
+    /* 隐私模式等场景写不进去，忽略即可 */
+  }
+})
+
+/* 已完成默认只露最近几条，避免把页面拉得很长 */
+const DONE_PREVIEW = 12
+const expandedDone = ref(false)
 
 interface TaskItem {
   id: number
@@ -375,8 +374,22 @@ interface TaskItem {
   status: 'todo' | 'in_progress' | 'done'
   progress: number
   estimated_hours?: number
+  category?: string | null
   completed_at?: string
   created_at: string
+}
+
+interface DirectionSummary {
+  project_id: number
+  project_name: string
+  open_count: number
+  total_count: number
+  latest: { id: number; content: string } | null
+}
+
+interface OpenDirection {
+  id: number
+  content: string
 }
 
 interface ProjectItem {
@@ -402,6 +415,8 @@ const driverMode = ref<any>({
 const filterProject = ref<number>(0)
 const filterPriority = ref<string>('all')
 const searchKeyword = ref<string>('')
+const filterCategory = ref<string>('all')
+const filterHasDirections = ref(false)
 
 const modalVisible = ref(false)
 const isEditing = ref(false)
@@ -414,7 +429,59 @@ const form = ref({
   status: 'todo',
   estimated_hours: 2,
   description: '',
+  category: '',
 })
+
+/* ---------- 项目指示（负责人留给 Agent 的工作方向） ---------- */
+const directionSummaries = ref<DirectionSummary[]>([])
+// 各项目未处理指示的全文，按需拉取；复制 Prompt 时要带上具体内容和 id
+const openDirectionsCache = ref<Record<number, OpenDirection[]>>({})
+const directionsDrawer = ref(false)
+const directionProjectId = ref<number | null>(null)
+
+function directionCountFor(projectId: number): number {
+  const s = directionSummaries.value.find((x) => x.project_id === projectId)
+  return s ? s.open_count : 0
+}
+
+async function loadDirections() {
+  try {
+    directionSummaries.value = (await http.get('/comments/project-summary')) as any
+  } catch {
+    directionSummaries.value = []
+  }
+}
+
+async function fetchOpenDirections(projectId: number): Promise<OpenDirection[]> {
+  try {
+    const rows: any = await http.get(`/projects/${projectId}/comments`)
+    const list = (rows || []).filter((c: any) => !c.resolved).map((c: any) => ({ id: c.id, content: c.content }))
+    openDirectionsCache.value = { ...openDirectionsCache.value, [projectId]: list }
+    return list
+  } catch {
+    return openDirectionsCache.value[projectId] || []
+  }
+}
+
+function openDirections(projectId?: number) {
+  const pid =
+    projectId ??
+    (filterProject.value !== 0 ? filterProject.value : null) ??
+    (directionSummaries.value.find((d) => d.open_count > 0)?.project_id ?? null) ??
+    projects.value[0]?.id ??
+    null
+  directionProjectId.value = pid
+  directionsDrawer.value = true
+}
+/* 复制 Prompt 时附在后面的指示块；没有未处理指示就返回空串 */
+function formatDirectionsBlock(projectId: number, list: OpenDirection[]): string {
+  if (!list.length) return ''
+  const lines = list.map((d, i) => `${i + 1}. (id=${d.id}) ${d.content.length > 300 ? d.content.slice(0, 300) + '…' : d.content}`)
+  return (
+    `\n【项目指示】（负责人留言，必须遵守；落实后请用 MCP add_comment(project_id=${projectId}, resolve_ids=[对应id]) 标记已处理）:\n` +
+    lines.join('\n')
+  )
+}
 
 const batchModalVisible = ref(false)
 const batchPromptText = ref('')
@@ -452,6 +519,10 @@ const filteredTasks = computed(() => {
   return tasks.value.filter((t) => {
     if (filterProject.value !== 0 && t.project_id !== filterProject.value) return false
     if (filterPriority.value !== 'all' && t.priority !== filterPriority.value) return false
+    if (filterCategory.value === UNCATALOGUED) {
+      if (t.category) return false
+    } else if (filterCategory.value !== 'all' && t.category !== filterCategory.value) return false
+    if (filterHasDirections.value && directionCountFor(t.project_id) === 0) return false
     if (searchKeyword.value.trim()) {
       const q = searchKeyword.value.toLowerCase()
       const matchName = t.name.toLowerCase().includes(q)
@@ -462,9 +533,75 @@ const filteredTasks = computed(() => {
   })
 })
 
-const todoTasks = computed(() => filteredTasks.value.filter((t) => t.status === 'todo'))
-const inProgressTasks = computed(() => filteredTasks.value.filter((t) => t.status === 'in_progress'))
-const doneTasks = computed(() => filteredTasks.value.filter((t) => t.status === 'done'))
+// 排序：待办高优在前；已完成最近完成的在前
+function byPriorityDesc(a: TaskItem, b: TaskItem) {
+  const w = { high: 0, medium: 1, low: 2 }
+  return w[a.priority] - w[b.priority]
+}
+
+const todoTasks = computed(() =>
+  filteredTasks.value.filter((t) => t.status === 'todo').sort(byPriorityDesc),
+)
+const inProgressTasks = computed(() =>
+  filteredTasks.value.filter((t) => t.status === 'in_progress').sort(byPriorityDesc),
+)
+const doneTasks = computed(() =>
+  filteredTasks.value
+    .filter((t) => t.status === 'done')
+    .sort((a, b) => (b.completed_at || b.created_at).localeCompare(a.completed_at || a.created_at)),
+)
+const visibleDoneTasks = computed(() =>
+  expandedDone.value ? doneTasks.value : doneTasks.value.slice(0, DONE_PREVIEW),
+)
+
+const categoryCounts = computed(() => {
+  // 统计口径跟随「项目 / 优先级 / 关键词」，只忽略分类本身，方便横向比较各类数量
+  const counts: Record<string, number> = {}
+  for (const t of tasks.value) {
+    if (filterProject.value !== 0 && t.project_id !== filterProject.value) continue
+    if (filterPriority.value !== 'all' && t.priority !== filterPriority.value) continue
+    if (searchKeyword.value.trim()) {
+      const q = searchKeyword.value.toLowerCase()
+      if (!t.name.toLowerCase().includes(q) && !(t.description || '').toLowerCase().includes(q)) continue
+    }
+    const key = t.category || UNCATALOGUED
+    counts[key] = (counts[key] || 0) + 1
+  }
+  return counts
+})
+
+const hasActiveFilter = computed(
+  () =>
+    filterProject.value !== 0 ||
+    filterPriority.value !== 'all' ||
+    filterCategory.value !== 'all' ||
+    filterHasDirections.value ||
+    searchKeyword.value.trim() !== '',
+)
+
+function clearFilters() {
+  filterProject.value = 0
+  filterPriority.value = 'all'
+  filterCategory.value = 'all'
+  filterHasDirections.value = false
+  searchKeyword.value = ''
+}
+
+/* 折叠时露在标题右侧的一句话摘要 */
+function sectionHint(tone: string): string {
+  if (tone === 'running') return inProgressTasks.value.map((t) => t.name).slice(0, 3).join(' · ')
+  if (tone === 'todo') return todoTasks.value.slice(0, 3).map((t) => t.name).join(' · ')
+  return doneTasks.value[0] ? `最近完成：${doneTasks.value[0].name}` : ''
+}
+
+// 正在筛选 / 搜索时把三个分区都撑开，免得「筛完没结果」看起来像数据丢了
+watch(hasActiveFilter, (active) => {
+  if (active) {
+    fold.running = true
+    fold.todo = true
+    fold.done = true
+  }
+})
 
 const syncingProjects = ref(false)
 
@@ -508,12 +645,17 @@ async function loadData() {
   try {
     const [pRes, tRes, qRes, dRes] = await Promise.all([
       http.get('/projects?limit=200').catch(() => []),
-      http.get('/tasks?limit=500').catch(() => []),
+      Promise.all([
+        http.get('/tasks?status=todo&limit=500').catch(() => []),
+        http.get('/tasks?status=in_progress&limit=500').catch(() => []),
+        http.get('/tasks?status=done&limit=500').catch(() => []),
+      ]).then((parts: any) => parts.flat()),
       http.get('/quota').catch(() => ({})),
       http.get('/quota/driver-mode').catch(() => ({})),
     ])
     projects.value = (pRes as any) || []
     tasks.value = (tRes as any) || []
+    await loadDirections()
     quota.value = (qRes as any) || {}
     if ((dRes as any)?.driver_mode) {
       driverMode.value = dRes as any
@@ -530,7 +672,11 @@ async function loadData() {
 
 async function copyPrompt(task: TaskItem) {
   const pName = getProjectName(task.project_id)
-  const text = `【项目】: ${pName}\n【任务】: ${task.name}\n【优先级】: ${priorityLabel(task.priority)}\n【执行要求与 Prompt】:\n${task.description || '请阅读项目上下文完成此任务并运行测试验证。'}`
+  const directions = formatDirectionsBlock(
+    task.project_id,
+    task.status === 'done' ? [] : await fetchOpenDirections(task.project_id),
+  )
+  const text = `【项目】: ${pName}\n【任务】: ${task.name}\n【优先级】: ${priorityLabel(task.priority)}${task.category ? `\n【分类】: ${categoryLabel(task.category)}` : ''}\n【执行要求与 Prompt】:\n${task.description || '请阅读项目上下文完成此任务并运行测试验证。'}${directions}`
   const ok = await copyText(text)
   if (ok) {
     ElMessage.success(`📋 Prompt 已复制！可直接粘贴至 dsh 开始开发`)
@@ -563,12 +709,27 @@ async function moveToStatus(task: TaskItem, newStatus: 'todo' | 'in_progress' | 
 function handleTaskCommand(cmd: string, task: TaskItem) {
   if (cmd === 'edit') {
     editTask(task)
+  } else if (cmd === 'start') {
+    moveToStatus(task, 'in_progress')
+  } else if (cmd.startsWith('category:')) {
+    setCategory(task, cmd.slice('category:'.length))
   } else if (cmd === 'done') {
     moveToStatus(task, 'done')
   } else if (cmd === 'backlog') {
     moveToStatus(task, 'todo')
   } else if (cmd === 'delete') {
     deleteTask(task)
+  }
+}
+
+/* 卡片上直接改分类；空串 = 改回未分类 */
+async function setCategory(task: TaskItem, category: string) {
+  try {
+    const res: any = await http.put(`/tasks/${task.id}`, { category: category || null })
+    task.category = res?.category ?? (category || null)
+    ElMessage.success(category ? `已设为「${categoryLabel(category)}」` : '已改回未分类')
+  } catch (err: any) {
+    ElMessage.error(err.response?.data?.detail || '分类更新失败')
   }
 }
 
@@ -583,6 +744,8 @@ function openCreateModal(status = 'todo') {
     status: status,
     estimated_hours: 2,
     description: '',
+    // 正在看某个分类就沿用，省一次选择
+    category: filterCategory.value !== 'all' && filterCategory.value !== UNCATALOGUED ? filterCategory.value : '',
   }
   modalVisible.value = true
 }
@@ -597,6 +760,7 @@ function editTask(task: TaskItem) {
     status: task.status,
     estimated_hours: task.estimated_hours || 2,
     description: task.description || '',
+    category: task.category || '',
   }
   modalVisible.value = true
 }
@@ -614,6 +778,7 @@ async function submitForm() {
         priority: form.value.priority,
         estimated_hours: form.value.estimated_hours,
         description: form.value.description,
+        category: form.value.category || null,
       })
       ElMessage.success('工单修改成功')
     } else {
@@ -623,6 +788,7 @@ async function submitForm() {
         status: form.value.status,
         estimated_hours: form.value.estimated_hours,
         description: form.value.description,
+        category: form.value.category || null,
       })
       ElMessage.success('工单创建成功！已放入看板')
     }
@@ -649,6 +815,8 @@ async function deleteTask(task: TaskItem) {
 }
 
 function applyTemplate(type: string) {
+  // 模板与分类一一对应，选了模板就默认归类
+  form.value.category = type === 'test' ? 'testing' : type
   if (type === 'refactor') {
     form.value.description =
       '【目标】重构此模块代码结构，消除重复逻辑并提升可读性。\n【执行准则】保持向后兼容，外部 API 签名不变，重构后运行测试验证。\n【输出要求】提供 git diff 与改动说明。'
@@ -664,7 +832,7 @@ function applyTemplate(type: string) {
   }
 }
 
-function openBatchPromptModal() {
+async function openBatchPromptModal() {
   const pending = todoTasks.value
   if (pending.length === 0) {
     ElMessage.info('待办池中暂无任务，请先添加工单')
@@ -680,6 +848,19 @@ function openBatchPromptModal() {
     prompt += `- 优先级: ${priorityLabel(item.priority)}\n`
     prompt += `- 详情与执行要求:\n${item.description || '阅读项目代码实现此目标。'}\n\n`
   })
+
+  // 相关项目的未处理指示（Agent 夜间无人可问，方向必须在包里）
+  const pids = [...new Set(pending.map((t) => t.project_id))]
+  const directionParts: string[] = []
+  for (const pid of pids) {
+    const block = formatDirectionsBlock(pid, await fetchOpenDirections(pid))
+    if (block) directionParts.push(`◆ ${getProjectName(pid)}${block}`)
+  }
+  if (directionParts.length) {
+    prompt += `==================================================\n`
+    prompt += `【各项目负责人的指示】（开工前先读；落实后用 add_comment(resolve_ids=[...]) 标记已处理）\n`
+    prompt += directionParts.join('\n') + `\n\n`
+  }
 
   prompt += `--------------------------------------------------\n`
   prompt += `【自主开发执行准则】\n`
@@ -868,65 +1049,24 @@ onMounted(() => {
 .stat-chip.done strong { color: #52c41a; }
 
 /* 3 列看板流水线 */
-.kanban-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  align-items: start;
-}
 
-.kanban-column {
-  background: var(--md-surface-container-low, #f7f8fa);
-  border: 1px solid var(--md-outline-variant, #e8eaee);
-  border-radius: 12px;
-  padding: 14px;
-  min-height: 550px;
-}
 
-.column-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--md-outline-variant, #eaecf0);
-}
 
-.col-title-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
-.col-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-.dot-todo { background: #0066cc; }
-.dot-running { background: #fa8c16; }
-.dot-done { background: #52c41a; }
 
-.col-title {
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--md-on-surface, #1d1d1f);
-}
 
-.col-badge {
-  background: var(--md-surface-container-high, #e4e6ea);
-  color: var(--md-on-surface-variant, #444);
-  font-size: 11px;
-  padding: 1px 7px;
-  border-radius: 10px;
-  font-weight: 600;
-}
 
-.column-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
+
+
+
+
+
+
+
+
+
+
+
 
 .col-empty {
   display: flex;
@@ -941,192 +1081,11 @@ onMounted(() => {
 .empty-icon { font-size: 28px; margin-bottom: 8px; }
 .empty-text { font-size: 13px; font-weight: 500; }
 .empty-sub { font-size: 12px; margin-top: 4px; color: #999; }
-
-/* 任务卡片 */
-.task-card {
-  background: var(--md-surface, #ffffff);
-  border: 1px solid var(--md-outline-variant, #e2e4e8);
-  border-radius: 10px;
-  padding: 14px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  transition: all 0.2s ease;
-}
-
-.task-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  border-color: #c0c4cc;
-}
-
-.task-card.is-active {
-  border-left: 3px solid #fa8c16;
-}
-
-.task-card.is-done {
-  opacity: 0.78;
-}
-
-.card-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.project-tag.clickable {
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.project-tag.clickable:hover {
-  background: var(--md-primary-container, #cfe3ff);
-  color: var(--md-primary, #0066cc);
-}
 .form-label-with-btn {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
-}
-.project-tag {
-  font-size: 11px;
-  color: var(--md-on-surface-variant, #666);
-  background: var(--md-surface-container, #f1f2f4);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.hours-tag {
-  font-size: 11px;
-  color: var(--md-on-surface-variant, #888);
-  margin-left: auto;
-}
-
-.running-indicator {
-  margin-left: auto;
-  font-size: 11px;
-  color: #fa8c16;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.pulse-ring {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #fa8c16;
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0% { transform: scale(0.9); opacity: 1; }
-  50% { transform: scale(1.4); opacity: 0.5; }
-  100% { transform: scale(0.9); opacity: 1; }
-}
-
-.done-check {
-  font-size: 11px;
-  color: #52c41a;
-  font-weight: 600;
-}
-
-.time-done {
-  margin-left: auto;
-  font-size: 11px;
-  color: #999;
-}
-
-.card-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0 0 10px 0;
-  line-height: 1.4;
-  color: var(--md-on-surface, #1d1d1f);
-}
-
-.card-title.strike {
-  text-decoration: line-through;
-  color: #888;
-}
-
-.prompt-preview {
-  background: var(--md-surface-container-low, #f8f9fa);
-  border: 1px solid var(--md-outline-variant, #eaedf1);
-  border-radius: 6px;
-  padding: 8px 10px;
-  margin-bottom: 12px;
-}
-
-.prompt-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 11px;
-  color: var(--md-on-surface-variant, #888);
-  margin-bottom: 4px;
-}
-
-.mini-copy-btn {
-  background: none;
-  border: none;
-  color: #0066cc;
-  cursor: pointer;
-  font-size: 11px;
-  padding: 0;
-}
-.mini-copy-btn:hover { text-decoration: underline; }
-
-.prompt-text {
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--md-on-surface, #333);
-  white-space: pre-wrap;
-  max-height: 72px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-}
-
-.card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 8px;
-  border-top: 1px dashed var(--md-outline-variant, #eaedf1);
-}
-
-.card-footer.done-footer {
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.action-btn.copy-btn {
-  background: var(--md-surface-container, #f0f2f5);
-  border: 1px solid var(--md-outline-variant, #dcdfe6);
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 12px;
-  color: var(--md-on-surface, #2c3e50);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.action-btn.copy-btn:hover {
-  background: #e6f7ff;
-  border-color: #91d5ff;
-  color: #0066cc;
-}
-
-.footer-right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.more-btn {
-  color: #888;
 }
 
 /* 模态框样式 */
@@ -1162,9 +1121,161 @@ onMounted(() => {
   line-height: 1.5;
 }
 
-@media (max-width: 1024px) {
-  .kanban-grid {
-    grid-template-columns: 1fr;
-  }
+/* ---------- 纵向分区的卡片网格：按宽度自动换行，每张卡至少 ~330px ---------- */
+.task-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.col-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 26px 12px;
+  border: 1px dashed var(--md-outline-variant, #dfe3e8);
+  border-radius: 10px;
+  background: var(--md-surface, #ffffff);
+  margin-bottom: 12px;
+}
+
+.empty-icon { font-size: 28px; margin-bottom: 4px; }
+.empty-text { font-size: 13px; font-weight: 500; }
+.empty-sub { font-size: 12px; margin-top: 4px; color: #999; }
+
+.done-more {
+  text-align: center;
+  padding-top: 6px;
+}
+
+/* ---------- 分类筛选条 ---------- */
+.category-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--md-outline-variant, #dfe3e8);
+  background: var(--md-surface, #ffffff);
+  color: var(--md-on-surface-variant, #44474d);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cat-chip:hover {
+  border-color: var(--md-primary, #0066cc);
+  color: var(--md-primary, #0066cc);
+}
+
+.cat-chip.active {
+  background: var(--md-primary, #0066cc);
+  border-color: var(--md-primary, #0066cc);
+  color: #fff;
+}
+
+.cat-chip strong {
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+/* ---------- 项目指示条 ---------- */
+.directions-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #ffe0b2;
+  background: #fff8ef;
+}
+
+.directions-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ad4e00;
+  margin-right: 4px;
+}
+
+.direction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 12px;
+  border-radius: 999px;
+  border: 1px solid #ffd591;
+  background: #ffffff;
+  font-size: 13px;
+  color: #333;
+  cursor: pointer;
+}
+
+.direction-chip:hover {
+  border-color: #fa8c16;
+}
+
+.direction-chip.current {
+  box-shadow: 0 0 0 2px rgba(250, 140, 22, 0.25);
+}
+
+.direction-chip.cleared {
+  border-color: #d9d9d9;
+  color: #888;
+}
+
+.chip-name {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #fa8c16;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.direction-chip.cleared .chip-count {
+  background: #52c41a;
+}
+
+.directions-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.drawer-opt-count {
+  float: right;
+  font-size: 12px;
+  color: #fa8c16;
+}
+
+@media (max-width: 720px) {
+  .cockpit-container { padding: 12px; }
+  .filter-toolbar, .cockpit-hero { flex-direction: column; align-items: stretch; gap: 10px; }
+  .filter-left { flex-wrap: wrap; }
+  .task-grid { grid-template-columns: 1fr; }
 }
 </style>

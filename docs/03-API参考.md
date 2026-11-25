@@ -92,16 +92,25 @@
   "overdue": true, "depends_on": [] }
 ```
 
-### 5.1 评论
+### 5.1 评论：任务评论 + 项目指示
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | /tasks/{id}/comments | 评论列表（created_at 升序） |
-| POST | /tasks/{id}/comments | 新增：`{"content": "..."}`（1-2000 字符）→ 201 |
-| DELETE | /comments/{id} | 删除（项目 owner）→ 204 |
+| GET | /tasks/{id}/comments | 任务评论列表（created_at 升序） |
+| POST | /tasks/{id}/comments | 新增任务评论：`{"content": "..."}`（1-2000 字符，纯空白拒绝）→ 201 |
+| GET | /projects/{id}/comments | 项目指示列表（升序）；`?include_resolved=true` 含已处理，默认只返回待处理 |
+| POST | /projects/{id}/comments | 新增项目指示 → 201 |
+| POST | /comments/{id}/resolve | 标记项目指示已处理：`{"resolved": true}`（缺省即 true；`false` = 重新打开）。任务评论调用返回 400 |
+| GET | /comments/project-summary | 当前用户名下「有项目指示」的项目概览：`[{project_id, project_name, open_count, total_count, latest}]` |
+| DELETE | /comments/{id} | 删除任意一种评论（项目 owner）→ 204 |
 
-评论对象：`{ "id", "task_id", "author_id", "author_username", "content", "created_at" }`。
-任务删除时评论级联删除；写操作发布 SSE 事件（`entity: "comment"`）。
+评论对象：`{ "id", "task_id", "project_id", "author_id", "author_username", "content", "created_at", "resolved_at", "is_direction", "resolved" }`。
+
+- 项目指示 = 负责人留给后续 Agent 的工作方向。Agent 侧读取入口：`get_project_state.directions`（仅未处理）。
+- 项目/任务删除时评论级联删除；写操作发布 SSE 事件（`entity: "comment"`）。
+- 非本人项目的评论一律按 404 处理（不泄露存在性）。
+
+任务对象新增 `category`（`feature` / `bugfix` / `refactor` / `testing` / `docs` / `devops` / `null`），创建与更新均可设置；`PUT /tasks/{id}` 传 `"category": null` 表示改回未分类。
 
 ### 状态流转规则（PUT / bulk 均适用）
 

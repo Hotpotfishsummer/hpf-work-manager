@@ -86,7 +86,7 @@ AI 编码工具可在编码过程中自动维护任务状态、记录开发过�
 |---|---|
 | `list_tasks` | 列出项目任务（可按 `status`/`overdue`/`search` 过滤） |
 | `get_task` | 单任务详情（含 `depends_on` id 列表与 `depends_on_detail` 名称/状态/进度，判断可否开工） |
-| `create_task` | 创建任务 |
+| `create_task` | 创建任务（`category` 取 feature/bugfix/refactor/testing/docs/devops，尽量归类） |
 | `update_task` | 更新任务（含状态机；**依赖管理并入**：`add_depends_on` / `remove_depends_on` 传前置任务 id 列表） |
 | `delete_task` | 删除任务 |
 
@@ -95,11 +95,23 @@ AI 编码工具可在编码过程中自动维护任务状态、记录开发过�
 |---|---|
 | `get_project_stats` | 项目统计，`kind` 取值：`overview`（进度/延期，默认）/ `burndown`（燃尽）/ `gantt`（甘特）/ `devlog`（记录统计）；返回 `{"kind", "data"}` |
 
-### 任务评论（2）
+### 评论与项目指示（2）
 | 工具 | 作用 |
 |---|---|
-| `add_comment` | 为任务添加评论（1-2000 字符） |
-| `list_comments` | 列出任务评论（升序，分页）。删除评论走前端 UI / REST |
+| `add_comment` | 添加评论；`task_id` 与 `project_id` 必须且只能传一个。传 `project_id` = 给项目留工作方向 / 指示。`resolve_ids=[...]` 可同时把项目指示标记为已处理（只结单时 `content` 可留空） |
+| `list_comments` | 列出评论（升序，分页）。`project_id=` 读项目指示，默认只返回未处理，`include_resolved=true` 看完整时间线。删除走前端 UI / REST |
+
+**项目指示 = 负责人对你的直接命令通道。** 负责人在 Manager 里给项目留的「下一步往哪走 / 优先级 / 别碰什么」就在这里。
+
+```
+接手项目开工前（必做）：
+  get_project_state(project_id)        → directions 字段 = 未处理的指示（时间升序）
+  或 list_comments(project_id=...)     → 同样内容
+落实之后（必做）：
+  add_comment(project_id=..., content="已按指示完成 X", resolve_ids=[对应 id])
+                                       → 不结单的话，旧指示会一直出现在后续会话的上下文里
+```
+`list_projects` / `get_project` 返回的 `open_directions` 是未处理数：**> 0 就先读再动手**。
 
 ### 开发记录 DevLog（7）
 | 工具 | 作用 |
@@ -133,7 +145,8 @@ DevLog 记录"开发过程"，任务/里程碑管"结果"。写记录前先开�
 1. start_dev_session(project_id, title)   → 后续 log_dev_entry 自动归入
 2. 过程中随手写 log_dev_entry(entry_type=progress/difficulty/todo/decision/blocker/note, ...)
 3. 结束时 end_dev_session(session_id, summary)
-4. 新会话先 get_project_state(project_id) 恢复上下文
+4. 新会话先 get_project_state(project_id) 恢复上下文 —— 其中 directions 是负责人留的项目指示，
+   未处理清零前优先照它走；做完用 add_comment(resolve_ids=[...]) 结单
 ```
 
 条目约束：

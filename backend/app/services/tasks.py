@@ -37,6 +37,7 @@ def apply_task_update(task: Task, data: dict) -> None:
         "start_date",
         "due_date",
         "estimated_hours",
+        "category",
     ):
         if key in data:
             setattr(task, key, data[key])

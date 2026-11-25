@@ -71,6 +71,17 @@
         <div class="spec-cell"><span class="spec-value status-text-muted">{{ stats?.todo_tasks ?? 0 }}</span><span class="spec-label">待办</span></div>
       </div>
 
+      <!-- 项目指示：负责人留给下一次接手本项目的 Agent 的工作方向 -->
+      <div class="bmw-card section-card directions-card">
+        <h2 class="section-title">
+          💬 项目指示
+          <el-tooltip content="这里写的话会进入 Agent 的项目上下文（get_project_state 的 directions），并随主页复制的 Prompt 一起下发" placement="top">
+            <el-icon class="section-help"><InfoFilled /></el-icon>
+          </el-tooltip>
+        </h2>
+        <ProjectCommentsPanel v-if="pid" :project-id="pid" :project-name="project?.name || ''" />
+      </div>
+
       <div class="two-col">
         <!-- 燃尽图 -->
         <section class="bmw-card section-card">
@@ -195,6 +206,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { InfoFilled } from '@element-plus/icons-vue'
+import ProjectCommentsPanel from '@/components/ProjectCommentsPanel.vue'
 import { milestoneApi, projectApi, statsApi } from '@/api'
 import type { Milestone, Project, ProjectStats, BurndownPoint, ProgressSnapshotPoint } from '@/types'
 import BurndownChart from '@/components/BurndownChart.vue'
@@ -400,6 +412,19 @@ watch(pid, load)
 </script>
 
 <style scoped>
+/* 项目指示卡片 */
+.directions-card {
+  margin-bottom: 16px;
+}
+
+.section-help {
+  font-size: 16px;
+  color: var(--md-on-surface-variant, #888);
+  cursor: help;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
 /* hero-band：跟随主题的表面带，Apple 留白风格 */
 .hero-band {
   background-color: var(--md-surface);

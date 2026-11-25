@@ -18,6 +18,7 @@ class Task(Base):
         Index("ix_tasks_project_status", "project_id", "status"),
         Index("ix_tasks_project_due", "project_id", "due_date"),
         Index("ix_tasks_project_completed", "project_id", "completed_at"),
+        Index("ix_tasks_project_category", "project_id", "category"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -37,7 +38,9 @@ class Task(Base):
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    estimated_hours: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 预留：工时加权
+    estimated_hours: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # 分类：feature/bugfix/refactor/testing/docs/devops；NULL = 未分类
+    category: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
