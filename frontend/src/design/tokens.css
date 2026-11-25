@@ -71,6 +71,31 @@
   --md-error-tint: rgba(255, 77, 79, 0.10);
   --md-error-glow: rgba(255, 77, 79, 0.60);
 
+  /* 完整光晕阴影（状态点/脉冲）：颜色取自上面的 *-glow */
+  --md-glow-success: 0 0 6px var(--md-success-glow);
+  --md-glow-warning: 0 0 6px var(--md-warning-glow);
+  --md-glow-error: 0 0 6px var(--md-error-glow);
+  --md-glow-primary: 0 0 6px var(--md-primary-glow);
+  --md-glow-blur: 6px;
+
+  /* 描边环 / 聚焦环（EP 输入框用 inset box-shadow 充当边框） */
+  --md-ring-1: 0 0 0 1px var(--md-outline-variant) inset;
+  --md-ring-1-hover: 0 0 0 1px var(--md-outline) inset;
+  --md-ring-2: 0 0 0 2px var(--md-primary) inset;
+  --md-ring-width: 2px;
+  --md-accent-bar-width: 3px;
+
+  /* 警告态的实心填充：进度条/状态点/徽章底。--md-warning 本身是深棕（只适合做文字），
+     实心块用这枚琥珀色，深色主题下与 --md-warning 同为亮黄 */
+  --md-warning-fill: #e69b00;
+  --md-on-warning-fill: #ffffff;
+
+  --md-scrim: rgba(29, 29, 31, 0.06);
+  --md-scrim-heavy: rgba(29, 29, 31, 0.40);
+
+  /* 超大展示数字 / 空态大图标 */
+  --md-text-display-xl: 44px;
+
   /* 语义色的容器底 + 对应文字（信息条 / 行动建议框，深色下容器转深、文字转亮） */
   --md-on-success-container: #0a3d0f;
   --md-on-warning-container: #2a1900;
@@ -215,6 +240,11 @@
   --md-warning-glow: rgba(245, 195, 68, 0.65);
   --md-error-tint: rgba(255, 180, 171, 0.16);
   --md-error-glow: rgba(255, 180, 171, 0.65);
+
+  --md-warning-fill: #f5c344;
+  --md-on-warning-fill: #3d2f00;
+  --md-scrim: rgba(0, 0, 0, 0.40);
+  --md-scrim-heavy: rgba(0, 0, 0, 0.64);
 
   --md-on-success-container: #b9f2c0;
   --md-on-warning-container: #ffdf9f;

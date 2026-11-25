@@ -41,7 +41,13 @@ non-themeable (e.g. a brand SVG glyph) — and even then prefer a token.
 | `--md-on-success-container` | #0a3d0f | #b9f2c0 | Text on success-container |
 | `--md-warning-container-strong` | #ffe0b2 | #543d00 | Emphasized warning container border (attention cards) |
 | `--md-{primary,success,warning,error}-tint` | 10–12% alpha | 16% alpha | Badge / chip translucent fills |
-| `--md-{primary,success,warning,error}-glow` | ~60% alpha | ~65% alpha | Live-dot halos (the only permitted glow) |
+| `--md-{primary,success,warning,error}-glow` | ~60% alpha | ~65% alpha | Halo colors; use them through `--md-glow-*` |
+| `--md-glow-{primary,success,warning,error}` | `0 0 6px <glow>` | same | Complete halo shadow (the only permitted glow) |
+| `--md-warning-fill` / `--md-on-warning-fill` | #e69b00 / #ffffff | #f5c344 / #3d2f00 | Solid warning blocks (bars, dots). `--md-warning` is text-only |
+| `--md-ring-1` / `-1-hover` / `-2` | outline-variant / outline / primary | same | 1px border ring, hover ring, 2px focus ring (inset) |
+| `--md-ring-width` / `--md-accent-bar-width` / `--md-glow-blur` | 2px / 3px / 6px | same | Focus-ring width, callout accent bar, halo blur |
+| `--md-scrim` / `--md-scrim-heavy` | ink 6% / 40% | black 40% / 64% | Loading masks and scrims |
+| `--md-text-display-xl` | 44px | 44px | Oversized KPI numbers, empty-state glyphs |
 | `--md-success` | #2e7d32 | #a5d6a7 | done status |
 | `--md-success-container` | #a9e6a8 | #17631f | Success tag fill |
 | `--md-warning` | #8a5a00 | #f5c344 | Priority-high / warning |
