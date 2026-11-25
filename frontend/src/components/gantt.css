@@ -1,40 +1,41 @@
 /* ============================================================
-   frappe-gantt → Apple × Material Design 3 定制
-   主色动态色 / 圆角 / 无重阴影 / 延期状态色 / 今日线
+   frappe-gantt → Material Design 3 定制
+   表面色阶 / 形状令牌 / 无描边 / 延期状态色 / 今日线
    ============================================================ */
 
 .gantt-container {
-  background-color: var(--md-surface);
-  border-radius: var(--md-radius-lg);
+  background-color: transparent;
 }
 .gantt-container .gantt {
   font-family: var(--md-font);
-  font-size: var(--md-text-label-md);
+  font-size: var(--md-type-label-md);
   color: var(--md-on-surface);
 }
 
-/* 顶部日期轴文字（frappe-gantt 默认 fill:#555，主题化）*/
+/* 日期轴文字（frappe-gantt 默认 fill:#555） */
 .gantt-container .gantt .upper-text,
 .gantt-container .gantt .lower-text {
-  fill: var(--md-on-surface);
+  fill: var(--md-on-surface-variant);
 }
 
-/* 头部 */
+/* 头部：表面色阶区分，不描边 */
 .gantt-container .gantt .grid-header {
-  fill: var(--md-surface-container);
+  fill: var(--md-surface-container-high);
 }
 .gantt-container .gantt .grid-header .gantt-row-label,
 .gantt-container .gantt .grid-header .gantt-row-label span,
 .gantt-container .gantt .grid-header .gantt-row-label text {
   fill: var(--md-on-surface);
-  font-weight: var(--md-weight-regular);
+  font-weight: var(--md-weight-medium);
 }
 
-/* 网格线 */
+/* 行底 */
 .gantt-container .gantt .grid-row,
 .gantt-container .gantt .grid-header-row {
-  fill: var(--md-surface);
+  fill: var(--md-surface-container-lowest);
 }
+
+/* 网格线与今日强调线：规范允许的强调线 */
 .gantt-container .gantt .row-line {
   stroke: var(--md-outline-variant);
   stroke-width: 1;
@@ -47,70 +48,76 @@
   fill: var(--md-today-highlight);
 }
 
-/* 条形：动态主色（覆盖 frappe-gantt 默认 fill） */
+/* 任务条：primary-container 底 + primary 进度填充；无描边，圆角走形状令牌 */
 .gantt-container .gantt .bar-wrapper .bar {
-  fill: var(--md-primary);
+  fill: var(--md-primary-container);
+  stroke: none;
 }
 .gantt-container .gantt .bar-wrapper .bar-progress {
-  fill: var(--md-primary-active);
+  fill: var(--md-primary);
 }
 
-/* 延期任务标红 */
+/* 延期任务：error 容器 + 实色进度 */
 .gantt-container .gantt .bar-wrapper[data-overdue='true'] .bar {
-  fill: var(--md-status-overdue);
+  fill: var(--md-error-container);
 }
 .gantt-container .gantt .bar-wrapper[data-overdue='true'] .bar-progress {
-  fill: var(--md-status-overdue);
+  fill: var(--md-error);
 }
 
-/* 任务名标签：在横道上用反色；溢出到网格（.big，横道比文字窄）时用表层对比色 */
+/* 任务名标签：横道内用容器上的文字色；溢出到网格（.big）时用表层对比色 */
 .gantt-container .gantt .bar-label {
-  font-size: var(--md-text-caption);
-  fill: var(--md-inverse-on-surface);
-  font-weight: var(--md-weight-regular);
+  font-size: var(--md-type-label-sm);
+  fill: var(--md-on-primary-container);
+  font-weight: var(--md-weight-medium);
   paint-order: stroke;
-  stroke: var(--md-surface);
+  stroke: var(--md-primary-container);
   stroke-width: 2.5px;
   stroke-linejoin: round;
+}
+.gantt-container .gantt .bar-wrapper[data-overdue='true'] .bar-label {
+  fill: var(--md-on-error-container);
+  stroke: var(--md-error-container);
 }
 .gantt-container .gantt .bar-label.big {
   fill: var(--md-on-surface);
   stroke: none;
 }
 
-/* 选中/悬停描边：主色，无阴影 */
-.gantt-container .gantt .bar-wrapper.active .bar {
-  stroke: var(--md-primary-active);
-}
+/* 选中态：一根主色强调线（悬停不描边） */
 .gantt-container .gantt .bar-wrapper:hover .bar {
+  stroke: none;
+}
+.gantt-container .gantt .bar-wrapper.active .bar {
   stroke: var(--md-primary);
 }
 
 /* 依赖箭头 */
 .gantt-container .gantt .arrow {
-  stroke: var(--md-outline-variant);
+  stroke: var(--md-outline);
   stroke-width: 1.6;
 }
 
-/* popup：圆角白卡片 */
+/* popup：浮层 = surface-container-high + 二级阴影，不描边 */
 .gantt-container .gantt .popup-wrapper .popup {
-  background-color: var(--md-surface);
-  border: 1px solid var(--md-outline);
-  border-radius: var(--md-radius-md);
-  box-shadow: var(--md-shadow-2);
+  background-color: var(--md-surface-container-high);
+  border: 0;
+  border-radius: var(--md-shape-medium);
+  box-shadow: var(--md-elevation-2);
+  color: var(--md-on-surface);
   padding: var(--md-space-2) var(--md-space-4);
 }
 .gantt-container .gantt .popup-wrapper .popup .title {
   color: var(--md-on-surface);
-  font-weight: var(--md-weight-semibold);
-  font-size: var(--md-text-body-sm);
+  font-weight: var(--md-weight-medium);
+  font-size: var(--md-type-body-sm);
   border-bottom: 1px solid var(--md-outline-variant);
 }
 .gantt-container .gantt .popup-wrapper .popup .subtitle {
   color: var(--md-on-surface-variant);
-  font-size: var(--md-text-label-md);
+  font-size: var(--md-type-label-md);
   font-weight: var(--md-weight-regular);
 }
 .gantt-container .gantt .popup-wrapper .popup .pointer {
-  border-top-color: var(--md-outline);
+  border-top-color: var(--md-surface-container-high);
 }

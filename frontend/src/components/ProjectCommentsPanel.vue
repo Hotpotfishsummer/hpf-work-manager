@@ -5,13 +5,29 @@
         这里写的话会留给<b>下一次接手「{{ projectName }}」的 Agent</b>：下一步往哪走、优先级怎么排、什么别碰。
         主页「复制 Prompt」「夜班指令包」会自动带上未处理的指示。
       </p>
-      <el-radio-group v-model="showResolved" size="small">
-        <el-radio-button :value="false">待处理 {{ open.length }}</el-radio-button>
-        <el-radio-button :value="true">已处理 {{ resolved.length }}</el-radio-button>
-      </el-radio-group>
+      <div class="pcp-filters">
+        <button
+          type="button"
+          class="md-chip md-chip--filter"
+          :class="{ 'is-selected': !showResolved }"
+          :aria-pressed="!showResolved"
+          @click="showResolved = false"
+        >
+          待处理 {{ open.length }}
+        </button>
+        <button
+          type="button"
+          class="md-chip md-chip--filter"
+          :class="{ 'is-selected': showResolved }"
+          :aria-pressed="showResolved"
+          @click="showResolved = true"
+        >
+          已处理 {{ resolved.length }}
+        </button>
+      </div>
     </div>
 
-    <div v-if="!showResolved" class="pcp-composer">
+      <div v-if="!showResolved" class="pcp-composer">
       <el-input
         v-model="draft"
         type="textarea"
@@ -45,16 +61,16 @@
         <div class="pcp-item-head">
           <span class="pcp-author">{{ c.author_username }}</span>
           <span class="pcp-time">{{ fmt(c.created_at) }}</span>
-          <span v-if="c.resolved" class="pcp-resolved-tag">已处理 {{ fmt(c.resolved_at) }}</span>
+          <span v-if="c.resolved" class="md-chip md-chip--sm md-chip--success">已处理 {{ fmt(c.resolved_at) }}</span>
           <span class="pcp-item-actions">
             <el-tooltip v-if="!showResolved" content="标记已处理：后续 Agent 不再读到这条" placement="top">
-              <button type="button" class="pcp-icon-btn ok" title="标记已处理" @click="resolve(c, true)">✓</button>
+              <button type="button" class="pcp-icon-btn ok" title="标记已处理" aria-label="标记已处理" @click="resolve(c, true)">✓</button>
             </el-tooltip>
             <el-tooltip v-else content="重新打开：这条指示重新生效" placement="top">
-              <button type="button" class="pcp-icon-btn" title="重新打开" @click="resolve(c, false)">↩</button>
+              <button type="button" class="pcp-icon-btn" title="重新打开" aria-label="重新打开" @click="resolve(c, false)">↩</button>
             </el-tooltip>
             <el-tooltip content="删除" placement="top">
-              <button type="button" class="pcp-icon-btn danger" title="删除" @click="remove(c)">✕</button>
+              <button type="button" class="pcp-icon-btn danger" title="删除" aria-label="删除" @click="remove(c)">✕</button>
             </el-tooltip>
           </span>
         </div>
@@ -186,130 +202,111 @@ watch(
 .pcp {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--md-space-3);
 }
 
 .pcp-intro {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--md-space-4);
+  flex-wrap: wrap;
 }
-
 .pcp-lead {
   margin: 0;
-  font-size: var(--md-text-label-md);
-  line-height: 1.6;
+  font-size: var(--md-type-label-md);
+  line-height: var(--md-type-body-lh-md);
   color: var(--md-on-surface-variant);
 }
+.pcp-filters { display: flex; gap: var(--md-space-2); }
 
+/* 输入区：表面色块，不描框 */
 .pcp-composer {
-  background: var(--md-surface);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-md);
-  padding: 10px;
+  background-color: var(--md-surface);
+  border-radius: var(--md-shape-medium);
+  padding: var(--md-space-3);
 }
-
 .pcp-composer-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 8px;
+  margin-top: var(--md-space-2);
 }
-
 .pcp-kbd-hint {
-  font-size: var(--md-text-body-sm);
+  font-size: var(--md-type-body-sm);
   color: var(--md-on-surface-variant);
 }
 
+/* 条目：分隔线分行，不逐条描框 */
 .pcp-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
   min-height: 48px;
+}
+.pcp-item {
+  padding: var(--md-space-3) var(--md-space-2);
+}
+.pcp-item + .pcp-item {
+  border-top: 1px solid var(--md-outline-variant);
+}
+.pcp-item.is-resolved .pcp-content {
+  color: var(--md-on-surface-variant);
 }
 
 .pcp-empty {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 18px 12px;
-  border: 1px dashed var(--md-outline-variant);
-  border-radius: var(--md-radius-md);
-  font-size: var(--md-text-label-md);
+  gap: var(--md-space-3);
+  padding: var(--md-space-4) var(--md-space-2);
+  font-size: var(--md-type-label-md);
   color: var(--md-on-surface-variant);
 }
-
 .pcp-empty-icon {
-  font-size: var(--md-text-title-lg);
-}
-
-.pcp-item {
-  background: var(--md-surface);
-  border: 1px solid var(--md-outline-variant);
-  border-left: var(--md-accent-bar-width) solid var(--md-primary);
-  border-radius: var(--md-radius-md);
-  padding: 10px 12px;
-}
-
-.pcp-item.is-resolved {
-  border-left-color: var(--md-success);
-  opacity: 0.78;
+  font-size: var(--md-type-title-lg);
+  line-height: 1;
 }
 
 .pcp-item-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: var(--md-text-body-sm);
+  gap: var(--md-space-2);
+  font-size: var(--md-type-body-sm);
   color: var(--md-on-surface-variant);
 }
-
 .pcp-author {
-  font-weight: var(--md-weight-semibold);
+  font-weight: var(--md-weight-medium);
   color: var(--md-on-surface);
 }
-
-.pcp-resolved-tag {
-  color: var(--md-on-success-container);
-}
-
 .pcp-item-actions {
   margin-left: auto;
   display: flex;
-  gap: 4px;
+  gap: var(--md-space-1);
 }
 
+/* 图标按钮：32px 点击区 */
 .pcp-icon-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: var(--md-radius-sm);
-  border: 1px solid transparent;
-  background: transparent;
+  width: var(--md-control-height-sm);
+  height: var(--md-control-height-sm);
+  border: 0;
+  border-radius: var(--md-shape-full);
+  background-color: transparent;
   cursor: pointer;
-  font-size: var(--md-text-label-md);
+  font-size: var(--md-type-label-lg);
   line-height: 1;
   color: var(--md-on-surface-variant);
 }
-
 .pcp-icon-btn:hover {
-  background: var(--md-surface-container);
+  background-color: color-mix(in srgb, var(--md-on-surface) var(--md-state-hover), transparent);
 }
-
-.pcp-icon-btn.ok:hover {
-  color: var(--md-on-success-container);
-}
-
-.pcp-icon-btn.danger:hover {
-  color: var(--md-on-error-container);
-}
+.pcp-icon-btn.ok:hover { color: var(--md-success); }
+.pcp-icon-btn.danger:hover { color: var(--md-error); }
 
 .pcp-content {
-  margin: 6px 0 0;
-  font-size: var(--md-text-label-md);
-  line-height: 1.6;
+  margin: var(--md-space-1) 0 0;
+  font-size: var(--md-type-label-md);
+  line-height: var(--md-type-body-lh-md);
   white-space: pre-wrap;
   word-break: break-word;
   color: var(--md-on-surface);
 }
-</style>
+</style></style>

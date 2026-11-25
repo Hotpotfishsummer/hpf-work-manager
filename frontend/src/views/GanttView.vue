@@ -1,5 +1,5 @@
 <template>
-  <div class="page-container" v-loading="loading">
+  <div class="page" v-loading="loading">
     <div class="page-head">
       <div>
         <h1 class="page-title">{{ project?.name }}</h1>
@@ -7,8 +7,8 @@
       </div>
       <div class="head-actions">
         <LiveIndicator :connected="connected" :is-reconnectable="reconnectable" @reconnect="reconnect" />
-        <el-button size="large" @click="router.push(`/projects/${pid}`)">返回概览</el-button>
-        <el-button size="large" @click="router.push(`/projects/${pid}/tasks`)">任务看板</el-button>
+        <el-button text size="large" @click="router.push(`/projects/${pid}`)">返回概览</el-button>
+        <el-button text size="large" @click="router.push(`/projects/${pid}/tasks`)">任务看板</el-button>
       </div>
     </div>
 
@@ -100,51 +100,19 @@ watch(pid, load)
 </script>
 
 <style scoped>
-.page-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: var(--md-space-6) 0 var(--md-space-4);
-}
-.page-title { margin: 0; font-size: var(--md-text-display-sm); }
-.page-sub {
-  margin: var(--md-space-1) 0 0;
-  font-size: var(--md-text-body-sm);
-  color: var(--md-on-surface-variant);
-  letter-spacing: var(--md-track-caption);
-}
-.head-actions { display: flex; gap: var(--md-space-2); }
-
 .gantt-legend {
   display: flex;
   gap: var(--md-space-5);
-  margin: var(--md-space-5) 0 0;
-  padding: 0;
-  font-size: var(--md-text-label-md);
-  color: var(--md-on-surface);
+  margin: var(--md-space-4) 0 0;
+  font-size: var(--md-type-label-md);
+  color: var(--md-on-surface-variant);
   flex-wrap: wrap;
 }
-.legend-item { display: inline-flex; align-items: center; gap: var(--md-space-1); }
-.legend-dot { width: 12px; height: 8px; display: inline-block; border-radius: var(--md-radius-sm); }
+.legend-item { display: inline-flex; align-items: center; gap: var(--md-space-2); }
+.legend-dot { width: 16px; height: 8px; display: inline-block; border-radius: var(--md-shape-extra-small); }
 .legend-blue { background-color: var(--md-primary); }
-.legend-todo { background-color: var(--md-status-todo); }
-.legend-red { background-color: var(--md-status-overdue); }
-.legend-line { width: 16px; height: 0; border-top: 2px dashed var(--md-outline-variant); }
-.legend-progress { width: 12px; height: 8px; display: inline-block; border-radius: var(--md-radius-sm); background: linear-gradient(90deg, var(--md-primary-container) 55%, var(--md-primary) 55%); }
-
-
-/* P4-2 移动端：页头纵排，操作区换行 */
-@media (max-width: 768px) {
-  .page-head {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--md-space-3);
-  }
-  .head-actions {
-    flex-wrap: wrap;
-  }
-  .head-actions .el-form--inline .el-form-item {
-    margin-right: var(--md-space-2);
-  }
-}
+.legend-todo { background-color: var(--md-on-surface-variant); }
+.legend-red { background-color: var(--md-error); }
+.legend-line { width: 16px; height: 0; border-top: 2px dashed var(--md-outline); }
+.legend-progress { width: 16px; height: 8px; display: inline-block; border-radius: var(--md-shape-extra-small); background: linear-gradient(90deg, var(--md-primary) 55%, var(--md-primary-dim) 55%); }
 </style>

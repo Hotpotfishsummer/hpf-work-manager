@@ -1,37 +1,53 @@
 <template>
-  <div class="page-container">
-    <!-- 页面头部：display-lg 标题 + 主按钮 -->
+  <div class="page">
+    <!-- 页面头部：标题 + 唯一的主按钮 -->
     <div class="page-head">
       <div>
         <h1 class="page-title">项目</h1>
         <p class="page-sub">Projects · 管理你的全部项目与进度</p>
       </div>
-      <div style="display: flex; gap: var(--md-space-3);">
-        <el-button size="large" :loading="syncing" @click="syncLocalProjects">
-          <el-icon style="margin-right: var(--md-space-1)"><Refresh /></el-icon>
+      <div class="head-actions">
+        <el-button plain size="large" :loading="syncing" @click="syncLocalProjects">
+          <el-icon><Refresh /></el-icon>
           同步本地项目库
         </el-button>
         <el-button type="primary" size="large" @click="openCreate">
-          <el-icon style="margin-right: var(--md-space-1)"><Plus /></el-icon>
+          <el-icon><Plus /></el-icon>
           新建项目
         </el-button>
       </div>
     </div>
 
-    <!-- 状态筛选 -->
-    <div class="list-toolbar">
-      <el-radio-group v-model="statusFilter" size="large" @change="load">
-        <el-radio-button value="active">进行中</el-radio-button>
-        <el-radio-button value="archived">已归档</el-radio-button>
-      </el-radio-group>
+    <!-- 状态筛选：筛选芯片 -->
+    <div class="filter-chips">
+      <button
+        v-for="opt in STATUS_OPTIONS"
+        :key="opt.value"
+        type="button"
+        class="md-chip md-chip--filter"
+        :class="{ 'is-selected': statusFilter === opt.value }"
+        :aria-pressed="statusFilter === opt.value"
+        @click="setStatusFilter(opt.value)"
+      >
+        {{ opt.label }}
+      </button>
     </div>
 
     <!-- 项目卡片网格：4-up → 2-up → 1-up -->
     <div v-loading="loading" class="project-grid">
-      <div v-for="p in projects" :key="p.id" class="model-card" role="button" tabindex="0" @click="goDetail(p.id)" @keydown.enter.prevent="goDetail(p.id)">
+      <div
+        v-for="p in projects"
+        :key="p.id"
+        class="project-card"
+        :class="{ 'is-archived': p.status !== 'active' }"
+        role="button"
+        tabindex="0"
+        @click="goDetail(p.id)"
+        @keydown.enter.prevent="goDetail(p.id)"
+      >
         <!-- 卡片操作菜单 -->
         <el-dropdown trigger="click" class="card-menu" @command="(cmd: string) => onCardCommand(cmd, p)" @click.stop>
-          <span class="card-menu-trigger" @click.stop>
+          <span class="card-menu-trigger" role="button" aria-label="项目操作菜单" title="项目操作菜单" @click.stop>
             <el-icon><MoreFilled /></el-icon>
           </span>
           <template #dropdown>
@@ -44,20 +60,14 @@
           </template>
         </el-dropdown>
 
-        <!-- model-card-photo：surface-card 底板 -->
-        <div class="model-card-photo">
-          <span class="photo-badge">{{ p.name.slice(0, 1).toUpperCase() }}</span>
-        </div>
+        <!-- 项目名首字块 -->
+        <div class="project-avatar" aria-hidden="true">{{ p.name.slice(0, 1).toUpperCase() }}</div>
         <h3 class="card-title">{{ p.name }}</h3>
         <p class="card-desc">{{ p.description || '暂无描述' }}</p>
         <div class="card-meta">
-          <el-tag
-            :type="p.status === 'active' ? 'primary' : 'info'"
-            effect="plain"
-            size="small"
-          >
+          <span class="md-chip md-chip--sm" :class="p.status === 'active' ? 'md-chip--primary' : 'md-chip--neutral'">
             {{ p.status === 'active' ? '进行中' : '已归档' }}
-          </el-tag>
+          </span>
           <span class="meta-date">{{ fmtDate(p.end_date) }}</span>
         </div>
         <button class="text-link-upper" tabindex="-1">
@@ -135,6 +145,15 @@ async function syncLocalProjects() {
 const dialogVisible = ref(false)
 const editing = ref<Project | null>(null)
 const statusFilter = ref<'active' | 'archived'>('active')
+// 筛选芯片选项；点击时赋值并重新拉取（等价原 el-radio-group v-model + @change="load"）
+const STATUS_OPTIONS: { value: 'active' | 'archived'; label: string }[] = [
+  { value: 'active', label: '进行中' },
+  { value: 'archived', label: '已归档' },
+]
+function setStatusFilter(v: 'active' | 'archived') {
+  statusFilter.value = v
+  load()
+}
 const formRef = ref<FormInstance>()
 
 const form = reactive({ name: '', description: '' })
@@ -240,25 +259,6 @@ onMounted(load)
 </script>
 
 <style scoped>
-.page-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: var(--md-space-6) 0 var(--md-space-6);
-}
-.page-title {
-  margin: 0;
-  font-size: var(--md-text-display);
-  line-height: 1.2;
-}
-.page-sub {
-  margin: var(--md-space-1) 0 0;
-  font-size: var(--md-text-body-sm);
-  font-weight: var(--md-weight-regular);
-  color: var(--md-on-surface-variant);
-  letter-spacing: var(--md-track-caption);
-}
-
 .project-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -269,49 +269,75 @@ onMounted(load)
 @media (max-width: 1024px) { .project-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 640px) { .project-grid { grid-template-columns: 1fr; } }
 
-/* model-card：圆角卡片（surface-container-low，hover 色阶提升） */
-.model-card {
-  background-color: var(--md-surface-container-low);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-lg);
-  padding: var(--md-space-5);
-  cursor: pointer;
+/* 状态筛选：筛选芯片 */
+.filter-chips {
   display: flex;
-  flex-direction: column;
-  transition: border-color var(--md-duration-standard) var(--md-ease-standard),
-    background-color var(--md-duration-standard) var(--md-ease-standard);
-}
-.model-card:hover {
-  border-color: var(--md-primary);
-  background-color: var(--md-surface-container-high);
+  gap: var(--md-space-2);
+  padding: var(--md-space-1) 0 var(--md-space-5);
 }
 
-/* model-card-photo：底板 */
-.model-card-photo {
+/* 填充式项目卡片：无描边，悬停靠色阶变化 */
+.project-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: var(--md-card-padding);
+  background-color: var(--md-surface-container-highest);
+  border: 0;
+  border-radius: var(--md-shape-medium);
+  color: var(--md-on-surface);
+  cursor: pointer;
+  transition: background-color var(--md-duration-short-4) var(--md-ease-standard);
+}
+.project-card:hover {
   background-color: var(--md-surface-container-high);
-  height: 120px;
+}
+.project-card:focus-visible { outline-offset: 2px; }
+/* 主色左侧强调条：进行中才亮 */
+.project-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: var(--md-space-4);
+  bottom: var(--md-space-4);
+  width: var(--md-accent-bar-width);
+  border-radius: var(--md-shape-full);
+  background-color: var(--md-primary);
+}
+.project-card.is-archived::before { background-color: var(--md-outline); }
+
+/* 项目名首字块：primary-container */
+.project-avatar {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 48px;
+  height: 48px;
   margin-bottom: var(--md-space-4);
-  border-radius: var(--md-radius-md);
+  border-radius: var(--md-shape-medium);
+  background-color: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+  font-size: var(--md-type-headline-sm);
+  line-height: var(--md-type-headline-lh-sm);
+  font-weight: var(--md-weight-medium);
 }
-.photo-badge {
-  font-size: var(--md-text-display-lg);
-  font-weight: var(--md-weight-bold);
-  color: var(--md-primary);
+.project-card.is-archived .project-avatar {
+  background-color: var(--md-surface-container);
+  color: var(--md-on-surface-variant);
 }
 
 .card-title {
   margin: 0;
-  font-size: var(--md-text-title-md);
-  font-weight: var(--md-weight-semibold);
+  padding-right: var(--md-space-6);
+  font-size: var(--md-type-title-md);
+  line-height: var(--md-type-title-lh-md);
+  font-weight: var(--md-weight-medium);
   color: var(--md-on-surface);
 }
 .card-desc {
   margin: var(--md-space-1) 0 var(--md-space-4);
-  font-size: var(--md-text-body-sm);
-  font-weight: var(--md-weight-regular);
+  font-size: var(--md-type-body-sm);
+  line-height: var(--md-type-body-lh-sm);
   color: var(--md-on-surface-variant);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -323,61 +349,51 @@ onMounted(load)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--md-space-4);
+  margin-bottom: var(--md-space-3);
 }
 .meta-date {
-  font-size: var(--md-text-label-md);
+  font-size: var(--md-type-label-md);
   color: var(--md-on-surface-variant);
 }
 
-/* 文本按钮（查看项目）：MD3 text button */
+/* 文字按钮（查看项目） */
 .text-link-upper {
   display: inline-flex;
   align-items: center;
   gap: var(--md-space-1);
   background: transparent;
   border: none;
-  padding: var(--md-space-1) 0;
+  padding: 0;
   font-family: var(--md-font);
-  font-size: var(--md-text-label);
+  font-size: var(--md-type-label-lg);
   font-weight: var(--md-weight-medium);
-  letter-spacing: var(--md-track-small);
+  letter-spacing: var(--md-tracking-label);
   color: var(--md-primary);
   cursor: pointer;
-  border-radius: var(--md-radius-sm);
 }
-.text-link-upper:hover,
-.text-link-upper:focus { color: var(--md-primary); background: var(--md-primary-hover); }
-.chev { font-size: var(--md-text-body-lg); line-height: 1; }
+.chev { font-size: var(--md-type-body-lg); line-height: 1; }
 
-/* 状态筛选条 */
-.list-toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--md-space-4);
-  padding: var(--md-space-2) 0 var(--md-space-5);
-}
-
-/* 卡片右上角操作菜单 */
+/* 卡片右上角操作菜单：图标按钮 */
 .card-menu {
   position: absolute;
-  top: var(--md-space-3);
-  right: var(--md-space-3);
+  top: var(--md-space-2);
+  right: var(--md-space-2);
 }
-.model-card { position: relative; }
 .card-menu-trigger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--md-radius-full);
+  width: var(--md-control-height);
+  height: var(--md-control-height);
+  border-radius: var(--md-shape-full);
   color: var(--md-on-surface-variant);
   cursor: pointer;
-  transition: background-color var(--md-duration-standard) var(--md-ease-standard);
+  transition: background-color var(--md-duration-short-4) var(--md-ease-standard);
 }
 .card-menu-trigger:hover {
   background-color: var(--md-surface-container-high);
-  color: var(--md-on-surface);
+}
+.project-card:hover .card-menu-trigger:hover {
+  background-color: var(--md-surface-container);
 }
 </style>

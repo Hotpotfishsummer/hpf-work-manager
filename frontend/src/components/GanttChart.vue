@@ -4,8 +4,10 @@
       <button
         v-for="m in VIEW_MODES"
         :key="m.value"
-        class="view-chip"
-        :class="{ active: viewMode === m.value }"
+        type="button"
+        class="md-chip md-chip--filter"
+        :class="{ 'is-selected': viewMode === m.value }"
+        :aria-pressed="viewMode === m.value"
         @click="setViewMode(m.value)"
       >
         {{ m.label }}
@@ -56,7 +58,7 @@ function toFGTask(): FGTask[] {
 }
 
 function barRadius() {
-  return parseInt(cssVar('--md-radius-sm', '8px'), 10) || 8
+  return parseInt(cssVar('--md-shape-extra-small', '4px'), 10) || 4
 }
 
 function render() {
@@ -139,42 +141,23 @@ onThemeChange(() => {
 </script>
 
 <style scoped>
+/* 图表是一个整体：填充式色块容器，不描框 */
 .gantt-wrap {
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-lg);
-  background-color: var(--md-surface);
+  background-color: var(--md-surface-container-low);
+  border-radius: var(--md-shape-large);
   padding: var(--md-space-4);
   overflow-x: auto;
 }
 .gantt-toolbar {
   display: flex;
   align-items: center;
-  gap: var(--md-space-1);
+  gap: var(--md-space-2);
   margin-bottom: var(--md-space-4);
-}
-.view-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--md-control-height);
-  background-color: var(--md-surface);
-  border: 1px solid var(--md-outline);
-  color: var(--md-on-surface);
-  font-family: var(--md-font);
-  font-size: var(--md-text-label-md);
-  padding: var(--md-space-1) var(--md-space-3);
-  cursor: pointer;
-  border-radius: var(--md-radius-full);
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-.view-chip.active {
-  background-color: var(--md-primary);
-  color: var(--md-on-primary);
-  border-color: var(--md-primary);
 }
 .gantt-today {
   margin-left: auto;
-  font-size: var(--md-text-label-md);
+  font-size: var(--md-type-label-md);
   color: var(--md-on-surface-variant);
 }
 .gantt-container { min-width: 720px; }
-</style>
+</style></style>

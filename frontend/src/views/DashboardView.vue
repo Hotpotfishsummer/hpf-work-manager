@@ -1,5 +1,5 @@
 <template>
-  <div class="page-container" v-loading="loading">
+  <div class="page" v-loading="loading">
     <!-- 页面头部 -->
     <div class="page-head">
       <div>
@@ -7,14 +7,12 @@
         <p class="page-sub">Dashboard · 全项目进度总览</p>
       </div>
       <div class="head-actions">
-        <el-tag v-if="overview" type="primary" effect="plain" size="large">
-          今日完成 {{ overview.today_completed }}
-        </el-tag>
+        <span v-if="overview" class="md-chip md-chip--primary">今日完成 {{ overview.today_completed }}</span>
       </div>
     </div>
 
     <!-- 项目进度卡片行 -->
-    <section class="bmw-card section-card">
+    <section class="md-section">
       <div class="milestone-head">
         <div>
           <h2 class="section-title">项目进度</h2>
@@ -34,13 +32,9 @@
         >
           <div class="mini-project-header">
             <span class="mini-project-name">{{ p.name }}</span>
-            <el-tag
-              :type="p.status === 'active' ? 'primary' : 'info'"
-              effect="plain"
-              size="small"
-            >
+            <span class="md-chip md-chip--sm" :class="p.status === 'active' ? 'md-chip--primary' : 'md-chip--neutral'">
               {{ p.status === 'active' ? '进行中' : '已归档' }}
-            </el-tag>
+            </span>
           </div>
           <div class="mini-progress-bar">
             <el-progress
@@ -62,20 +56,20 @@
 
     <div class="two-col">
       <!-- 跨项目逾期任务 -->
-      <section class="bmw-card section-card">
+      <section class="md-section">
         <div class="milestone-head">
           <div>
             <h2 class="section-title">逾期任务</h2>
             <p class="section-sub">Overdue</p>
           </div>
-          <el-tag v-if="overview && overview.overdue_tasks.length === 0" effect="plain" size="small">无逾期</el-tag>
+          <span v-if="overview && overview.overdue_tasks.length === 0" class="md-chip md-chip--sm md-chip--success">无逾期</span>
         </div>
         <ul v-if="overview && overview.overdue_tasks.length" class="overdue-list">
           <li v-for="t in overview.overdue_tasks" :key="t.id" class="overdue-item">
             <span class="od-name">{{ t.name }}</span>
-            <el-tag :type="t.priority === 'high' ? 'warning' : 'info'" effect="plain" size="small">
+            <span class="md-chip md-chip--sm" :class="t.priority === 'high' ? 'md-chip--error' : 'md-chip--neutral'">
               {{ t.priority }}
-            </el-tag>
+            </span>
             <span class="od-late">逾期 {{ t.days_late }} 天</span>
           </li>
         </ul>
@@ -83,7 +77,7 @@
       </section>
 
       <!-- 近期开发记录 -->
-      <section class="bmw-card section-card">
+      <section class="md-section">
         <div class="milestone-head">
           <div>
             <h2 class="section-title">近期记录</h2>
@@ -101,7 +95,7 @@
     </div>
 
     <!-- 活跃开发会话 -->
-    <section class="bmw-card section-card" v-if="overview && overview.active_sessions.length">
+    <section class="md-section" v-if="overview && overview.active_sessions.length">
       <div class="milestone-head">
         <div>
           <h2 class="section-title">活跃会话</h2>
@@ -118,9 +112,9 @@
         >
           <div class="session-row">
             <span class="session-name">{{ s.title || '未命名会话' }}</span>
-            <el-tag size="small" effect="plain">
+            <span class="md-chip md-chip--sm md-chip--secondary">
               {{ s.project_name }} · {{ s.log_count }} 条记录
-            </el-tag>
+            </span>
           </div>
         </el-timeline-item>
       </el-timeline>
@@ -161,88 +155,39 @@ onMounted(load)
 </script>
 
 <style scoped>
-.page-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: var(--md-space-6) 0 var(--md-space-6);
-}
-.page-title {
-  margin: 0;
-  font-size: var(--md-text-display);
-  line-height: 1.2;
-}
-.page-sub {
-  margin: var(--md-space-1) 0 0;
-  font-size: var(--md-text-body-sm);
-  font-weight: var(--md-weight-regular);
-  color: var(--md-on-surface-variant);
-  letter-spacing: var(--md-track-caption);
-}
-.head-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--md-space-2);
-}
-
-.section-card {
-  margin-bottom: var(--md-space-5);
-}
-.section-title {
-  margin: 0;
-  font-size: var(--md-text-title-md);
-  font-weight: var(--md-weight-semibold);
-  color: var(--md-on-surface);
-}
-.section-sub {
-  margin: var(--md-space-1) 0 0;
-  font-size: var(--md-text-body-sm);
-  color: var(--md-on-surface-variant);
-}
-.milestone-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: var(--md-space-4);
-}
-
-/* 项目卡片行 */
+/* 项目卡：填充式色块，无描边 */
 .project-cards-row {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: var(--md-space-4);
 }
 .mini-project-card {
-  background-color: var(--md-surface-container-low);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-lg);
-  padding: var(--md-space-4);
+  background-color: var(--md-surface-container-highest);
+  border-radius: var(--md-shape-medium);
+  padding: var(--md-card-padding);
   cursor: pointer;
-  transition: border-color var(--md-duration-standard) var(--md-ease-standard),
-    background-color var(--md-duration-standard) var(--md-ease-standard);
+  transition: background-color var(--md-duration-short-4) var(--md-ease-standard);
 }
 .mini-project-card:hover {
-  border-color: var(--md-primary);
   background-color: var(--md-surface-container-high);
 }
 .mini-project-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--md-space-2);
+  gap: var(--md-space-2);
+  margin-bottom: var(--md-space-3);
 }
 .mini-project-name {
-  font-size: var(--md-text-title-md);
-  font-weight: var(--md-weight-semibold);
+  font-size: var(--md-type-title-md);
+  font-weight: var(--md-weight-medium);
   color: var(--md-on-surface);
 }
-.mini-progress-bar {
-  margin-bottom: var(--md-space-1);
-}
+.mini-progress-bar { margin-bottom: var(--md-space-1); }
 .mini-progress-meta {
   display: flex;
   justify-content: space-between;
-  font-size: var(--md-text-label-md);
+  font-size: var(--md-type-label-md);
   color: var(--md-on-surface-variant);
 }
 .meta-overdue {
@@ -250,7 +195,14 @@ onMounted(load)
   font-weight: var(--md-weight-medium);
 }
 
-/* 通用列表 */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--md-space-6);
+}
+@media (max-width: 1024px) { .two-col { grid-template-columns: 1fr; } }
+
+/* 通用列表：行间分隔线 */
 .overdue-list,
 .recent-log-list {
   list-style: none;
@@ -262,12 +214,12 @@ onMounted(load)
   align-items: center;
   gap: var(--md-space-2);
   padding: var(--md-space-2) 0;
-  border-bottom: 1px solid var(--md-outline-variant);
-  font-size: var(--md-text-body-sm);
+  font-size: var(--md-type-body-sm);
   color: var(--md-on-surface);
 }
-.overdue-item:last-child {
-  border-bottom: none;
+.overdue-item + .overdue-item,
+.recent-log-item + .recent-log-item {
+  border-top: 1px solid var(--md-outline-variant);
 }
 .od-name {
   flex: 1;
@@ -280,9 +232,9 @@ onMounted(load)
 .recent-log-item {
   display: flex;
   justify-content: space-between;
+  gap: var(--md-space-2);
   padding: var(--md-space-2) 0;
-  border-bottom: 1px solid var(--md-outline-variant);
-  font-size: var(--md-text-body-sm);
+  font-size: var(--md-type-body-sm);
 }
 .rl-title {
   color: var(--md-on-surface);
@@ -290,31 +242,17 @@ onMounted(load)
 }
 .rl-meta {
   color: var(--md-on-surface-variant);
-  font-size: var(--md-text-label-md);
+  font-size: var(--md-type-label-md);
 }
 .session-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--md-space-2);
+  flex-wrap: wrap;
 }
 .session-name {
   font-weight: var(--md-weight-medium);
   color: var(--md-on-surface);
-}
-
-
-/* P4-2 移动端：页头纵排，操作区换行 */
-@media (max-width: 768px) {
-  .page-head {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--md-space-3);
-  }
-  .head-actions {
-    flex-wrap: wrap;
-  }
-  .head-actions .el-form--inline .el-form-item {
-    margin-right: var(--md-space-2);
-  }
 }
 </style>

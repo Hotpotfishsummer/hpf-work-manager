@@ -1,31 +1,31 @@
 <template>
   <div v-loading="loading">
-    <!-- hero-band-dark：深海军蓝横幅，唯一深色块 -->
+    <!-- 项目头部：标题、操作与进度环 -->
     <div class="hero-band">
-      <div class="page-container hero-inner">
+      <div class="page hero-inner">
         <div class="hero-info">
-          <p class="hero-eyebrow">Project · {{ project?.status === 'archived' ? '已归档' : '进行中' }}</p>
+          <span class="md-chip md-chip--sm hero-eyebrow">Project · {{ project?.status === 'archived' ? '已归档' : '进行中' }}</span>
           <h1 class="hero-title">{{ project?.name }}</h1>
           <p class="hero-desc">{{ project?.description || '暂无描述' }}</p>
           <div class="hero-actions">
-            <el-button size="large" @click="openEditProject">编辑项目</el-button>
-            <el-button size="large" @click="toggleProjectStatus">
+            <el-button text size="large" @click="openEditProject">编辑项目</el-button>
+            <el-button text size="large" @click="toggleProjectStatus">
               {{ project?.status === 'archived' ? '取消归档' : '归档项目' }}
             </el-button>
             <el-button type="primary" size="large" @click="router.push(`/projects/${pid}/tasks`)">
               管理任务
             </el-button>
-            <el-button class="hero-ghost-btn" size="large" @click="router.push(`/projects/${pid}/gantt`)">
+            <el-button text size="large" @click="router.push(`/projects/${pid}/gantt`)">
               查看甘特图
             </el-button>
-            <el-button class="hero-ghost-btn" size="large" @click="router.push(`/projects/${pid}/logs`)">
+            <el-button text size="large" @click="router.push(`/projects/${pid}/logs`)">
               开发记录
             </el-button>
           </div>
         </div>
 
         <!-- hero 上的进度环：surface-dark-elevated 嵌套卡片 -->
-        <div class="hero-progress">
+        <div class="md-card hero-progress">
           <el-progress
             type="circle"
             :percentage="Math.round(stats?.progress ?? 0)"
@@ -49,10 +49,10 @@
       </div>
     </div>
 
-    <!-- category-tab 子导航：UPPERCASE + ink 下划线 -->
+    <!-- 页内切换：概览 / 任务 / 甘特图 / 开发记录 -->
     <div class="subnav-wrap">
-      <div class="page-container subnav">
-        <el-tabs v-model="activeTab" class="bmw-tabs" @tab-click="onTabClick">
+      <div class="page subnav">
+        <el-tabs v-model="activeTab" @tab-click="onTabClick">
           <el-tab-pane label="概览" name="overview" />
           <el-tab-pane label="任务" name="tasks" />
           <el-tab-pane label="甘特图" name="gantt" />
@@ -62,17 +62,29 @@
       </div>
     </div>
 
-    <div class="page-container content" v-show="activeTab === 'overview'">
-      <!-- spec-cells：统计格 -->
+    <div class="page content" v-show="activeTab === 'overview'">
+      <!-- 指标卡：填充式卡片，标签用色调芯片 -->
       <div class="stats-row">
-        <div class="spec-cell"><span class="spec-value">{{ stats?.total_tasks ?? 0 }}</span><span class="spec-label">总任务</span></div>
-        <div class="spec-cell"><span class="spec-value status-text-success">{{ stats?.done_tasks ?? 0 }}</span><span class="spec-label">已完成</span></div>
-        <div class="spec-cell"><span class="spec-value status-text-primary">{{ stats?.in_progress_tasks ?? 0 }}</span><span class="spec-label">进行中</span></div>
-        <div class="spec-cell"><span class="spec-value status-text-muted">{{ stats?.todo_tasks ?? 0 }}</span><span class="spec-label">待办</span></div>
+        <div class="md-card spec-cell">
+          <span class="spec-value">{{ stats?.total_tasks ?? 0 }}</span>
+          <span class="md-chip md-chip--sm md-chip--secondary">总任务</span>
+        </div>
+        <div class="md-card spec-cell">
+          <span class="spec-value">{{ stats?.done_tasks ?? 0 }}</span>
+          <span class="md-chip md-chip--sm md-chip--success">已完成</span>
+        </div>
+        <div class="md-card spec-cell">
+          <span class="spec-value">{{ stats?.in_progress_tasks ?? 0 }}</span>
+          <span class="md-chip md-chip--sm md-chip--primary">进行中</span>
+        </div>
+        <div class="md-card spec-cell">
+          <span class="spec-value">{{ stats?.todo_tasks ?? 0 }}</span>
+          <span class="md-chip md-chip--sm md-chip--neutral">待办</span>
+        </div>
       </div>
 
       <!-- 项目指示：负责人留给下一次接手本项目的 Agent 的工作方向 -->
-      <div class="bmw-card section-card directions-card">
+      <div class="md-callout md-callout--warning directions-card">
         <h2 class="section-title">
           💬 项目指示
           <el-tooltip content="这里写的话会进入 Agent 的项目上下文（get_project_state 的 directions），并随主页复制的 Prompt 一起下发" placement="top">
@@ -84,7 +96,7 @@
 
       <div class="two-col">
         <!-- 燃尽图 -->
-        <section class="bmw-card section-card">
+        <section class="md-card">
           <h2 class="section-title">燃尽图</h2>
           <p class="section-sub">Burndown</p>
           <BurndownChart v-if="burndown.length" :data="burndown" />
@@ -92,7 +104,7 @@
         </section>
 
         <!-- 进度趋势（P4-3 每日快照） -->
-        <section class="bmw-card section-card">
+        <section class="md-card">
           <h2 class="section-title">进度趋势</h2>
           <p class="section-sub">Trend · 每日快照</p>
           <ProgressTrendChart v-if="progressHistory.length" :data="progressHistory" />
@@ -100,22 +112,18 @@
         </section>
 
         <!-- 延期预警 -->
-        <section class="bmw-card section-card">
+        <section class="md-card">
           <h2 class="section-title">延期预警</h2>
           <p class="section-sub">Overdue</p>
           <div v-if="overdueTasks.length === 0" class="ok-block">
-            <span class="ok-dot" />没有延期任务，一切正常
+            <span class="md-chip md-chip--sm md-chip--success">没有延期任务，一切正常</span>
           </div>
           <ul v-else class="overdue-list">
             <li v-for="t in overdueTasks" :key="t.id" class="overdue-item">
               <span class="od-name">{{ t.name }}</span>
-              <el-tag
-                :type="t.priority === 'high' ? 'warning' : 'info'"
-                effect="plain"
-                size="small"
-              >
+              <span class="md-chip md-chip--sm" :class="t.priority === 'high' ? 'md-chip--error' : 'md-chip--neutral'">
                 {{ PRIORITY_LABEL[t.priority] }}
-              </el-tag>
+              </span>
               <span class="od-late">逾期 {{ t.days_late }} 天</span>
             </li>
           </ul>
@@ -123,13 +131,13 @@
       </div>
 
       <!-- 里程碑 -->
-      <section class="bmw-card section-card">
+      <section class="md-card">
         <div class="milestone-head">
           <div>
             <h2 class="section-title">里程碑</h2>
             <p class="section-sub">Milestones</p>
           </div>
-          <el-button size="large" @click="openCreateMilestone">新建里程碑</el-button>
+          <el-button plain size="large" @click="openCreateMilestone">新建里程碑</el-button>
         </div>
 
         <el-timeline v-if="milestones.length">
@@ -142,9 +150,9 @@
           >
             <div class="milestone-row">
               <span class="milestone-name">{{ m.name }}</span>
-              <el-tag :type="m.status === 'done' ? 'success' : 'primary'" effect="plain" size="small">
+              <span class="md-chip md-chip--sm" :class="m.status === 'done' ? 'md-chip--success' : 'md-chip--primary'">
                 {{ m.status === 'done' ? '已完成' : '进行中' }}
-              </el-tag>
+              </span>
               <el-button link size="small" @click="openEditMilestone(m)">编辑</el-button>
               <el-button link size="small" @click="toggleMilestone(m)">
                 {{ m.status === 'done' ? '取消完成' : '标记完成' }}
@@ -412,24 +420,9 @@ watch(pid, load)
 </script>
 
 <style scoped>
-/* 项目指示卡片 */
-.directions-card {
-  margin-bottom: 16px;
-}
-
-.section-help {
-  font-size: var(--md-text-body-lg);
-  color: var(--md-on-surface-variant);
-  cursor: help;
-  vertical-align: middle;
-  margin-left: 4px;
-}
-
-/* hero-band：跟随主题的表面带，Apple 留白风格 */
 .hero-band {
-  background-color: var(--md-surface);
+  background-color: var(--md-surface-container-low);
   color: var(--md-on-surface);
-  border-bottom: 1px solid var(--md-outline-variant);
 }
 .hero-inner {
   display: flex;
@@ -440,43 +433,28 @@ watch(pid, load)
   padding-bottom: var(--md-space-6);
   flex-wrap: wrap;
 }
-.hero-eyebrow {
-  margin: 0 0 var(--md-space-1);
-  font-size: var(--md-text-label-md);
-  font-weight: var(--md-weight-medium);
-  letter-spacing: var(--md-track-caption);
-  color: var(--md-on-surface-variant);
-}
-.hero-title {
-  margin: 0;
-  font-size: var(--md-text-display);
-  color: var(--md-on-surface);
-}
+.hero-eyebrow { margin-bottom: var(--md-space-2); }
+.hero-title { margin: 0; }
 .hero-desc {
   margin: var(--md-space-2) 0 var(--md-space-5);
-  font-size: var(--md-text-body-md);
-  font-weight: var(--md-weight-regular);
+  font-size: var(--md-type-body-lg);
   color: var(--md-on-surface-variant);
   max-width: var(--md-text-measure);
 }
-.hero-actions { display: flex; gap: var(--md-space-4); flex-wrap: wrap; }
-.hero-actions :deep(.el-button--primary) {
-  background-color: var(--md-primary);
-  border-color: var(--md-primary);
-}
-.hero-ghost-btn {
-  background: transparent;
-  border: 1px solid var(--md-outline);
-  color: var(--md-on-surface);
-}
-.hero-ghost-btn:hover { border-color: var(--md-primary); color: var(--md-primary); background: var(--md-primary-hover); }
+.hero-actions { display: flex; align-items: center; gap: var(--md-space-1); flex-wrap: wrap; }
 
-/* hero 进度环（嵌套卡片，跟随主题） */
+.section-help {
+  font-size: var(--md-type-body-lg);
+  color: var(--md-on-surface-variant);
+  cursor: help;
+  vertical-align: middle;
+  margin-left: var(--md-space-1);
+}
+
+/* hero 上的进度环：卡内不再描框 */
 .hero-progress {
-  background-color: var(--md-surface-container-high);
-  padding: var(--md-space-5);
+  padding: var(--md-card-padding-lg);
   text-align: center;
-  border-radius: var(--md-radius-lg);
 }
 .hero-progress :deep(.el-progress__text) {
   display: flex;
@@ -484,138 +462,101 @@ watch(pid, load)
   align-items: center;
 }
 .progress-num {
-  font-size: var(--md-text-display-sm);
-  font-weight: var(--md-weight-semibold);
+  font-size: var(--md-type-display-sm);
+  line-height: var(--md-type-display-lh-sm);
+  font-weight: var(--md-weight-medium);
   color: var(--md-on-surface);
-  line-height: 1.2;
 }
-.progress-label {
-  font-size: var(--md-text-label-md);
-  color: var(--md-on-surface-variant);
-}
+.progress-label,
 .hero-range {
-  margin: var(--md-space-2) 0 0;
-  font-size: var(--md-text-label-md);
+  font-size: var(--md-type-label-md);
   color: var(--md-on-surface-variant);
 }
+.hero-range { margin: var(--md-space-3) 0 0; }
 .hero-weighted {
   display: inline-flex;
   align-items: center;
   gap: var(--md-space-1);
-  margin: var(--md-space-1) 0 0;
-  font-size: var(--md-text-label-md);
-  font-weight: var(--md-weight-semibold);
-  color: var(--md-primary);
+  margin: var(--md-space-2) 0 0;
+  font-size: var(--md-type-label-md);
+  font-weight: var(--md-weight-medium);
+  color: var(--md-on-primary-container);
 }
 .weighted-help {
-  font-size: var(--md-text-label-md);
+  font-size: var(--md-type-label-md);
   color: var(--md-on-surface-variant);
   cursor: help;
 }
 
-/* subnav：分类标签风格 */
-.subnav-wrap {
-  border-bottom: 1px solid var(--md-outline-variant);
-  background-color: var(--md-surface);
+/* 页内切换：el-tabs（全局已是指示器药丸样式） */
+.subnav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--md-space-4);
+  flex-wrap: wrap;
 }
-.bmw-tabs :deep(.el-tabs__item) {
-  font-size: var(--md-text-label-lg);
-  font-weight: var(--md-weight-semibold);
-  color: var(--md-on-surface-variant);
-  padding: 0 var(--md-space-4);
-}
-.bmw-tabs :deep(.el-tabs__item.is-active) { color: var(--md-on-surface); }
-.bmw-tabs :deep(.el-tabs__active-bar) { height: 2px; background-color: var(--md-primary); }
 
 .content {
-  padding-top: var(--md-space-6);
+  padding-top: var(--md-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-space-5);
 }
 
-/* spec-cell */
+/* 指标卡 */
 .stats-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  border: 1px solid var(--md-outline-variant);
-  margin-bottom: var(--md-space-5);
+  gap: var(--md-space-4);
 }
 @media (max-width: 640px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
 .spec-cell {
-  padding: var(--md-space-4);
-  text-align: center;
-  border-right: 1px solid var(--md-outline-variant);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--md-space-2);
 }
-.spec-cell:last-child { border-right: none; }
 .spec-value {
-  display: block;
-  font-size: var(--md-text-display-sm);
-  font-weight: var(--md-weight-semibold);
+  font-size: var(--md-type-display-sm);
+  line-height: var(--md-type-display-lh-sm);
+  font-weight: var(--md-weight-bold);
   color: var(--md-on-surface);
-}
-.spec-label {
-  display: block;
-  margin-top: var(--md-space-1);
-  font-size: var(--md-text-label-md);
-  letter-spacing: var(--md-track-caption);
-  color: var(--md-on-surface-variant);
 }
 
 .two-col {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: var(--md-space-5);
-  margin-bottom: var(--md-space-5);
 }
 @media (max-width: 1024px) { .two-col { grid-template-columns: 1fr; } }
 
-/* bmw-card：MD3 卡片（surface-container-low + lg 圆角 + hairline） */
-.bmw-card {
-  background-color: var(--md-surface-container-low);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-lg);
-  padding: var(--md-card-padding-lg);
-  color: var(--md-on-surface);
-}
-.section-card { margin-bottom: 0; }
-.section-title {
-  margin: 0;
-  font-size: var(--md-text-title-lg);
-}
+/* 分区标题 */
+.directions-card { flex-direction: column; gap: var(--md-space-3); }
+.directions-card .section-title { display: flex; align-items: center; }
 .section-sub {
-  margin: var(--md-space-1) 0 var(--md-space-4);
-  font-size: var(--md-text-label-md);
-  letter-spacing: var(--md-track-caption);
+  margin: 0 0 var(--md-space-4);
+  font-size: var(--md-type-label-md);
   color: var(--md-on-surface-variant);
 }
 
-.ok-block {
-  display: flex;
-  align-items: center;
-  gap: var(--md-space-1);
-  color: var(--md-on-surface-variant);
-  font-size: var(--md-text-body-sm);
-  padding: var(--md-space-4) 0;
-}
-.ok-dot {
-  width: 10px; height: 10px;
-  border-radius: var(--md-radius-full);
-  background-color: var(--md-status-done);
-}
+.ok-block { padding: var(--md-space-3) 0; }
 
 .overdue-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
+/* 行与行之间用分隔线 */
 .overdue-item {
   display: flex;
   align-items: center;
   gap: var(--md-space-2);
   padding: var(--md-space-2) 0;
-  border-bottom: 1px solid var(--md-outline-variant);
 }
-.overdue-item:last-child { border-bottom: none; }
-.od-name { flex: 1; font-weight: var(--md-weight-semibold); font-size: var(--md-text-body-sm); color: var(--md-on-surface); }
-.od-late { font-size: var(--md-text-label-md); color: var(--md-status-overdue); font-weight: var(--md-weight-semibold); }
+.overdue-item + .overdue-item { border-top: 1px solid var(--md-outline-variant); }
+.od-name { flex: 1; font-weight: var(--md-weight-medium); font-size: var(--md-type-body-sm); color: var(--md-on-surface); }
+.od-late { font-size: var(--md-type-label-md); color: var(--md-error); font-weight: var(--md-weight-medium); }
 
 .milestone-head {
   display: flex;
@@ -627,20 +568,22 @@ watch(pid, load)
   display: flex;
   align-items: center;
   gap: var(--md-space-2);
+  flex-wrap: wrap;
 }
 .milestone-name {
-  font-weight: var(--md-weight-semibold);
-  font-size: var(--md-text-body-md);
+  font-weight: var(--md-weight-medium);
+  font-size: var(--md-type-body-md);
   color: var(--md-on-surface);
 }
 
-/* P4-2 移动端：hero 纵排，进度环居中 */
+/* 移动端：hero 纵排，进度环居中 */
 @media (max-width: 768px) {
   .hero-inner {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--md-space-4);
   }
-  .hero-progress { align-self: center; text-align: center; }
+  .hero-progress { align-self: stretch; text-align: center; }
 }
 </style>
+

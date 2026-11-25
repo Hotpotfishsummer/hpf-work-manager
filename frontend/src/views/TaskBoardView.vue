@@ -1,5 +1,5 @@
 <template>
-  <div class="page-container" v-loading="loading">
+  <div class="page" v-loading="loading">
     <!-- 页面头部 -->
     <div class="page-head">
       <div>
@@ -19,20 +19,20 @@
           <el-option label="优先级高->低" value="priority_desc" />
         </el-select>
         <LiveIndicator :connected="connected" :is-reconnectable="reconnectable" @reconnect="reconnect" />
-        <el-button size="large" @click="router.push(`/projects/${pid}`)">返回概览</el-button>
-        <el-button size="large" @click="exportCsv">
-          <el-icon style="margin-right: var(--md-space-1)"><Download /></el-icon>
+        <el-button text size="large" @click="router.push(`/projects/${pid}`)">返回概览</el-button>
+        <el-button text size="large" @click="exportCsv">
+          <el-icon><Download /></el-icon>
           导出 CSV
         </el-button>
-        <el-button size="large" @click="exportMd">
-          <el-icon style="margin-right: var(--md-space-1)"><Download /></el-icon>
+        <el-button text size="large" @click="exportMd">
+          <el-icon><Download /></el-icon>
           导出 .md
         </el-button>
-        <el-button v-if="selectedTasks.length" size="large" @click="openBulkDialog">
+        <el-button v-if="selectedTasks.length" plain size="large" @click="openBulkDialog">
           批量操作（{{ selectedTasks.length }}）
         </el-button>
         <el-button type="primary" size="large" @click="openCreate">
-          <el-icon style="margin-right: var(--md-space-1)"><Plus /></el-icon>
+          <el-icon><Plus /></el-icon>
           新建任务
         </el-button>
       </div>
@@ -60,7 +60,7 @@
           <el-switch v-model="filterForm.overdue" active-text="是" inactive-text="否" />
         </el-form-item>
       </el-form>
-      <span class="chips-count">{{ filteredTasks.length }} 个任务</span>
+      <span class="md-chip md-chip--sm md-chip--secondary chips-count">{{ filteredTasks.length }} 个任务</span>
     </div>
 
     <!-- 三列看板 -->
@@ -100,13 +100,9 @@
             </div>
             <div class="tc-top">
               <span class="tc-name">{{ t.name }}</span>
-              <el-tag
-                :type="priorityTagType(t.priority)"
-                effect="plain"
-                size="small"
-              >
+              <span class="md-chip md-chip--sm" :class="priorityChipClass(t.priority)">
                 {{ PRIORITY_LABEL[t.priority] }}
-              </el-tag>
+              </span>
             </div>
             <p v-if="t.description" class="tc-desc">{{ t.description }}</p>
 
@@ -114,7 +110,7 @@
               <span class="tc-date" :class="{ 'is-overdue': t.overdue }">
                 {{ t.due_date ? t.due_date.slice(0, 10) : '无截止' }}
               </span>
-              <span v-if="t.overdue" class="tc-overdue">已逾期</span>
+              <span v-if="t.overdue" class="md-chip md-chip--sm md-chip--solid-error">已逾期</span>
               <span v-if="(t.comment_count ?? 0) > 0" class="tc-comments" title="评论数">
                 💬 {{ t.comment_count }}
               </span>
@@ -136,17 +132,14 @@
               </div>
             </div>
             <div v-if="t.depends_on?.length" class="tc-deps">
-              <el-tag
+              <span
                 v-for="depId in t.depends_on"
                 :key="depId"
-                size="small"
-                type="info"
-                effect="plain"
-                class="tc-dep-tag"
+                class="md-chip md-chip--sm md-chip--secondary tc-dep-tag"
                 :title="depName(depId)"
               >
                 {{ depName(depId) }}
-              </el-tag>
+              </span>
             </div>
           </div>
 
@@ -409,9 +402,11 @@ const rules: FormRules = {
   name: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
 }
 
-function priorityTagType(p: TaskPriority) {
-  if (p === 'high') return 'warning'
-  return 'info'
+/** 优先级 → 色调芯片类：高→error，中→warning，低→neutral */
+function priorityChipClass(p: TaskPriority) {
+  if (p === 'high') return 'md-chip--error'
+  if (p === 'medium') return 'md-chip--warning'
+  return 'md-chip--neutral'
 }
 
 function progressColor(t: Task) {
@@ -767,151 +762,115 @@ watch(pid, load)
 </script>
 
 <style scoped>
-.page-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: var(--md-space-6) 0 var(--md-space-4);
-}
-.page-title { margin: 0; font-size: var(--md-text-display-sm); }
-.page-sub {
-  margin: var(--md-space-1) 0 0;
-  font-size: var(--md-text-body-sm);
-  color: var(--md-on-surface-variant);
-  letter-spacing: var(--md-track-caption);
-}
-.head-actions { display: flex; gap: var(--md-space-2); }
+.head-actions { flex-wrap: wrap; }
 
-/* filter-chips：描边胶囊，激活态主色填充 */
+/* 筛选行 */
 .chips-row {
   display: flex;
   align-items: center;
-  gap: var(--md-space-1);
+  gap: var(--md-space-3);
   margin-bottom: var(--md-space-5);
   flex-wrap: wrap;
 }
-.filter-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--md-control-height);
-  background-color: var(--md-surface-container-highest);
-  border: 1px solid var(--md-outline);
-  color: var(--md-on-surface);
-  font-size: var(--md-text-label-md);
-  font-family: var(--md-font);
-  padding: var(--md-space-1) var(--md-space-4);
-  cursor: pointer;
-  border-radius: var(--md-radius-full);
-  transition: background-color var(--md-duration-standard) var(--md-ease-standard),
-    color var(--md-duration-standard) var(--md-ease-standard),
-    border-color var(--md-duration-standard) var(--md-ease-standard);
-}
-.filter-chip:hover { border-color: var(--md-on-surface); }
-.filter-chip.active {
-  background-color: var(--md-primary);
-  color: var(--md-on-primary);
-  border-color: var(--md-primary);
-}
-.chips-count { margin-left: auto; font-size: var(--md-text-label-md); color: var(--md-on-surface-variant); }
+.chips-count { margin-left: auto; }
 
-/* 三列看板 */
+/* 三列看板：列靠底色成区，不描框 */
 .board {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--md-space-5);
+  gap: var(--md-space-4);
   align-items: start;
 }
 @media (max-width: 900px) { .board { grid-template-columns: 1fr; } }
 
 .board-col {
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-lg);
+  border-radius: var(--md-shape-large);
   background-color: var(--md-surface-container);
   min-height: 320px;
 }
 .col-head {
   display: flex;
   align-items: center;
-  gap: var(--md-space-1);
+  gap: var(--md-space-2);
   padding: var(--md-space-4);
-  background-color: var(--md-surface);
-  border-bottom: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-lg) var(--md-radius-lg) 0 0;
 }
-.col-dot { width: 8px; height: 8px; border-radius: var(--md-radius-full); }
+.col-dot { width: 10px; height: 10px; border-radius: var(--md-shape-full); }
 .col-title {
-  font-size: var(--md-text-title-sm);
-  font-weight: var(--md-weight-semibold);
+  font-size: var(--md-type-title-md);
+  font-weight: var(--md-weight-medium);
   color: var(--md-on-surface);
 }
-.col-count {
-  margin-left: auto;
-  font-size: var(--md-text-label-md);
-  color: var(--md-on-surface-variant);
-  background-color: var(--md-surface-container-high);
-  padding: 0 var(--md-space-2);
-  border-radius: var(--md-radius-sm);
-}
+.col-count { margin-left: auto; }
 .col-body {
-  padding: var(--md-space-2);
+  padding: 0 var(--md-space-3) var(--md-space-3);
   display: flex;
   flex-direction: column;
   gap: var(--md-space-2);
 }
 .col-empty { padding: var(--md-space-5) 0; }
 
-/* task-card：圆角卡片，延期用状态色左描边 */
+/* 任务卡：填充式卡片；选中 primary-container；逾期用左侧 error 强调条 */
 .task-card {
-  background-color: var(--md-surface);
-  border: 1px solid var(--md-outline-variant);
-  border-left: var(--md-accent-bar-width) solid var(--md-outline);
-  border-radius: var(--md-radius-lg);
-  padding: var(--md-space-4);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-space-1);
+  background-color: var(--md-surface-container-highest);
+  border: 0;
+  border-radius: var(--md-shape-medium);
+  padding: var(--md-space-4) var(--md-space-4) var(--md-space-4) var(--md-space-7);
   cursor: grab;
-  transition: border-color var(--md-duration-standard) var(--md-ease-standard),
-    background-color var(--md-duration-standard) var(--md-ease-standard);
+  transition: background-color var(--md-duration-short-4) var(--md-ease-standard);
 }
-.task-card:hover {
-  border-color: var(--md-primary);
-  background-color: var(--md-surface-container-low);
-}
-.task-card.is-overdue { border-left-color: var(--md-status-overdue); }
+.task-card:hover { background-color: var(--md-secondary-container); }
+.task-card.is-selected { background-color: var(--md-primary-container); }
 .task-card:active { cursor: grabbing; }
+.task-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: var(--md-space-4);
+  bottom: var(--md-space-4);
+  width: var(--md-accent-bar-width);
+  border-radius: var(--md-shape-full);
+  background-color: transparent;
+}
+.task-card.is-overdue::before { background-color: var(--md-error); }
+
+.tc-select {
+  position: absolute;
+  top: var(--md-space-3);
+  left: var(--md-space-2);
+  z-index: 1;
+}
 
 .tc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--md-space-1); }
-.tc-name { font-size: var(--md-text-title-sm); font-weight: var(--md-weight-semibold); color: var(--md-on-surface); }
+.tc-name { font-size: var(--md-type-title-sm); font-weight: var(--md-weight-medium); color: var(--md-on-surface); }
 .tc-desc {
-  margin: var(--md-space-1) 0;
-  font-size: var(--md-text-body-sm);
+  margin: 0;
+  font-size: var(--md-type-body-sm);
   color: var(--md-on-surface-variant);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.tc-meta { display: flex; align-items: center; justify-content: space-between; margin: var(--md-space-1) 0; }
-.tc-date { font-size: var(--md-text-label-md); color: var(--md-on-surface-variant); }
-.tc-date.is-overdue { color: var(--md-status-overdue); font-weight: var(--md-weight-semibold); }
+.tc-meta { display: flex; align-items: center; gap: var(--md-space-2); }
+.tc-date { font-size: var(--md-type-label-md); color: var(--md-on-surface-variant); }
+.tc-date.is-overdue { color: var(--md-error); font-weight: var(--md-weight-medium); }
 .tc-comments {
   margin-left: auto;
-  font-size: var(--md-text-label-sm);
+  font-size: var(--md-type-label-sm);
   color: var(--md-on-surface-variant);
 }
-.tc-overdue {
-  font-size: var(--md-text-label-md);
-  font-weight: var(--md-weight-semibold);
-  color: var(--md-on-error);
-  background-color: var(--md-status-overdue);
-  padding: 1px var(--md-space-2);
-  border-radius: var(--md-radius-sm);
-}
-.tc-progress { margin: var(--md-space-1) 0; }
+.tc-progress { margin: 0; }
 .tc-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-.tc-progress-text { font-size: var(--md-text-label-md); color: var(--md-on-surface-variant); font-weight: var(--md-weight-semibold); }
+.tc-progress-text { font-size: var(--md-type-label-md); color: var(--md-on-surface-variant); font-weight: var(--md-weight-medium); }
+.tc-deps { display: flex; flex-wrap: wrap; gap: var(--md-space-1); }
 
 .form-grid {
   display: grid;
@@ -920,33 +879,8 @@ watch(pid, load)
 }
 @media (max-width: 520px) { .form-grid { grid-template-columns: 1fr; } }
 
-/* 选择态 */
-.task-card.is-selected {
-  border-color: var(--md-primary);
-  background-color: var(--md-primary-container);
-}
-.tc-select {
-  position: absolute;
-  top: var(--md-space-2);
-  left: var(--md-space-2);
-  z-index: 1;
-}
-.task-card {
-  position: relative;
-  padding-left: var(--md-space-7);
-}
-
-
-/* P4-2 移动端：页头纵排，操作区换行 */
+/* 移动端：页头纵排 */
 @media (max-width: 768px) {
-  .page-head {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--md-space-3);
-  }
-  .head-actions {
-    flex-wrap: wrap;
-  }
   .head-actions .el-form--inline .el-form-item {
     margin-right: var(--md-space-2);
   }
@@ -954,35 +888,32 @@ watch(pid, load)
 </style>
 
 <style scoped>
+/* 任务弹窗里的评论：色块容器 + 行间分隔线 */
 .comment-scroll {
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-md);
-  padding: var(--md-space-1);
+  background-color: var(--md-surface-container-low);
+  border-radius: var(--md-shape-medium);
+  padding: var(--md-space-1) var(--md-space-3);
   margin-bottom: var(--md-space-2);
 }
-.comment-item {
-  padding: var(--md-space-2) var(--md-space-1);
-  border-bottom: 1px solid var(--md-outline-variant);
-}
-.comment-item:last-child { border-bottom: none; }
+.comment-item { padding: var(--md-space-2) 0; }
+.comment-item + .comment-item { border-top: 1px solid var(--md-outline-variant); }
 .comment-meta {
   display: flex;
   align-items: center;
   gap: var(--md-space-2);
-  margin-bottom: 2px;
 }
 .comment-author {
-  font-weight: var(--md-weight-semibold);
-  font-size: var(--md-text-label-sm);
+  font-weight: var(--md-weight-medium);
+  font-size: var(--md-type-label-sm);
   color: var(--md-on-surface);
 }
 .comment-time {
   flex: 1;
-  font-size: var(--md-text-label-sm);
+  font-size: var(--md-type-label-sm);
   color: var(--md-on-surface-variant);
 }
 .comment-content {
-  font-size: var(--md-text-body-sm);
+  font-size: var(--md-type-body-sm);
   color: var(--md-on-surface);
   white-space: pre-wrap;
   word-break: break-word;
@@ -991,7 +922,7 @@ watch(pid, load)
   padding: var(--md-space-4) var(--md-space-2);
   text-align: center;
   color: var(--md-on-surface-variant);
-  font-size: var(--md-text-body-sm);
+  font-size: var(--md-type-body-sm);
 }
 .comment-input {
   display: flex;

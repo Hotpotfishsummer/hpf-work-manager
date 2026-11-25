@@ -1,5 +1,5 @@
 <template>
-  <div class="page-container" v-loading="loading">
+  <div class="page" v-loading="loading">
     <div class="page-head">
       <div>
         <h1 class="page-title">开发记录</h1>
@@ -7,20 +7,20 @@
       </div>
       <div class="head-actions">
         <LiveIndicator :connected="connected" :is-reconnectable="reconnectable" @reconnect="reconnect" />
-        <el-button size="large" @click="router.push(`/projects/${pid}`)">返回概览</el-button>
-        <el-button size="large" @click="openCreate">新建记录</el-button>
+        <el-button text size="large" @click="router.push(`/projects/${pid}`)">返回概览</el-button>
+        <el-button plain size="large" @click="openCreate">新建记录</el-button>
         <el-button size="large" type="primary" @click="openReport">生成开发汇报</el-button>
       </div>
     </div>
 
-    <!-- 统计格 -->
+    <!-- 指标卡：填充式卡片，标签用色调芯片 -->
     <div class="stats-row">
-      <div class="spec-cell"><span class="spec-value">{{ stats?.total ?? 0 }}</span><span class="spec-label">总记录</span></div>
-      <div class="spec-cell"><span class="spec-value">{{ stats?.today_count ?? 0 }}</span><span class="spec-label">今日</span></div>
-      <div class="spec-cell"><span class="spec-value status-text-primary">{{ stats?.open_difficulties ?? 0 }}</span><span class="spec-label">难点</span></div>
-      <div class="spec-cell"><span class="spec-value status-text-muted">{{ stats?.open_todos ?? 0 }}</span><span class="spec-label">待办</span></div>
-      <div class="spec-cell"><span class="spec-value status-text-danger">{{ stats?.open_blockers ?? 0 }}</span><span class="spec-label">阻塞</span></div>
-      <div class="spec-cell"><span class="spec-value">{{ stats?.decisions ?? 0 }}</span><span class="spec-label">决策</span></div>
+      <div class="md-card spec-cell"><span class="spec-value">{{ stats?.total ?? 0 }}</span><span class="md-chip md-chip--sm md-chip--secondary">总记录</span></div>
+      <div class="md-card spec-cell"><span class="spec-value">{{ stats?.today_count ?? 0 }}</span><span class="md-chip md-chip--sm md-chip--secondary">今日</span></div>
+      <div class="md-card spec-cell"><span class="spec-value">{{ stats?.open_difficulties ?? 0 }}</span><span class="md-chip md-chip--sm md-chip--warning">难点</span></div>
+      <div class="md-card spec-cell"><span class="spec-value">{{ stats?.open_todos ?? 0 }}</span><span class="md-chip md-chip--sm md-chip--neutral">待办</span></div>
+      <div class="md-card spec-cell"><span class="spec-value">{{ stats?.open_blockers ?? 0 }}</span><span class="md-chip md-chip--sm md-chip--error">阻塞</span></div>
+      <div class="md-card spec-cell"><span class="spec-value">{{ stats?.decisions ?? 0 }}</span><span class="md-chip md-chip--sm md-chip--primary">决策</span></div>
     </div>
 
     <!-- 筛选 + 会话 -->
@@ -43,25 +43,26 @@
     <!-- 记录时间线 -->
     <el-empty v-if="!loading && filteredLogs.length === 0" description="暂无开发记录，AI 工具会在这里沉淀每次开发过程" :image-size="100" />
 
-    <div v-else class="log-list">
+    <div v-else class="md-card log-list">
       <div v-for="log in filteredLogs" :key="log.id" class="log-item">
         <div class="log-top">
-          <el-tag :type="TYPE_TAG[log.entry_type]" effect="light" size="small">{{ TYPE_LABEL[log.entry_type] }}</el-tag>
+          <span class="md-chip md-chip--sm" :class="TYPE_TAG[log.entry_type]">{{ TYPE_LABEL[log.entry_type] }}</span>
           <span class="log-title">{{ log.title }}</span>
           <span class="log-actions">
-            <el-tag
+            <span
               v-if="log.severity"
-              :type="log.severity === 'high' ? 'danger' : log.severity === 'medium' ? 'warning' : 'info'"
-              effect="plain"
-              size="small"
+              class="md-chip md-chip--sm"
+              :class="log.severity === 'high' ? 'md-chip--error' : log.severity === 'medium' ? 'md-chip--warning' : 'md-chip--neutral'"
             >
               {{ SEVERITY_LABEL[log.severity] }}
-            </el-tag>
-            <el-tag v-if="derivedStatus(log) !== 'note'"
-              :type="derivedStatus(log) === 'done' ? 'success' : 'info'"
-              effect="plain" size="small">
+            </span>
+            <span
+              v-if="derivedStatus(log) !== 'note'"
+              class="md-chip md-chip--sm"
+              :class="derivedStatus(log) === 'done' ? 'md-chip--success' : 'md-chip--primary'"
+            >
               {{ derivedStatus(log) === 'done' ? '已完成' : '进行中' }}
-            </el-tag>
+            </span>
             <el-button
               v-if="log.entry_type === 'todo' || log.entry_type === 'blocker'"
               link
@@ -84,16 +85,15 @@
         <p v-if="log.content" class="log-content">{{ log.content }}</p>
         <div v-if="log.related_task_ids?.length" class="log-tasks">
           关联任务：
-          <el-tag
+          <button
             v-for="t in log.related_task_ids"
             :key="t"
-            size="small"
-            effect="plain"
-            class="log-task-tag"
+            type="button"
+            class="md-chip md-chip--sm md-chip--secondary log-task-tag"
             @click="goToTask(t)"
           >
             #{{ t }}
-          </el-tag>
+          </button>
         </div>
       </div>
     </div>
@@ -128,14 +128,14 @@
           placeholder="结束日期"
           style="width: 160px"
         />
-        <el-button :disabled="!reportStart && !reportEnd" @click="regenerateReport">
+        <el-button plain :disabled="!reportStart && !reportEnd" @click="regenerateReport">
           应用范围
         </el-button>
       </div>
       <pre class="report-text">{{ reportText || '生成中…' }}</pre>
       <template #footer>
         <el-button @click="reportDialog = false">关闭</el-button>
-        <el-button @click="downloadReport">下载 .md</el-button>
+        <el-button plain @click="downloadReport">下载 .md</el-button>
         <el-button type="primary" @click="copyReport">复制 Markdown</el-button>
       </template>
     </el-dialog>
@@ -247,14 +247,15 @@ const TYPE_LABEL: Record<string, string> = {
   note: '备注',
 }
 const TYPE_OPTIONS = Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))
-const TYPE_TAG: Record<string, 'primary' | 'warning' | 'success' | 'info' | 'danger'> = {
-  progress: 'primary',
-  difficulty: 'warning',
-  todo: 'info',
-  decision: 'success',
-  blocker: 'danger',
-  milestone: 'primary',
-  note: 'info',
+// 类型 → 色调芯片类：进展→success，难点→warning，待办→neutral，决策→primary，阻塞→error，备注→secondary
+const TYPE_TAG: Record<string, string> = {
+  progress: 'md-chip--success',
+  difficulty: 'md-chip--warning',
+  todo: 'md-chip--neutral',
+  decision: 'md-chip--primary',
+  blocker: 'md-chip--error',
+  milestone: 'md-chip--tertiary',
+  note: 'md-chip--secondary',
 }
 const SEVERITY_LABEL: Record<string, string> = { low: '低', medium: '中', high: '高' }
 const STATUS_OPTIONS = ['open', 'done']
@@ -547,47 +548,26 @@ watch(pid, () => {
 </script>
 
 <style scoped>
-.page-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: var(--md-space-6) 0 var(--md-space-4);
-}
-.page-title { margin: 0; font-size: var(--md-text-display-sm); }
-.page-sub {
-  margin: var(--md-space-1) 0 0;
-  font-size: var(--md-text-body-sm);
-  color: var(--md-on-surface-variant);
-  letter-spacing: var(--md-track-caption);
-}
-.head-actions { display: flex; gap: var(--md-space-2); }
-
+/* 指标卡 */
 .stats-row {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  border: 1px solid var(--md-outline-variant);
+  gap: var(--md-space-3);
   margin-bottom: var(--md-space-5);
 }
 @media (max-width: 800px) { .stats-row { grid-template-columns: repeat(3, 1fr); } }
 .spec-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--md-space-2);
   padding: var(--md-space-4);
-  text-align: center;
-  border-right: 1px solid var(--md-outline-variant);
 }
-.spec-cell:nth-child(6n) { border-right: none; }
-@media (max-width: 800px) { .spec-cell:nth-child(3n) { border-right: none; } }
 .spec-value {
-  display: block;
-  font-size: var(--md-text-display-sm);
-  font-weight: var(--md-weight-semibold);
+  font-size: var(--md-type-headline-md);
+  line-height: var(--md-type-headline-lh-md);
+  font-weight: var(--md-weight-bold);
   color: var(--md-on-surface);
-}
-.spec-label {
-  display: block;
-  margin-top: var(--md-space-1);
-  font-size: var(--md-text-label-md);
-  letter-spacing: var(--md-track-caption);
-  color: var(--md-on-surface-variant);
 }
 
 .toolbar {
@@ -599,16 +579,15 @@ watch(pid, () => {
 }
 .session-bar { margin-left: auto; }
 
+/* 记录列表：一张卡片，条目之间用分隔线 */
 .log-list {
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-lg);
+  padding: 0;
   overflow: hidden;
 }
 .log-item {
   padding: var(--md-space-4) var(--md-space-5);
-  border-bottom: 1px solid var(--md-outline-variant);
 }
-.log-item:last-child { border-bottom: none; }
+.log-item + .log-item { border-top: 1px solid var(--md-outline-variant); }
 .log-top {
   display: flex;
   align-items: center;
@@ -617,8 +596,9 @@ watch(pid, () => {
 }
 .log-title {
   flex: 1;
-  font-weight: var(--md-weight-semibold);
-  font-size: var(--md-text-body-md);
+  min-width: 200px;
+  font-weight: var(--md-weight-medium);
+  font-size: var(--md-type-body-md);
   color: var(--md-on-surface);
 }
 .log-actions { display: flex; align-items: center; gap: var(--md-space-1); }
@@ -626,14 +606,16 @@ watch(pid, () => {
   display: flex;
   gap: var(--md-space-2);
   margin-top: var(--md-space-1);
-  font-size: var(--md-text-label-md);
+  padding-left: var(--md-space-1);
+  font-size: var(--md-type-label-md);
   color: var(--md-on-surface-variant);
   flex-wrap: wrap;
 }
 .git-ref { font-family: var(--md-font-mono); }
 .log-content {
-  margin: var(--md-space-2) 0 0;
-  font-size: var(--md-text-body-sm);
+  margin: var(--md-space-2) 0 0 var(--md-space-1);
+  font-size: var(--md-type-body-sm);
+  line-height: var(--md-type-body-lh-md);
   color: var(--md-on-surface-variant);
   white-space: pre-wrap;
   max-width: var(--md-text-measure);
@@ -642,52 +624,39 @@ watch(pid, () => {
   display: flex;
   align-items: center;
   gap: var(--md-space-1);
-  margin-top: var(--md-space-1);
-  font-size: var(--md-text-label-md);
+  margin-top: var(--md-space-2);
+  padding-left: var(--md-space-1);
+  font-size: var(--md-type-label-md);
   color: var(--md-on-surface-variant);
 }
 .log-task-tag {
   cursor: pointer;
-  transition: color var(--md-duration-standard) var(--md-ease-standard),
-    border-color var(--md-duration-standard) var(--md-ease-standard);
+  transition: background-color var(--md-duration-short-4) var(--md-ease-standard);
 }
-.log-task-tag:hover {
-  color: var(--md-primary);
-  border-color: var(--md-primary);
-}
+.log-task-tag:hover { background-color: var(--md-primary-container); color: var(--md-on-primary-container); }
 .load-more {
   display: flex;
   justify-content: center;
   padding: var(--md-space-5) 0;
 }
 
+.report-range {
+  display: flex;
+  align-items: center;
+  gap: var(--md-space-2);
+  margin-bottom: var(--md-space-3);
+}
+.range-sep { color: var(--md-on-surface-variant); }
 .report-text {
   max-height: 480px;
   max-width: var(--md-text-measure);
   overflow: auto;
   white-space: pre-wrap;
   background-color: var(--md-surface-container-high);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-md);
+  border-radius: var(--md-shape-medium);
   padding: var(--md-space-4);
-  font-size: var(--md-text-body-sm);
+  font-size: var(--md-type-body-sm);
   color: var(--md-on-surface);
   line-height: 1.7;
-}
-
-
-/* P4-2 移动端：页头纵排，操作区换行 */
-@media (max-width: 768px) {
-  .page-head {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--md-space-3);
-  }
-  .head-actions {
-    flex-wrap: wrap;
-  }
-  .head-actions .el-form--inline .el-form-item {
-    margin-right: var(--md-space-2);
-  }
 }
 </style>

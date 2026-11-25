@@ -11,8 +11,8 @@
       <p class="hero-sub">任务 / 项目 / 进度 · 一体化管理</p>
     </div>
 
-    <!-- 白底登录卡片：直角 + hairline -->
-    <div class="login-card">
+    <!-- 登录卡片：填充式色块 -->
+    <div class="md-card login-card">
       <el-tabs v-model="mode" class="login-tabs" stretch>
         <el-tab-pane label="登录" name="login" />
         <el-tab-pane label="注册" name="register" />
@@ -137,56 +137,44 @@ async function submit() {
   background-color: var(--md-surface);
 }
 
-/* hero-band：始终深色横幅 */
+/* 品牌横幅：唯一深色块 */
 .login-hero {
   background-color: var(--md-inverse-surface);
   color: var(--md-inverse-on-surface);
   text-align: center;
   padding: var(--md-space-7) var(--md-space-5);
 }
-.hero-mark { color: var(--md-primary); margin-bottom: var(--md-space-2); }
+.hero-mark { color: var(--md-inverse-primary); margin-bottom: var(--md-space-2); }
 .hero-title {
   margin: 0;
   color: var(--md-inverse-on-surface);
-  font-size: var(--md-text-display-sm);
+  font-size: var(--md-type-headline-md);
+  line-height: var(--md-type-headline-lh-md);
   font-weight: var(--md-weight-bold);
   letter-spacing: 0.5px;
 }
 .hero-sub {
   margin: var(--md-space-2) 0 0;
-  color: var(--md-inverse-on-surface);
+  font-size: var(--md-type-body-sm);
   opacity: 0.85;
-  font-size: var(--md-text-body-sm);
-  font-weight: var(--md-weight-regular);
 }
 
-/* 登录卡片 */
 .login-card {
   width: 100%;
   max-width: 420px;
   margin: var(--md-space-7) auto;
   padding: var(--md-space-5);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-lg);
-  background-color: var(--md-surface-container-low);
 }
-
-.login-tabs :deep(.el-tabs__item) {
-  font-size: var(--md-text-title-sm);
-  font-weight: var(--md-weight-semibold);
-}
-.login-tabs :deep(.el-tabs__active-bar) { background-color: var(--md-primary); }
 
 .submit-btn {
   width: 100%;
-  height: var(--md-control-height);
   margin-top: var(--md-space-1);
 }
 
 .legal {
   margin: var(--md-space-5) 0 0;
   text-align: center;
-  font-size: var(--md-text-label-md);
+  font-size: var(--md-type-label-md);
   color: var(--md-on-surface-variant);
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="not-found">
+  <div class="page not-found">
     <div class="nf-code">404</div>
     <h1 class="nf-title">页面未找到</h1>
     <p class="nf-sub">你访问的页面不存在或已被移动</p>
@@ -22,15 +22,19 @@ const router = useRouter()
   justify-content: center;
   gap: var(--md-space-3);
   text-align: center;
-  padding: var(--md-space-7) var(--md-space-4);
 }
+/* 404：primary-container 色块里的展示数字 */
 .nf-code {
-  font-size: var(--md-text-display-lg);
+  padding: var(--md-space-3) var(--md-space-5);
+  border-radius: var(--md-shape-large);
+  background-color: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+  font-size: var(--md-type-display-sm);
+  line-height: var(--md-type-display-lh-sm);
   font-weight: var(--md-weight-bold);
-  color: var(--md-primary);
   letter-spacing: 2px;
-  line-height: 1;
 }
-.nf-title { margin: 0; font-size: var(--md-text-display-sm); color: var(--md-on-surface); }
-.nf-sub { margin: 0; color: var(--md-on-surface-variant); font-size: var(--md-text-body-md); }
+.nf-title { margin: var(--md-space-3) 0 0; }
+.nf-sub { margin: 0; color: var(--md-on-surface-variant); font-size: var(--md-type-body-md); }
+.not-found .el-button { margin-top: var(--md-space-2); }
 </style>

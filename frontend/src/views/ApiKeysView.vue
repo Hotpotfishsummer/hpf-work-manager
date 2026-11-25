@@ -1,5 +1,5 @@
 <template>
-  <div class="page-container keys-page">
+  <div class="page keys-page">
     <div class="page-head">
       <div>
         <h1 class="page-title">API Keys</h1>
@@ -20,7 +20,7 @@
         已生成 Key <code>{{ visibleKey }}</code> — <strong>仅此一次显示</strong>，请立即复制保存。
       </template>
       <template #default>
-        <el-button size="small" @click="copyKey(visibleKey)">复制</el-button>
+        <el-button plain size="small" @click="copyKey(visibleKey)">复制</el-button>
       </template>
     </el-alert>
 
@@ -33,8 +33,8 @@
       </el-table-column>
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
-          <el-tag v-if="row.revoked_at" type="danger" effect="plain">已撤销</el-tag>
-          <el-tag v-else type="success" effect="plain">有效</el-tag>
+          <span v-if="row.revoked_at" class="md-chip md-chip--sm md-chip--neutral">已撤销</span>
+          <span v-else class="md-chip md-chip--sm md-chip--success">有效</span>
         </template>
       </el-table-column>
       <el-table-column label="最近使用" min-width="160">
@@ -143,40 +143,15 @@ onMounted(load)
 </script>
 
 <style scoped>
-.keys-page {
-  padding-top: var(--md-space-6);
-}
-.page-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-bottom: var(--md-space-5);
-}
-.page-title {
-  font-size: var(--md-text-display-sm);
-  font-weight: var(--md-weight-semibold);
-  color: var(--md-on-surface);
-}
-.page-head {
-  flex-wrap: wrap;
-  gap: var(--md-space-3);
-}
-.page-sub {
-  color: var(--md-on-surface-variant);
-  margin-top: var(--md-space-1);
-  font-size: var(--md-text-body-sm);
-}
-.key-alert {
-  margin-bottom: var(--md-space-4);
-}
+.key-alert { margin-bottom: var(--md-space-4); }
 .key-alert :deep(code) {
   font-family: var(--md-font-mono);
   background: var(--md-surface-container-high);
   padding: 1px var(--md-space-2);
-  border-radius: var(--md-radius-sm);
+  border-radius: var(--md-shape-extra-small);
 }
 @media (max-width: 560px) {
-  .page-title { font-size: var(--md-text-body-lg); }
-  .keys-page :deep(.el-table) { font-size: var(--md-text-label-sm); }
+  .page-title { font-size: var(--md-type-body-lg); }
+  .keys-page :deep(.el-table) { font-size: var(--md-type-label-sm); }
 }
 </style>
