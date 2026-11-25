@@ -117,6 +117,8 @@ UI 视觉规范由根目录 `DESIGN.md`（Apple × Material Design 3）约束，
 - **字体**：系统字体栈（SF Pro Text / PingFang SC / Inter），400 正文 / 500 标签 / 600 标题
 - **无卡片阴影**：深度来自 surface-container 色阶 + hairline 分隔线，仅悬浮 chrome 用阴影
 - 状态色映射：done→success 绿 / 进行中→primary 蓝 / 待办→on-surface-variant 灰 / **延期→error 红**
+- 健康度三级：good→success / warning→warning / critical→error，浅底用 `*-tint`、光晕用 `*-glow`，深色主题自动取深色值
+- **机器闸门**：`cd frontend && npx vitest run tests/design-tokens.spec.ts` —— 组件层出现 hex/rgb 颜色、裸阴影/圆角/字号、>600 字重即失败并逐行列出；确需例外在该行写 `design-audit: allow 原因`
 
 ## 说明与范围外
 

@@ -120,3 +120,6 @@ Negative tracking ≥14px (Apple tight), 0 at/or below 12px.
 - Don't shadow cards/rows — raise via surface-container ladder.
 - Don't ship a light-only palette: every surface/status/outline token has a dark variant.
 - Don't use pure black (#000) for text or surfaces; use ink/surface tokens.
+- **Enforced by a gate**: `frontend/tests/design-tokens.spec.ts` (run by `npm test`) fails on any hex/rgb/hsl
+  literal, raw shadow/radius/font-size, or weight >600 outside `tokens.css`, and on color tokens missing a
+  dark value. Genuine exceptions carry `design-audit: allow <reason>` on the same line.
