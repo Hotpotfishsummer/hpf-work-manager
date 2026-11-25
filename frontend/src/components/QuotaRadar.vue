@@ -133,28 +133,28 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--md-surface-container, #f1f2f4);
-  border: 1px solid var(--md-outline-variant, #e0e2e8);
-  border-radius: 999px;
+  background: var(--md-surface-container);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-radius-pill);
   padding: 4px 10px;
-  font-size: 12px;
-  color: var(--md-on-surface, #1d1d1f);
+  font-size: var(--md-text-body-sm);
+  color: var(--md-on-surface);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .quota-badge-btn:hover {
-  background: var(--md-surface-container-high, #eaecf0);
+  background: var(--md-surface-container-high);
 }
 
 .quota-badge-btn.critical {
-  border-color: #ff9999;
-  background: rgba(255, 77, 79, 0.08);
+  border-color: color-mix(in srgb, var(--md-error) 55%, transparent);
+  background: var(--md-error-tint);
 }
 
 .quota-badge-btn.warning {
-  border-color: #ffd591;
-  background: rgba(250, 173, 20, 0.08);
+  border-color: color-mix(in srgb, var(--md-warning) 55%, transparent);
+  background: var(--md-warning-tint);
 }
 
 .quota-pulse {
@@ -164,17 +164,17 @@ onUnmounted(() => {
 }
 
 .quota-pulse.good {
-  background: #52c41a;
-  box-shadow: 0 0 6px rgba(82, 196, 26, 0.6);
+  background: var(--md-success);
+  box-shadow: var(--md-glow-success);
 }
 
 .quota-pulse.warning {
-  background: #faad14;
-  box-shadow: 0 0 6px rgba(250, 173, 20, 0.6);
+  background: var(--md-warning-fill);
+  box-shadow: var(--md-glow-warning);
 }
 
 .quota-pulse.critical {
-  background: #ff4d4f;
+  background: var(--md-error);
   animation: pulse-crit 1.5s infinite;
 }
 
@@ -186,10 +186,10 @@ onUnmounted(() => {
 
 .quota-timer {
   font-weight: 600;
-  color: #ff4d4f;
-  background: rgba(255, 77, 79, 0.12);
+  color: var(--md-error);
+  background: var(--md-error-tint);
   padding: 1px 6px;
-  border-radius: 4px;
+  border-radius: var(--md-radius-xs);
 }
 
 .radar-card {
@@ -205,7 +205,7 @@ onUnmounted(() => {
 
 .radar-title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--md-text-body);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -213,8 +213,8 @@ onUnmounted(() => {
 
 .radar-progress-bar {
   height: 6px;
-  background: var(--md-surface-container-highest, #e2e4e9);
-  border-radius: 3px;
+  background: var(--md-surface-container-highest);
+  border-radius: var(--md-radius-xs);
   overflow: hidden;
   margin-bottom: 12px;
 }
@@ -224,18 +224,18 @@ onUnmounted(() => {
   transition: width 0.3s ease;
 }
 
-.progress-fill.good { background: #52c41a; }
-.progress-fill.warning { background: #faad14; }
-.progress-fill.critical { background: #ff4d4f; }
+.progress-fill.good { background: var(--md-success); }
+.progress-fill.warning { background: var(--md-warning-fill); }
+.progress-fill.critical { background: var(--md-error); }
 
 .radar-meta-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   margin-bottom: 12px;
-  background: var(--md-surface-container-low, #f8f9fa);
+  background: var(--md-surface-container-low);
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--md-radius-sm);
 }
 
 .meta-item {
@@ -244,43 +244,43 @@ onUnmounted(() => {
 }
 
 .meta-item .label {
-  font-size: 11px;
-  color: var(--md-on-surface-variant, #666);
+  font-size: var(--md-text-caption);
+  color: var(--md-on-surface-variant);
 }
 
 .meta-item .val {
-  font-size: 13px;
+  font-size: var(--md-text-label-md);
   font-weight: 600;
-  color: var(--md-on-surface, #222);
+  color: var(--md-on-surface);
 }
 
 .meta-item .val.highlight {
-  color: #0066cc;
+  color: var(--md-primary);
 }
 
 .radar-suggestion {
-  background: #f0f7ff;
-  border-left: 3px solid #0066cc;
+  background: var(--md-primary-container);
+  border-left: var(--md-accent-bar-width) solid var(--md-primary);
   padding: 8px 10px;
-  border-radius: 4px;
-  font-size: 12px;
+  border-radius: var(--md-radius-xs);
+  font-size: var(--md-text-body-sm);
   margin-bottom: 12px;
   line-height: 1.45;
 }
 
 .radar-suggestion.warning {
-  background: #fffbe6;
-  border-left-color: #faad14;
+  background: var(--md-warning-container);
+  border-left-color: var(--md-warning);
 }
 
 .sugg-header {
   font-weight: 600;
   margin-bottom: 4px;
-  color: var(--md-on-surface, #222);
+  color: var(--md-on-surface);
 }
 
 .sugg-body {
-  color: #444;
+  color: var(--md-on-surface-variant);
 }
 
 .radar-actions {
@@ -288,8 +288,8 @@ onUnmounted(() => {
 }
 
 .action-btn {
-  font-size: 12px;
-  color: #0066cc;
+  font-size: var(--md-text-body-sm);
+  color: var(--md-primary);
   text-decoration: none;
   font-weight: 500;
 }

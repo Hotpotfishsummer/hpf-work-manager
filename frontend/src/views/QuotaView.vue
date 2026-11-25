@@ -291,15 +291,15 @@ onMounted(() => {
 }
 
 .view-title {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: var(--md-text-title-lg);
+  font-weight: var(--md-weight-semibold);
   margin: 0 0 6px 0;
   color: var(--md-on-surface);
 }
 
 .view-sub {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--md-text-label-md);
   color: var(--md-on-surface-variant);
 }
 
@@ -313,9 +313,9 @@ onMounted(() => {
 .metric-card {
   background: var(--md-surface);
   border: 1px solid var(--md-outline-variant);
-  border-radius: 12px;
+  border-radius: var(--md-radius-md);
   padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--md-shadow-1);
 }
 
 .metric-head {
@@ -326,7 +326,7 @@ onMounted(() => {
 }
 
 .head-title {
-  font-size: 15px;
+  font-size: var(--md-text-body-lg);
   font-weight: 600;
   color: var(--md-on-surface);
 }
@@ -339,26 +339,26 @@ onMounted(() => {
 }
 
 .big-percent {
-  font-size: 42px;
-  font-weight: 800;
+  font-size: var(--md-text-display-xl);
+  font-weight: var(--md-weight-bold);
   line-height: 1;
 }
-.big-percent.good { color: #52c41a; }
-.big-percent.warning { color: #faad14; }
-.big-percent.critical { color: #ff4d4f; }
+.big-percent.good { color: var(--md-success); }
+.big-percent.warning { color: var(--md-warning); }
+.big-percent.critical { color: var(--md-error); }
 
 .countdown-badge {
-  font-size: 13px;
+  font-size: var(--md-text-label-md);
   color: var(--md-on-surface-variant);
   background: var(--md-surface-container);
   padding: 6px 12px;
-  border-radius: 20px;
+  border-radius: var(--md-radius-lg);
 }
 
 .progress-track {
   height: 8px;
-  background: var(--md-surface-container-highest, #e4e6ea);
-  border-radius: 4px;
+  background: var(--md-surface-container-highest);
+  border-radius: var(--md-radius-xs);
   overflow: hidden;
   margin-bottom: 20px;
 }
@@ -367,9 +367,9 @@ onMounted(() => {
   height: 100%;
   transition: width 0.3s ease;
 }
-.progress-bar.good { background: #52c41a; }
-.progress-bar.warning { background: #faad14; }
-.progress-bar.critical { background: #ff4d4f; }
+.progress-bar.good { background: var(--md-success); }
+.progress-bar.warning { background: var(--md-warning-fill); }
+.progress-bar.critical { background: var(--md-error); }
 
 .metric-footer-grid {
   display: grid;
@@ -377,7 +377,7 @@ onMounted(() => {
   gap: 12px;
   background: var(--md-surface-container-low);
   padding: 12px 14px;
-  border-radius: 8px;
+  border-radius: var(--md-radius-sm);
 }
 
 .meta-col {
@@ -387,47 +387,48 @@ onMounted(() => {
 }
 
 .meta-label {
-  font-size: 11px;
+  font-size: var(--md-text-caption);
   color: var(--md-on-surface-variant);
 }
 
 .meta-val {
-  font-size: 13px;
+  font-size: var(--md-text-label-md);
   font-weight: 600;
   color: var(--md-on-surface);
 }
-.meta-val.highlight { color: #0066cc; }
+.meta-val.highlight { color: var(--md-primary); }
 
 /* 策略卡片 */
 .strategy-badge {
-  font-size: 11px;
+  font-size: var(--md-text-caption);
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--md-radius-xs);
   font-weight: 600;
 }
-.strategy-badge.good { background: rgba(82, 196, 26, 0.12); color: #52c41a; }
-.strategy-badge.warning { background: rgba(250, 173, 20, 0.12); color: #faad14; }
-.strategy-badge.critical { background: rgba(255, 77, 79, 0.12); color: #ff4d4f; }
+.strategy-badge.good { background: var(--md-success-tint); color: var(--md-success); }
+.strategy-badge.warning { background: var(--md-warning-tint); color: var(--md-warning); }
+.strategy-badge.critical { background: var(--md-error-tint); color: var(--md-error); }
 
 .sugg-box {
   display: flex;
   gap: 10px;
-  background: #f0f7ff;
-  border-left: 3px solid #0066cc;
+  background: var(--md-primary-container);
+  border-left: var(--md-accent-bar-width) solid var(--md-primary);
   padding: 12px 14px;
-  border-radius: 6px;
+  border-radius: var(--md-radius-sm);
   margin-bottom: 16px;
-  font-size: 13px;
+  font-size: var(--md-text-label-md);
   line-height: 1.5;
-  color: #222;
+  color: var(--md-on-primary-container);
 }
 .sugg-box.warning {
-  background: #fffbe6;
-  border-left-color: #faad14;
+  background: var(--md-warning-container);
+  border-left-color: var(--md-warning);
+  color: var(--md-on-warning-container);
 }
 
 .action-suggestions h4 {
-  font-size: 13px;
+  font-size: var(--md-text-label-md);
   margin: 0 0 10px 0;
   color: var(--md-on-surface);
 }
@@ -438,27 +439,27 @@ onMounted(() => {
   gap: 12px;
   padding: 10px 12px;
   border: 1px solid var(--md-outline-variant);
-  border-radius: 8px;
+  border-radius: var(--md-radius-sm);
   margin-bottom: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 .suggestion-item:hover {
-  border-color: #0066cc;
+  border-color: var(--md-primary);
   background: var(--md-surface-container-high);
 }
 
-.item-icon { font-size: 18px; }
+.item-icon { font-size: var(--md-text-body-lg); }
 .item-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.item-title { font-size: 13px; font-weight: 600; color: var(--md-on-surface); }
-.item-sub { font-size: 11px; color: var(--md-on-surface-variant); }
-.arrow { color: #888; font-weight: bold; }
+.item-title { font-size: var(--md-text-label-md); font-weight: 600; color: var(--md-on-surface); }
+.item-sub { font-size: var(--md-text-caption); color: var(--md-on-surface-variant); }
+.arrow { color: var(--md-outline); font-weight: var(--md-weight-semibold); }
 
 /* 夜间调度区 */
 .nightshift-section {
   background: var(--md-surface);
   border: 1px solid var(--md-outline-variant);
-  border-radius: 12px;
+  border-radius: var(--md-radius-md);
   padding: 22px;
 }
 
@@ -470,14 +471,14 @@ onMounted(() => {
 }
 
 .sec-title {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: var(--md-text-title-md);
+  font-weight: var(--md-weight-semibold);
   margin: 0 0 6px 0;
   color: var(--md-on-surface);
 }
 
 .sec-desc {
-  font-size: 13px;
+  font-size: var(--md-text-label-md);
   color: var(--md-on-surface-variant);
   margin: 0;
   max-width: 800px;
@@ -486,13 +487,13 @@ onMounted(() => {
 
 .batch-table-container {
   border: 1px solid var(--md-outline-variant);
-  border-radius: 8px;
+  border-radius: var(--md-radius-sm);
   overflow: hidden;
 }
 
 .batch-dialog-input textarea {
-  font-family: var(--md-font-mono, monospace);
-  font-size: 12px;
+  font-family: var(--md-font-mono);
+  font-size: var(--md-text-body-sm);
   line-height: 1.5;
 }
 
