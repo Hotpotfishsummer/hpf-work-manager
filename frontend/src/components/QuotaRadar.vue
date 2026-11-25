@@ -2,7 +2,7 @@
   <div class="quota-radar">
     <el-popover placement="bottom-end" :width="320" trigger="click" popper-class="quota-popover">
       <template #reference>
-        <button class="quota-badge-btn" :class="statusLevel" title="查看 5h 算力配额与调度雷达">
+        <button class="quota-badge-btn md-state" :class="statusLevel" title="查看 5h 算力配额与调度雷达">
           <span class="quota-pulse" :class="statusLevel"></span>
           <span class="quota-icon">⚡</span>
           <span class="quota-text">5h额度: <strong>{{ quota.remaining_percent }}%</strong></span>
@@ -14,9 +14,9 @@
         <div class="radar-header">
           <div class="radar-title">
             <span>⚡ AI 算力窗口雷达</span>
-            <el-tag :type="tagType" size="small" effect="dark">{{ quota.remaining_percent }}% 剩余</el-tag>
+            <el-tag :type="tagType" size="small">{{ quota.remaining_percent }}% 剩余</el-tag>
           </div>
-          <el-button link size="small" :loading="loading" @click="fetchQuota">刷新</el-button>
+          <el-button text size="small" :loading="loading" @click="fetchQuota">刷新</el-button>
         </div>
 
         <div class="radar-progress-bar">
@@ -42,13 +42,13 @@
           </div>
         </div>
 
-        <div class="radar-suggestion" :class="{ warning: quota.remaining_percent < 20 }">
+        <div class="md-callout radar-suggestion" :class="{ good: 'md-callout--primary', warning: 'md-callout--warning', critical: 'md-callout--error' }[statusLevel]">
           <div class="sugg-header">💡 调度与额度利用策略</div>
           <div class="sugg-body">{{ quota.suggestion || '正在获取调度推演建议...' }}</div>
         </div>
 
         <div class="radar-actions">
-          <router-link to="/ideas" class="action-btn">
+          <router-link to="/ideas" class="md-btn md-btn--text md-state action-btn">
             前往灵感工坊备单 →
           </router-link>
         </div>
@@ -129,128 +129,115 @@ onUnmounted(() => {
   align-items: center;
 }
 
+/* 顶栏里的状态徽标：色块不描边，按健康度换容器色 */
 .quota-badge-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--md-surface-container);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-pill);
-  padding: 4px 10px;
-  font-size: var(--md-text-body-sm);
+  border: 0;
+  border-radius: var(--md-shape-full);
+  padding: var(--md-space-1) var(--md-space-3);
+  font: inherit;
+  font-size: var(--md-type-label-md);
   color: var(--md-on-surface);
   cursor: pointer;
-  transition: all 0.2s ease;
+  background-color: var(--md-surface-container-high);
+  --state-color: var(--md-on-surface);
+  transition: background-color var(--md-duration-short-2) var(--md-ease-standard);
 }
-
-.quota-badge-btn:hover {
-  background: var(--md-surface-container-high);
+.quota-badge-btn.good {
+  background-color: var(--md-success-container);
+  color: var(--md-on-success-container);
+  --state-color: var(--md-on-success-container);
 }
-
-.quota-badge-btn.critical {
-  border-color: color-mix(in srgb, var(--md-error) 55%, transparent);
-  background: var(--md-error-tint);
-}
-
 .quota-badge-btn.warning {
-  border-color: color-mix(in srgb, var(--md-warning) 55%, transparent);
-  background: var(--md-warning-tint);
+  background-color: var(--md-warning-container);
+  color: var(--md-on-warning-container);
+  --state-color: var(--md-on-warning-container);
+}
+.quota-badge-btn.critical {
+  background-color: var(--md-error-container);
+  color: var(--md-on-error-container);
+  --state-color: var(--md-on-error-container);
 }
 
 .quota-pulse {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-}
-
-.quota-pulse.good {
-  background: var(--md-success);
-  box-shadow: var(--md-glow-success);
-}
-
-.quota-pulse.warning {
-  background: var(--md-warning-fill);
-  box-shadow: var(--md-glow-warning);
+  width: 8px;
+  height: 8px;
+  border-radius: var(--md-shape-full);
+  background-color: currentColor;
 }
 
 .quota-pulse.critical {
-  background: var(--md-error);
   animation: pulse-crit 1.5s infinite;
 }
 
 @keyframes pulse-crit {
-  0% { transform: scale(0.95); opacity: 0.8; }
+  0% { transform: scale(0.85); opacity: 0.7; }
   50% { transform: scale(1.3); opacity: 1; }
-  100% { transform: scale(0.95); opacity: 0.8; }
+  100% { transform: scale(0.85); opacity: 0.7; }
 }
 
 .quota-timer {
-  font-weight: 600;
-  color: var(--md-error);
-  background: var(--md-error-tint);
-  padding: 1px 6px;
-  border-radius: var(--md-radius-xs);
+  font-weight: var(--md-weight-medium);
 }
 
-.radar-card {
-  padding: 4px;
-}
-
+/* 浮层底色（surface-container-high）与 --md-elevation-2 由 element-plus.css 的 .el-popper 统一给 */
 .radar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  gap: var(--md-space-2);
+  margin-bottom: var(--md-space-2);
 }
 
 .radar-title {
-  font-weight: 600;
-  font-size: var(--md-text-body);
+  font-weight: var(--md-weight-medium);
+  font-size: var(--md-type-title-sm);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--md-space-2);
 }
 
 .radar-progress-bar {
   height: 6px;
-  background: var(--md-surface-container-highest);
-  border-radius: var(--md-radius-xs);
+  background-color: var(--md-surface-container-lowest);
+  border-radius: var(--md-shape-full);
   overflow: hidden;
-  margin-bottom: 12px;
+  margin-bottom: var(--md-space-3);
 }
 
 .progress-fill {
   height: 100%;
-  transition: width 0.3s ease;
+  transition: width var(--md-duration-medium-2) var(--md-ease-standard);
 }
 
 .progress-fill.good { background: var(--md-success); }
-.progress-fill.warning { background: var(--md-warning-fill); }
+.progress-fill.warning { background: var(--md-warning); }
 .progress-fill.critical { background: var(--md-error); }
 
 .radar-meta-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 12px;
-  background: var(--md-surface-container-low);
-  padding: 8px 10px;
-  border-radius: var(--md-radius-sm);
+  gap: var(--md-space-2) var(--md-space-3);
+  margin-bottom: var(--md-space-3);
 }
 
 .meta-item {
   display: flex;
   flex-direction: column;
+  padding-bottom: var(--md-space-1);
+  border-bottom: 1px solid var(--md-outline-variant);
 }
 
 .meta-item .label {
-  font-size: var(--md-text-caption);
+  font-size: var(--md-type-body-sm);
   color: var(--md-on-surface-variant);
 }
 
 .meta-item .val {
-  font-size: var(--md-text-label-md);
-  font-weight: 600;
+  font-size: var(--md-type-body-sm);
+  font-weight: var(--md-weight-medium);
   color: var(--md-on-surface);
 }
 
@@ -259,42 +246,29 @@ onUnmounted(() => {
 }
 
 .radar-suggestion {
-  background: var(--md-primary-container);
-  border-left: var(--md-accent-bar-width) solid var(--md-primary);
-  padding: 8px 10px;
-  border-radius: var(--md-radius-xs);
-  font-size: var(--md-text-body-sm);
-  margin-bottom: 12px;
-  line-height: 1.45;
-}
-
-.radar-suggestion.warning {
-  background: var(--md-warning-container);
-  border-left-color: var(--md-warning);
+  display: block;
+  font-size: var(--md-type-body-sm);
+  line-height: var(--md-type-body-lh-sm);
+  margin-bottom: var(--md-space-3);
+  border-radius: var(--md-shape-small);
 }
 
 .sugg-header {
-  font-weight: 600;
-  margin-bottom: 4px;
-  color: var(--md-on-surface);
+  font-weight: var(--md-weight-medium);
+  margin-bottom: var(--md-space-1);
 }
 
 .sugg-body {
-  color: var(--md-on-surface-variant);
+  opacity: 0.9;
 }
 
 .radar-actions {
-  text-align: right;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .action-btn {
-  font-size: var(--md-text-body-sm);
-  color: var(--md-primary);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.action-btn:hover {
-  text-decoration: underline;
+  height: var(--md-control-height-sm);
+  font-size: var(--md-type-label-md);
 }
 </style>

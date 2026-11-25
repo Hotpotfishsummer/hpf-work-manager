@@ -288,14 +288,13 @@ onUnmounted(() => {
   min-width: 320px;
   max-width: 480px;
   padding: var(--md-space-1);
-  border-radius: var(--md-radius-lg);
-  box-shadow: var(--md-shadow-2);
-  border: 1px solid var(--md-outline-variant);
+  /* 浮层底色与 --md-elevation-2 由 element-plus.css 的 .el-popper 统一给，这里不描边 */
 }
 
 .search-result-item {
   padding: var(--md-space-2) var(--md-space-3) !important;
-  border-radius: var(--md-radius-md);
+  border-radius: var(--md-shape-small);
+  border-bottom: 1px solid var(--md-outline-variant);
   transition: background-color 0.1s ease;
 }
 
@@ -303,8 +302,16 @@ onUnmounted(() => {
   background-color: var(--md-surface-container-high);
 }
 
-.search-result-item.is-disabled {
+/* 分隔线只在结果之间：末项与页脚不画 */
+.search-result-item:nth-last-child(2),
+.search-result-footer {
+  border-bottom: 0;
+}
+.search-result-item.is-disabled:not(.search-result-footer) {
   opacity: 0.5;
+}
+.search-result-footer {
+  color: var(--md-on-surface-variant);
 }
 
 .result-content {

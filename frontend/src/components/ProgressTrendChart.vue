@@ -29,8 +29,8 @@ function buildOption() {
     tooltip: {
       trigger: 'axis',
       valueFormatter: (v: number) => `${v}%`,
-      backgroundColor: chartColors.surface,
-      borderColor: chartColors.outlineVariant,
+      backgroundColor: chartColors.surfaceContainerLow,
+      borderWidth: 0,
       textStyle: { color: chartColors.onSurface, fontFamily: font, fontWeight: 400 },
     },
     legend: {
@@ -52,6 +52,7 @@ function buildOption() {
     },
     yAxis: {
       type: 'value',
+      axisLine: { show: false },
       min: 0,
       max: 100,
       axisLabel: { formatter: '{value}%', color: chartColors.onSurfaceVariant, fontFamily: font, fontWeight: 400 },

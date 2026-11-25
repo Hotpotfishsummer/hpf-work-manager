@@ -1,9 +1,9 @@
 <template>
-  <div class="quota-view-container" v-loading="loading">
-    <div class="view-header">
+  <div class="page quota-view" v-loading="loading">
+    <div class="page-head">
       <div>
-        <h1 class="view-title">⚡ 5h 算力配额与自主调度雷达 (Quota Radar)</h1>
-        <p class="view-sub">监控 MiniMax / DeepSeek 5小时滚动算力窗口与每周余量，规划夜间无人值守开发批次，告别“有额度无目标，有目标无额度”。</p>
+        <h1 class="page-title">⚡ 5h 算力配额与自主调度雷达 (Quota Radar)</h1>
+        <p class="page-sub">监控 MiniMax / DeepSeek 5小时滚动算力窗口与每周余量，规划夜间无人值守开发批次，告别“有额度无目标，有目标无额度”。</p>
       </div>
       <el-button type="primary" plain @click="fetchData">
         <el-icon><Refresh /></el-icon> 刷新配额探针
@@ -13,10 +13,10 @@
     <!-- 算力大盘仪表卡片 -->
     <div class="dashboard-grid">
       <!-- 5小时当前窗口 -->
-      <div class="metric-card main-gauge">
+      <div class="md-card metric-card">
         <div class="metric-head">
           <span class="head-title">5小时滚动算力余量</span>
-          <el-tag :type="tagType" size="small" effect="dark">{{ quota.remaining_percent ?? 100 }}% 剩余</el-tag>
+          <el-tag :type="tagType" size="small" class="md-chip--sm">{{ quota.remaining_percent ?? 100 }}% 剩余</el-tag>
         </div>
 
         <div class="gauge-center">
@@ -48,16 +48,16 @@
       </div>
 
       <!-- 智能调度策略卡片 -->
-      <div class="metric-card strategy-card">
+      <div class="md-card strategy-card">
         <div class="metric-head">
           <span class="head-title">💡 当前时段调度推演建议</span>
-          <span class="strategy-badge" :class="statusLevel">
+          <span class="md-chip md-chip--sm strategy-badge" :class="strategyTone">
             {{ quota.remaining_percent >= 50 ? '算力充沛' : (quota.remaining_percent >= 20 ? '算力平稳' : '算力见底') }}
           </span>
         </div>
 
         <div class="strategy-content">
-          <div class="sugg-box" :class="{ warning: (quota.remaining_percent ?? 100) < 30 }">
+          <div class="md-callout sugg-box" :class="calloutTone">
             <div class="sugg-icon">⚡</div>
             <div class="sugg-text">
               <strong>策略提示：</strong>
@@ -67,8 +67,9 @@
 
           <div class="action-suggestions">
             <h4>💡 建议的下一步动作：</h4>
-            <div class="suggestion-item" @click="router.push('/ideas')">
-              <span class="item-icon">🔍</span>
+            <div class="suggestion-list">
+            <div class="md-state suggestion-item" @click="router.push('/ideas')">
+              <span class="item-icon">1</span>
               <div class="item-info">
                 <span class="item-title">进行项目代码体检与 Next Steps 推演</span>
                 <span class="item-sub">由 AI 深度扫描代码库与 TODOs，提炼 3 个高价值工单</span>
@@ -76,13 +77,14 @@
               <span class="arrow">→</span>
             </div>
 
-            <div class="suggestion-item" @click="router.push('/')">
-              <span class="item-icon">🎯</span>
+            <div class="md-state suggestion-item" @click="router.push('/')">
+              <span class="item-icon">2</span>
               <div class="item-info">
                 <span class="item-title">前往任务看板派发工单给 dsh</span>
                 <span class="item-sub">一键复制 Prompt 给 DeepSeek Harness 执行当前高优任务</span>
               </div>
               <span class="arrow">→</span>
+            </div>
             </div>
           </div>
         </div>
@@ -90,10 +92,10 @@
     </div>
 
     <!-- 夜间无人值守任务调度包 (Night-Shift Autonomous Dispatcher) -->
-    <div class="nightshift-section">
+    <div class="md-section nightshift-section">
       <div class="section-head">
-        <div>
-          <h2 class="sec-title">🌙 夜间无人值守批次备单箱 (Night-Shift Dispatcher)</h2>
+        <div class="section-intro">
+          <h2 class="md-section__title">🌙 夜间无人值守批次备单箱 (Night-Shift Dispatcher)</h2>
           <p class="sec-desc">
             为解决“睡眠时间浪费 5 小时额度”的问题，在此处勾选待办池任务，一键生成结构化夜间自主开发 Prompt，让 AI 在无人值守状态下逐个实现、编写测试并提交 commit。
           </p>
@@ -129,7 +131,7 @@
           <el-table-column prop="description" label="Prompt / 任务描述" min-width="300" show-overflow-tooltip />
           <el-table-column label="操作" width="140" align="right">
             <template #default="{ row }">
-              <el-button size="small" link type="primary" @click="copySingle(row)">复制单项</el-button>
+              <el-button size="small" text @click="copySingle(row)">复制单项</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -181,6 +183,11 @@ const statusLevel = computed(() => {
   if (p <= 30) return 'warning'
   return 'good'
 })
+
+/** 纯展示：健康度 → 色调类名（良好 primary / 注意 warning / 紧急 error） */
+const strategyTone = computed(() => ({ good: 'md-chip--success', warning: 'md-chip--warning', critical: 'md-chip--error' })[statusLevel.value])
+
+const calloutTone = computed(() => ({ good: 'md-callout--primary', warning: 'md-callout--warning', critical: 'md-callout--error' })[statusLevel.value])
 
 const tagType = computed(() => {
   const p = quota.value.remaining_percent ?? 100
@@ -277,57 +284,25 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.quota-view-container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 24px;
-}
-
-.view-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
-}
-
-.view-title {
-  font-size: var(--md-text-title-lg);
-  font-weight: var(--md-weight-semibold);
-  margin: 0 0 6px 0;
-  color: var(--md-on-surface);
-}
-
-.view-sub {
-  margin: 0;
-  font-size: var(--md-text-label-md);
-  color: var(--md-on-surface-variant);
-}
-
 .dashboard-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 28px;
-}
-
-.metric-card {
-  background: var(--md-surface);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-md);
-  padding: 20px;
-  box-shadow: var(--md-shadow-1);
+  gap: var(--md-space-5);
+  margin-bottom: var(--md-space-7);
 }
 
 .metric-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  gap: var(--md-space-3);
+  margin-bottom: var(--md-space-4);
 }
 
 .head-title {
-  font-size: var(--md-text-body-lg);
-  font-weight: 600;
+  font-size: var(--md-type-title-md);
+  line-height: var(--md-type-title-lh-md);
+  font-weight: var(--md-weight-medium);
   color: var(--md-on-surface);
 }
 
@@ -335,170 +310,161 @@ onMounted(() => {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: var(--md-space-3);
+  margin-bottom: var(--md-space-3);
 }
 
 .big-percent {
-  font-size: var(--md-text-display-xl);
+  font-size: var(--md-type-display-sm);
+  line-height: var(--md-type-display-lh-sm);
   font-weight: var(--md-weight-bold);
-  line-height: 1;
+  letter-spacing: var(--md-tracking-display);
 }
 .big-percent.good { color: var(--md-success); }
 .big-percent.warning { color: var(--md-warning); }
 .big-percent.critical { color: var(--md-error); }
 
 .countdown-badge {
-  font-size: var(--md-text-label-md);
+  font-size: var(--md-type-body-sm);
   color: var(--md-on-surface-variant);
-  background: var(--md-surface-container);
-  padding: 6px 12px;
-  border-radius: var(--md-radius-lg);
 }
 
 .progress-track {
-  height: 8px;
-  background: var(--md-surface-container-highest);
-  border-radius: var(--md-radius-xs);
+  height: var(--md-progress-height);
+  background: var(--md-surface-container-lowest);
+  border-radius: var(--md-shape-full);
   overflow: hidden;
-  margin-bottom: 20px;
+  margin-bottom: var(--md-space-5);
 }
 
 .progress-bar {
   height: 100%;
-  transition: width 0.3s ease;
+  transition: width var(--md-duration-medium-2) var(--md-ease-standard);
 }
 .progress-bar.good { background: var(--md-success); }
-.progress-bar.warning { background: var(--md-warning-fill); }
+.progress-bar.warning { background: var(--md-warning); }
 .progress-bar.critical { background: var(--md-error); }
 
+/* 卡片内再分一小块：用低一级表面色，不套卡、不描边 */
 .metric-footer-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  background: var(--md-surface-container-low);
-  padding: 12px 14px;
-  border-radius: var(--md-radius-sm);
+  gap: var(--md-space-3);
+  background: var(--md-surface-container);
+  padding: var(--md-space-3) var(--md-space-4);
+  border-radius: var(--md-shape-small);
 }
 
 .meta-col {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--md-space-1);
 }
 
 .meta-label {
-  font-size: var(--md-text-caption);
+  font-size: var(--md-type-body-sm);
   color: var(--md-on-surface-variant);
 }
 
 .meta-val {
-  font-size: var(--md-text-label-md);
-  font-weight: 600;
+  font-size: var(--md-type-body-md);
+  font-weight: var(--md-weight-medium);
   color: var(--md-on-surface);
 }
 .meta-val.highlight { color: var(--md-primary); }
 
-/* 策略卡片 */
-.strategy-badge {
-  font-size: var(--md-text-caption);
-  padding: 2px 8px;
-  border-radius: var(--md-radius-xs);
-  font-weight: 600;
-}
-.strategy-badge.good { background: var(--md-success-tint); color: var(--md-success); }
-.strategy-badge.warning { background: var(--md-warning-tint); color: var(--md-warning); }
-.strategy-badge.critical { background: var(--md-error-tint); color: var(--md-error); }
-
-.sugg-box {
+.strategy-card {
   display: flex;
-  gap: 10px;
-  background: var(--md-primary-container);
-  border-left: var(--md-accent-bar-width) solid var(--md-primary);
-  padding: 12px 14px;
-  border-radius: var(--md-radius-sm);
-  margin-bottom: 16px;
-  font-size: var(--md-text-label-md);
-  line-height: 1.5;
-  color: var(--md-on-primary-container);
-}
-.sugg-box.warning {
-  background: var(--md-warning-container);
-  border-left-color: var(--md-warning);
-  color: var(--md-on-warning-container);
+  flex-direction: column;
 }
 
+.strategy-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-space-4);
+  flex: 1;
+}
+
+.sugg-box .sugg-icon {
+  line-height: var(--md-type-body-lh-md);
+}
+
+/* 建议动作：列表行，分隔线分行，不用框 */
 .action-suggestions h4 {
-  font-size: var(--md-text-label-md);
-  margin: 0 0 10px 0;
+  font-size: var(--md-type-title-sm);
+  line-height: var(--md-type-title-lh-sm);
+  font-weight: var(--md-weight-medium);
+  margin: 0 0 var(--md-space-2);
   color: var(--md-on-surface);
+}
+
+.suggestion-list {
+  display: flex;
+  flex-direction: column;
 }
 
 .suggestion-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-sm);
-  margin-bottom: 8px;
+  gap: var(--md-space-3);
+  padding: var(--md-space-3) var(--md-space-2);
+  border-radius: var(--md-shape-small);
   cursor: pointer;
-  transition: all 0.2s ease;
+  border-bottom: 1px solid var(--md-outline-variant);
 }
-.suggestion-item:hover {
-  border-color: var(--md-primary);
-  background: var(--md-surface-container-high);
-}
-
-.item-icon { font-size: var(--md-text-body-lg); }
-.item-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.item-title { font-size: var(--md-text-label-md); font-weight: 600; color: var(--md-on-surface); }
-.item-sub { font-size: var(--md-text-caption); color: var(--md-on-surface-variant); }
-.arrow { color: var(--md-outline); font-weight: var(--md-weight-semibold); }
-
-/* 夜间调度区 */
-.nightshift-section {
-  background: var(--md-surface);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-md);
-  padding: 22px;
+.suggestion-item:last-child {
+  border-bottom: 0;
 }
 
+.item-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--md-shape-full);
+  background-color: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+  font-size: var(--md-type-label-md);
+  font-weight: var(--md-weight-medium);
+}
+.item-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.item-title { font-size: var(--md-type-body-md); font-weight: var(--md-weight-medium); color: var(--md-on-surface); }
+.item-sub { font-size: var(--md-type-body-sm); color: var(--md-on-surface-variant); }
+.arrow { color: var(--md-primary); }
+
+/* 夜间调度区：只靠间距与标题分组 */
 .section-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 20px;
+  gap: var(--md-space-4);
 }
 
-.sec-title {
-  font-size: var(--md-text-title-md);
-  font-weight: var(--md-weight-semibold);
-  margin: 0 0 6px 0;
-  color: var(--md-on-surface);
+.section-intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-space-1);
+  min-width: 0;
 }
 
 .sec-desc {
-  font-size: var(--md-text-label-md);
+  font-size: var(--md-type-body-md);
   color: var(--md-on-surface-variant);
   margin: 0;
   max-width: 800px;
-  line-height: 1.5;
 }
 
-.batch-table-container {
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-sm);
-  overflow: hidden;
-}
-
-.batch-dialog-input textarea {
+.batch-dialog-input :deep(textarea) {
   font-family: var(--md-font-mono);
-  font-size: var(--md-text-body-sm);
-  line-height: 1.5;
+  font-size: var(--md-type-body-sm);
 }
 
 @media (max-width: 900px) {
   .dashboard-grid { grid-template-columns: 1fr; }
-  .section-head { flex-direction: column; gap: 12px; }
+  .section-head { flex-direction: column; }
+  .metric-footer-grid { grid-template-columns: 1fr; }
 }
 </style>

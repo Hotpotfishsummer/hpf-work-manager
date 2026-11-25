@@ -1,15 +1,15 @@
 <template>
-  <div class="page-container idea-lab-view">
-    <div class="view-header">
+  <div class="page idea-lab-view">
+    <div class="page-head">
       <div>
         <h1 class="page-title">💡 灵感与规划推演工坊 (Idea Lab)</h1>
-        <p class="page-desc">由 AI 深度扫描本地代码库（Git/README/TODOs）或碰撞微型项目，推演高价值 Next Steps 并一键签发至 Agent 看板。</p>
+        <p class="page-sub">由 AI 深度扫描本地代码库（Git/README/TODOs）或碰撞微型项目，推演高价值 Next Steps 并一键签发至 Agent 看板。</p>
       </div>
-      <div class="header-actions">
-        <el-button @click="router.push('/')">
+      <div class="head-actions">
+        <el-button plain @click="router.push('/')">
           🎯 查看任务看板
         </el-button>
-        <el-button @click="router.push('/quota')">
+        <el-button plain @click="router.push('/quota')">
           ⚡ 算力调度雷达
         </el-button>
       </div>
@@ -18,7 +18,7 @@
     <el-tabs v-model="activeTab" class="lab-tabs">
       <!-- 既有项目 Next Steps 推演 -->
       <el-tab-pane label="🔍 现有项目体检与 Next Steps 推演" name="repo-analysis">
-        <div class="section-card">
+        <div class="lab-section">
           <div class="control-row">
             <div class="proj-picker">
               <span class="label">选择服务器代码库：</span>
@@ -30,7 +30,7 @@
                   :value="p.name"
                 >
                   <span style="float: left">{{ p.name }}</span>
-                  <span style="float: right; color: var(--md-on-surface-variant-2); font-size: var(--md-text-caption)">
+                  <span class="proj-option-kind">
                     {{ p.is_git ? 'Git' : 'Dir' }}
                   </span>
                 </el-option>
@@ -53,13 +53,13 @@
             </div>
 
             <div class="tasks-grid">
-              <div v-for="(item, idx) in suggestions" :key="idx" class="task-card">
+              <div v-for="(item, idx) in suggestions" :key="idx" class="md-card task-card">
                 <div class="card-top">
                   <div class="badge-row">
-                    <el-tag size="small" :type="categoryTag(item.category)" effect="plain">{{ item.category }}</el-tag>
-                    <el-tag size="small" :type="priorityTag(item.priority)" effect="light">{{ priorityLabel(item.priority) }}</el-tag>
+                    <span class="md-chip md-chip--sm" :class="categoryChip(item.category)">{{ item.category }}</span>
+                    <el-tag size="small" :type="priorityTag(item.priority)">{{ priorityLabel(item.priority) }}</el-tag>
                     <span class="hours" v-if="item.estimated_hours">⏱️ ~{{ item.estimated_hours }}h</span>
-                    <el-tag v-if="item.certified_by" size="small" type="info" effect="plain" class="cert-tag">
+                    <el-tag v-if="item.certified_by" size="small" type="info" class="cert-tag">
                       🛡️ {{ item.certified_by[0] }}
                     </el-tag>
                   </div>
@@ -81,6 +81,7 @@
                 <div class="card-footer">
                   <el-button
                     size="small"
+                    text
                     @click="copyPromptText(item)"
                   >
                     📋 复制 Prompt
@@ -102,13 +103,16 @@
             <div class="icon">📂</div>
             <div class="title">选择一个本地项目开始推演</div>
             <div class="sub">AI 将阅读 README、Git 记录及代码中的 TODO，为你提供架构治理、功能演进或测试保底方案。</div>
+            <el-button class="empty-action" type="primary" :disabled="!selectedProject" @click="runAnalysis">
+              🚀 开始深度体检
+            </el-button>
           </div>
         </div>
       </el-tab-pane>
 
       <!-- 全新灵感碰撞机 -->
       <el-tab-pane label="✨ 全新项目灵感孵化机" name="spark">
-        <div class="section-card">
+        <div class="lab-section">
           <div class="spark-control-box">
             <div class="spark-input-row">
               <el-input
@@ -140,8 +144,8 @@
                 v-for="preset in sparkPresets"
                 :key="preset"
                 type="button"
-                class="preset-pill"
-                :class="{ 'is-active': sparkTheme === preset }"
+                class="md-chip md-chip--sm preset-pill"
+                :class="{ 'is-selected': sparkTheme === preset }"
                 @click="sparkTheme = preset"
               >
                 {{ preset }}
@@ -155,7 +159,7 @@
           </div>
 
           <div v-else-if="ideas.length > 0" class="ideas-grid">
-            <div v-for="(idea, idx) in ideas" :key="idx" class="idea-card">
+            <div v-for="(idea, idx) in ideas" :key="idx" class="md-card idea-card">
               <div class="idea-top">
                 <h3 class="idea-title">{{ idea.title }}</h3>
                 <div class="idea-tagline">“{{ idea.tagline }}”</div>
@@ -189,6 +193,7 @@
               <div class="idea-footer">
                 <el-button
                   size="small"
+                  text
                   @click="copyIdeaPrompt(idea)"
                 >
                   📋 复制 Prompt
@@ -209,6 +214,9 @@
             <div class="icon">💡</div>
             <div class="title">缺少新项目灵感？选个主题一键碰撞</div>
             <div class="sub">AI 将为你设计轻量可行、1~2 个周末即可用 Harness 闭环的有趣项目原型。</div>
+            <el-button class="empty-action" type="primary" :disabled="!sparkTheme.trim()" @click="runBrainstorm">
+              ✨ 碰撞生成灵感
+            </el-button>
           </div>
         </div>
       </el-tab-pane>
@@ -350,12 +358,13 @@ async function applyIdea(idea: any, idx: number) {
   }
 }
 
-function categoryTag(cat: string) {
-  if (cat === 'architecture' || cat === '架构') return 'warning'
-  if (cat === 'feature' || cat === '功能') return 'primary'
-  if (cat === 'testing' || cat === '测试') return 'success'
-  if (cat === 'refactor' || cat === '重构') return 'info'
-  return 'info'
+/** 纯展示：分类 → 色调芯片（新功能→accent-1，重构→accent-3，测试→accent-4，架构→secondary，未分类→neutral） */
+function categoryChip(cat: string) {
+  if (cat === 'feature' || cat === '功能') return 'md-chip--accent-1'
+  if (cat === 'refactor' || cat === '重构') return 'md-chip--accent-3'
+  if (cat === 'testing' || cat === '测试') return 'md-chip--accent-4'
+  if (cat === 'architecture' || cat === '架构') return 'md-chip--secondary'
+  return 'md-chip--neutral'
 }
 
 function priorityTag(p: string) {
@@ -376,60 +385,29 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.idea-lab-view {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 24px;
+.lab-tabs {
+  margin-top: var(--md-space-2);
 }
 
-.view-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: var(--md-text-title-lg);
-  font-weight: var(--md-weight-semibold);
-  margin: 0 0 6px 0;
-  color: var(--md-on-surface);
-}
-
-.page-desc {
-  margin: 0;
-  font-size: var(--md-text-label-md);
-  color: var(--md-on-surface-variant);
-  max-width: 800px;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.section-card {
-  background: var(--md-surface);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-md);
-  padding: 24px;
+.lab-section {
+  padding-top: var(--md-space-5);
   min-height: 500px;
 }
 
+/* ---- 孵化机输入区 ---- */
 .spark-control-box {
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  margin-bottom: var(--md-space-5);
+  padding-bottom: var(--md-space-4);
   border-bottom: 1px solid var(--md-outline-variant);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--md-space-3);
 }
 
 .spark-input-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--md-space-3);
 }
 
 .spark-main-input {
@@ -438,165 +416,156 @@ onMounted(() => {
 }
 
 .spark-prefix-icon {
-  margin-right: 4px;
-  font-size: var(--md-text-body-lg);
+  margin-right: var(--md-space-1);
+  font-size: var(--md-type-body-lg);
 }
 
 .spark-presets-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--md-space-2);
   flex-wrap: wrap;
 }
 
 .presets-label {
-  font-size: var(--md-text-body-sm);
+  font-size: var(--md-type-body-sm);
   color: var(--md-on-surface-variant);
-  font-weight: 500;
+  font-weight: var(--md-weight-medium);
 }
 
+/* 预设方向：可选芯片，选中用 secondary-container 色块 */
 .preset-pill {
-  background: var(--md-surface-container);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-pill);
-  padding: 4px 12px;
-  font-size: var(--md-text-body-sm);
-  color: var(--md-on-surface-variant);
   cursor: pointer;
-  transition: all 0.15s ease;
+  border: 0;
+  font-family: inherit;
 }
-
 .preset-pill:hover {
-  background: var(--md-surface-container-high);
-  border-color: var(--md-primary);
-  color: var(--md-primary);
+  background-color: var(--md-surface-container-highest);
+  color: var(--md-on-surface);
+}
+.preset-pill.is-selected {
+  background-color: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
 }
 
-.preset-pill.is-active {
-  background: var(--md-primary-tint);
-  border-color: var(--md-primary);
-  color: var(--md-primary);
-  font-weight: 600;
-}
-
+/* ---- 体检输入区 ---- */
 .control-row {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  gap: var(--md-space-4);
+  margin-bottom: var(--md-space-5);
+  padding-bottom: var(--md-space-4);
   border-bottom: 1px solid var(--md-outline-variant);
 }
 
 .proj-picker {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--md-space-2);
 }
 
 .proj-picker .label {
-  font-size: var(--md-text-label-md);
-  font-weight: 500;
+  font-size: var(--md-type-body-md);
+  font-weight: var(--md-weight-medium);
   color: var(--md-on-surface);
 }
 
+.proj-option-kind {
+  float: right;
+  color: var(--md-on-surface-variant);
+  font-size: var(--md-type-body-sm);
+}
+
 .loading-state {
-  padding: 40px 20px;
+  padding: var(--md-space-7) var(--md-space-5);
   text-align: center;
 }
 
 .loading-tip {
-  margin-top: 16px;
-  font-size: var(--md-text-label-md);
+  margin-top: var(--md-space-4);
+  font-size: var(--md-type-body-md);
   color: var(--md-primary);
 }
 
 .sub-header {
-  margin-bottom: 20px;
+  margin-bottom: var(--md-space-5);
 }
 
 .sub-header h3 {
-  font-size: var(--md-text-title-md);
-  margin: 0 0 4px 0;
-  color: var(--md-on-surface);
+  margin: 0 0 var(--md-space-1);
 }
 
 .sub-header .tip {
-  font-size: var(--md-text-body-sm);
+  font-size: var(--md-type-body-sm);
   color: var(--md-on-surface-variant);
 }
 
-.tasks-grid {
+.tasks-grid,
+.ideas-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: 18px;
+  gap: var(--md-space-5);
 }
 
-.task-card {
-  background: var(--md-surface-container-low);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-sm);
-  padding: 18px;
+/* ---- 推演结果卡：填充式卡片，不描边 ---- */
+.task-card,
+.idea-card {
+  padding: var(--md-card-padding-lg);
   display: flex;
   flex-direction: column;
-  transition: all 0.2s ease;
-}
-
-.task-card:hover {
-  border-color: var(--md-primary);
-  box-shadow: var(--md-shadow-1);
 }
 
 .badge-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: var(--md-space-2);
+  margin-bottom: var(--md-space-2);
 }
 
 .badge-row .hours {
-  font-size: var(--md-text-caption);
+  font-size: var(--md-type-body-sm);
   color: var(--md-on-surface-variant);
   margin-left: auto;
 }
 
 .task-title {
-  font-size: var(--md-text-body-lg);
-  font-weight: 600;
-  margin: 0 0 10px 0;
+  margin: 0 0 var(--md-space-3);
+  font-size: var(--md-type-title-md);
+  line-height: var(--md-type-title-lh-md);
+  font-weight: var(--md-weight-medium);
   color: var(--md-on-surface);
 }
 
 .reason-box {
-  background: var(--md-warning-container);
-  border-left: var(--md-accent-bar-width) solid var(--md-warning);
-  padding: 8px 10px;
-  border-radius: var(--md-radius-xs);
-  font-size: var(--md-text-body-sm);
-  line-height: 1.45;
-  margin-bottom: 12px;
-  color: var(--md-on-warning-container);
+  background-color: var(--md-surface-container-high);
+  border-radius: var(--md-shape-small);
+  padding: var(--md-space-2) var(--md-space-3);
+  font-size: var(--md-type-body-sm);
+  line-height: var(--md-type-body-lh-sm);
+  margin-bottom: var(--md-space-3);
+  color: var(--md-on-surface-variant);
 }
 
 .desc-box {
-  background: var(--md-surface);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-sm);
-  padding: 10px;
-  margin-bottom: 16px;
+  background-color: var(--md-surface-container-high);
+  border-radius: var(--md-shape-small);
+  padding: var(--md-space-3);
+  margin-bottom: var(--md-space-4);
   flex: 1;
 }
 
-.desc-header {
+.desc-header,
+.p-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 6px;
 }
 
-.desc-label {
-  font-size: var(--md-text-caption);
-  font-weight: 600;
+.desc-label,
+.p-label {
+  font-size: var(--md-type-body-sm);
+  font-weight: var(--md-weight-medium);
   color: var(--md-on-surface-variant);
 }
 
@@ -605,14 +574,15 @@ onMounted(() => {
   border: none;
   color: var(--md-primary);
   cursor: pointer;
-  font-size: var(--md-text-caption);
-  padding: 0;
+  font: inherit;
+  font-size: var(--md-type-label-md);
+  padding: 0 var(--md-space-1);
 }
 .text-copy-btn:hover { text-decoration: underline; }
 
 .desc-content {
-  font-size: var(--md-text-body-sm);
-  line-height: 1.5;
+  font-size: var(--md-type-body-sm);
+  line-height: var(--md-type-body-lh-sm);
   color: var(--md-on-surface);
   white-space: pre-wrap;
   margin: 0;
@@ -621,104 +591,81 @@ onMounted(() => {
   overflow-y: auto;
 }
 
-.card-footer {
+.card-footer,
+.idea-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 10px;
-  border-top: 1px dashed var(--md-outline-variant);
+  padding-top: var(--md-space-3);
+  border-top: 1px solid var(--md-outline-variant);
 }
 
-/* 灵感孵化机 */
-.ideas-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: 20px;
-}
-
-.idea-card {
-  background: var(--md-surface-container-low);
-  border: 1px solid var(--md-outline-variant);
-  border-radius: var(--md-radius-md);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-}
-
+/* ---- 灵感卡 ---- */
 .idea-top {
-  margin-bottom: 12px;
+  margin-bottom: var(--md-space-3);
 }
 
 .idea-title {
-  font-size: var(--md-text-title-md);
-  font-weight: var(--md-weight-semibold);
-  margin: 0 0 4px 0;
-  color: var(--md-on-surface);
+  margin: 0 0 var(--md-space-1);
 }
 
 .idea-tagline {
-  font-size: var(--md-text-label-md);
+  font-size: var(--md-type-body-md);
   color: var(--md-primary);
   font-style: italic;
 }
 
 .idea-section {
-  margin-bottom: 10px;
-  font-size: var(--md-text-label-md);
-  line-height: 1.45;
+  margin-bottom: var(--md-space-2);
+  font-size: var(--md-type-body-md);
+  line-height: var(--md-type-body-lh-md);
 }
 
-.sec-label { font-weight: 600; color: var(--md-on-surface); }
+.sec-label { font-weight: var(--md-weight-medium); color: var(--md-on-surface); }
 .sec-text { color: var(--md-on-surface-variant); }
-.code-font { font-family: var(--md-font-mono); background: var(--md-surface); padding: 1px 4px; border-radius: var(--md-radius-xs); }
+.code-font { font-family: var(--md-font-mono); background: var(--md-surface-container-high); padding: 0 var(--md-space-1); border-radius: var(--md-shape-extra-small); }
 
 .mvp-list {
-  margin: 4px 0 0 18px;
+  margin: var(--md-space-1) 0 0 var(--md-space-4);
   padding: 0;
-  font-size: var(--md-text-body-sm);
+  font-size: var(--md-type-body-sm);
   color: var(--md-on-surface-variant);
 }
 
 .prompt-preview {
-  background: var(--md-surface);
-  border: 1px dashed var(--md-outline-variant);
-  border-radius: var(--md-radius-sm);
-  padding: 10px;
-  font-size: var(--md-text-body-sm);
-  margin-top: 8px;
-  margin-bottom: 14px;
+  background-color: var(--md-surface-container-high);
+  border-radius: var(--md-shape-small);
+  padding: var(--md-space-3);
+  font-size: var(--md-type-body-sm);
+  margin-top: var(--md-space-2);
+  margin-bottom: var(--md-space-3);
 }
-
-.p-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4px;
-}
-
-.p-label { font-weight: 600; color: var(--md-on-surface-variant); font-size: var(--md-text-caption); }
 
 .prompt-preview code {
   color: var(--md-on-surface);
   word-break: break-all;
   white-space: pre-wrap;
-  font-size: var(--md-text-caption);
+  font-size: var(--md-type-body-sm);
+  line-height: var(--md-type-body-lh-sm);
 }
 
-.idea-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 12px;
-  border-top: 1px dashed var(--md-outline-variant);
-}
-
+/* ---- 空状态：居中文案 + 一个明确的下一步操作 ---- */
 .empty-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--md-space-2);
   text-align: center;
-  padding: 60px 20px;
+  padding: var(--md-space-8) var(--md-space-5);
 }
 
-.empty-placeholder .icon { font-size: var(--md-text-display-xl); margin-bottom: 12px; }
-.empty-placeholder .title { font-size: var(--md-text-title-md); font-weight: 600; margin-bottom: 6px; color: var(--md-on-surface); }
-.empty-placeholder .sub { font-size: var(--md-text-label-md); color: var(--md-on-surface-variant); max-width: 480px; margin: 0 auto; }
+.empty-placeholder .icon { font-size: var(--md-type-display-sm); line-height: var(--md-type-display-lh-sm); }
+.empty-placeholder .title { font-size: var(--md-type-title-md); font-weight: var(--md-weight-medium); }
+.empty-placeholder .sub { font-size: var(--md-type-body-md); color: var(--md-on-surface-variant); max-width: 480px; }
+.empty-action { margin-top: var(--md-space-3); }
+
+@media (max-width: 900px) {
+  .control-row,
+  .spark-input-row { flex-direction: column; align-items: stretch; }
+}
 </style>

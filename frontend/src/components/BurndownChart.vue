@@ -27,8 +27,8 @@ function buildOption() {
     animationDuration: 300,
     tooltip: {
       trigger: 'axis',
-      backgroundColor: chartColors.surface,
-      borderColor: chartColors.outlineVariant,
+      backgroundColor: chartColors.surfaceContainerLow,
+      borderWidth: 0,
       textStyle: { color: chartColors.onSurface, fontFamily: font, fontWeight: 400 },
     },
     legend: {
@@ -50,6 +50,7 @@ function buildOption() {
     },
     yAxis: {
       type: 'value',
+      axisLine: { show: false },
       minInterval: 1,
       splitLine: { lineStyle: { color: chartColors.outlineVariant } },
       axisLabel: { color: chartColors.onSurfaceVariant, fontFamily: font, fontWeight: 400 },
@@ -61,8 +62,8 @@ function buildOption() {
         data: props.data.map((d) => d.ideal_remaining),
         smooth: true,
         symbol: 'none',
-        lineStyle: { color: chartColors.onSurfaceVariant, width: 2 },
-        itemStyle: { color: chartColors.onSurfaceVariant },
+        lineStyle: { color: chartColors.outline, width: 2, type: 'dashed' as const },
+        itemStyle: { color: chartColors.outline },
       },
       {
         name: '实际剩余',
