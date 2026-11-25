@@ -212,21 +212,14 @@ async def test_dev_log_mcp_tools(mcp_client, test_project, test_task):
     names = [t["name"] for t in data["result"]["tools"]]
 
     expected_tools = [
-        "log_progress",
-        "log_difficulty",
-        "log_todo",
-        "log_decision",
-        "log_blocker",
-        "log_note",
+        "log_dev_entry",
         "start_dev_session",
         "end_dev_session",
         "list_dev_logs",
-        "get_dev_log_stats_mcp",
+        "get_project_stats",
         "get_project_state",
         "get_dev_report",
-        "update_dev_log",
-        "delete_dev_log",
-        "resolve_dev_log",
+        "manage_dev_log",
     ]
     for expect in expected_tools:
         assert expect in names, f"缺少 MCP 工具 {expect}"
@@ -253,8 +246,8 @@ async def test_dev_log_mcp_tools(mcp_client, test_project, test_task):
             "id": 4,
             "method": "tools/call",
             "params": {
-                "name": "log_progress",
-                "arguments": {"project_id": test_project.id, "title": "MCP 进展", "git_ref": "abc"},
+                "name": "log_dev_entry",
+                "arguments": {"project_id": test_project.id, "entry_type": "progress", "title": "MCP 进展", "git_ref": "abc"},
             },
         },
     )
@@ -268,8 +261,8 @@ async def test_dev_log_mcp_tools(mcp_client, test_project, test_task):
             "id": 5,
             "method": "tools/call",
             "params": {
-                "name": "log_difficulty",
-                "arguments": {"project_id": test_project.id, "title": "异步坑", "severity": "high"},
+                "name": "log_dev_entry",
+                "arguments": {"project_id": test_project.id, "entry_type": "difficulty", "title": "异步坑", "severity": "high"},
             },
         },
     )
@@ -294,7 +287,7 @@ async def test_dev_log_mcp_tools(mcp_client, test_project, test_task):
             "jsonrpc": "2.0",
             "id": 7,
             "method": "tools/call",
-            "params": {"name": "get_dev_log_stats_mcp", "arguments": {"project_id": test_project.id}},
+            "params": {"name": "get_project_stats", "arguments": {"project_id": test_project.id, "kind": "devlog"}},
         },
     )
     assert '"open_difficulties"' in parse_sse_text(resp.text)["result"]["content"][0]["text"]

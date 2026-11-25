@@ -5,6 +5,28 @@
 
 ## [Unreleased]
 
+### 2026-11-25 · MCP 工具面合并瘦身（44 → 28）✅
+
+- **动机**：实测 44 个工具的 schema 序列化约 26.4 KB（约 7.5k tokens），每个挂载该
+  server 的 Agent 会话每一轮都要付这笔上下文成本；且库内数据显示部分能力从未被使用
+  （`task_dependencies` 0 行、评论 6 条）。
+- **合并方案**（能力无损，均在 MCP 内或 REST 可达）：
+  - 6 个 `log_progress/difficulty/todo/decision/blocker/note` → 合一为
+    `log_dev_entry(entry_type, ...)`，severity 缺省规则保持（difficulty→medium、blocker→high）。
+  - 依赖管理 `add/remove/list_task_dependencies` → 并入 `update_task`
+    （新增 `add_depends_on` / `remove_depends_on` 参数）与 `get_task`
+    （新增 `depends_on_detail` 富信息：名称/状态/进度）。
+  - 4 个统计接口 `get_project_stats_mcp` / `get_burndown_mcp` / `get_gantt_mcp` /
+    `get_dev_log_stats_mcp` → 合一为 `get_project_stats(project_id, kind)`，
+    `kind ∈ overview / burndown / gantt / devlog`，返回 `{"kind", "data"}`。
+  - `update/delete/resolve_dev_log` → 合一为 `manage_dev_log(log_id, action, ...)`，
+    `action ∈ update / resolve / delete`。
+  - `delete_comment` 移出 MCP（前端 UI / REST `DELETE /api/comments/{id}` 保留）。
+  - `brainstorm_ideas` / `sync_local_projects` 移出 MCP
+    （前端 UI / REST `/api/ideator/brainstorm`、`/api/ideator/sync-projects` 保留）。
+- **效果**：线上 `tools/list` 由 22.1 KB 降至 16.6 KB（-25%），工具数 -36%。
+- 测试：`test_mcp_e2e.py` / `test_dev_logs.py` 同步改用新工具面，全套 165 通过。
+
 ### 2026-11 · 基础设施与安全修复 ✅
 
 - **备份静默失效（严重）**：backup 容器只注入 `POSTGRES_PASSWORD`，而 `pg_dump` 只认

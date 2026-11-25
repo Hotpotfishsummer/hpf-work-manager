@@ -54,6 +54,15 @@ async def test_mcp_tools_list(mcp_client):
     assert "list_projects" in names
     assert "create_project" in names
     assert "create_task" in names
+    # 合并后的新工具面（44 → 28）
+    assert "log_dev_entry" in names
+    assert "manage_dev_log" in names
+    assert "get_project_stats" in names
+    # 已移除的旧工具不应再出现
+    assert "log_progress" not in names
+    assert "add_task_dependency" not in names
+    assert "get_burndown_mcp" not in names
+    assert "delete_comment" not in names
 
 
 @pytest.mark.asyncio
@@ -268,39 +277,53 @@ async def test_mcp_task_status_filter(mcp_client, test_project):
     assert "Task todo" not in tasks
 
 @pytest.mark.asyncio
-async def test_mcp_list_task_dependencies(mcp_client, test_project, test_task):
-    """Test MCP list_task_dependencies tool (P2-1 补齐)."""
+async def test_mcp_task_dependencies_via_update_task(mcp_client, test_project, test_task):
+    """依赖管理并入 update_task / get_task（原 list_task_dependencies 已合并）。"""
     from app.database import AsyncSessionLocal
-    from app.models import Task, TaskDependency
+    from app.models import Task
 
     async with AsyncSessionLocal() as db:
         dep = Task(project_id=test_project.id, name="前置任务", status="todo", progress=0)
         db.add(dep)
-        await db.flush()
-        dep_id = dep.id
-        db.add(TaskDependency(task_id=test_task.id, depends_on_task_id=dep_id))
         await db.commit()
+        await db.refresh(dep)
+        dep_id = dep.id
 
     sid = await test_mcp_auth_initialize(mcp_client)
     headers = {**mcp_client.headers, "mcp-session-id": sid}
 
-    resp = await mcp_client.post(
-        "/mcp/",
-        headers=headers,
-        json={
-            "jsonrpc": "2.0",
-            "id": 30,
-            "method": "tools/call",
-            "params": {"name": "list_task_dependencies", "arguments": {"task_id": test_task.id}},
-        },
+    async def call(name, arguments, rid=30):
+        resp = await mcp_client.post(
+            "/mcp/",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": rid,
+                "method": "tools/call",
+                "params": {"name": name, "arguments": arguments},
+            },
+        )
+        assert resp.status_code == 200
+        data = parse_sse_text(resp.text)
+        assert data["result"].get("isError") is not True, data
+        return "".join(b.get("text", "") for b in data["result"]["content"])
+
+    # 通过 update_task 添加依赖
+    updated = await call(
+        "update_task", {"task_id": test_task.id, "add_depends_on": [dep_id]}, rid=30
     )
-    data = parse_sse_text(resp.text)
-    assert resp.status_code == 200
-    result = data["result"]
-    assert result.get("isError") is not True
-    content = result["content"][0]["text"]
-    assert "前置任务" in content
-    assert str(dep_id) in content
+    assert str(dep_id) in updated
+
+    # get_task 返回 depends_on 与富信息 depends_on_detail
+    detail = await call("get_task", {"task_id": test_task.id}, rid=31)
+    assert "前置任务" in detail
+    assert "depends_on_detail" in detail
+
+    # 通过 update_task 移除依赖
+    removed = await call(
+        "update_task", {"task_id": test_task.id, "remove_depends_on": [dep_id]}, rid=32
+    )
+    assert '"depends_on": []' in removed
 
 
 @pytest.mark.asyncio
@@ -348,3 +371,64 @@ async def test_mcp_list_tools_pagination_and_search(mcp_client, test_project):
     assert "特殊搜索目标" in searched
     searched2 = await call("list_tasks", {"project_id": test_project.id, "search": "分页任务"})
     assert "分页任务0" in searched2
+
+
+@pytest.mark.asyncio
+async def test_mcp_merged_tools_roundtrip(mcp_client, test_project):
+    """合并后的 log_dev_entry / manage_dev_log / get_project_stats 端到端。"""
+    sid = await test_mcp_auth_initialize(mcp_client)
+    headers = {**mcp_client.headers, "mcp-session-id": sid}
+
+    async def call(name, arguments, rid):
+        resp = await mcp_client.post(
+            "/mcp/",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": rid,
+                "method": "tools/call",
+                "params": {"name": name, "arguments": arguments},
+            },
+        )
+        assert resp.status_code == 200
+        data = parse_sse_text(resp.text)
+        assert data["result"].get("isError") is not True, data
+        return "".join(b.get("text", "") for b in data["result"]["content"])
+
+    # log_dev_entry：写一条 todo（默认 severity 逻辑不应对 todo 报错）
+    todo_text = await call(
+        "log_dev_entry",
+        {"project_id": test_project.id, "entry_type": "todo", "title": "待办X"},
+        rid=50,
+    )
+    log_id = int(re.search(r'"id": (\d+)', todo_text).group(1))
+
+    # manage_dev_log：resolve todo
+    resolved = await call(
+        "manage_dev_log", {"log_id": log_id, "action": "resolve"}, rid=51
+    )
+    assert '"status": "done"' in resolved
+
+    # manage_dev_log：update title
+    updated = await call(
+        "manage_dev_log",
+        {"log_id": log_id, "action": "update", "title": "待办X-改"},
+        rid=52,
+    )
+    assert "待办X-改" in updated
+
+    # manage_dev_log：delete
+    deleted = await call(
+        "manage_dev_log", {"log_id": log_id, "action": "delete"}, rid=53
+    )
+    assert '"ok": true' in deleted
+
+    # get_project_stats：overview 与 devlog 两种 kind
+    overview = await call(
+        "get_project_stats", {"project_id": test_project.id, "kind": "overview"}, rid=54
+    )
+    assert "total_tasks" in overview
+    devlog = await call(
+        "get_project_stats", {"project_id": test_project.id, "kind": "devlog"}, rid=55
+    )
+    assert "today_count" in devlog
