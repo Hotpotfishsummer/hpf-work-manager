@@ -137,19 +137,6 @@
       "notes": "chartColors 补 warning/warningFill/primaryContainer/errorContainer；截图含甘特图例深色"
     },
     {
-      "id": "F010",
-      "category": "style",
-      "priority": "medium",
-      "description": "间距与密度：padding/margin/gap 的 4px 基准裸值替换为 --md-space-* 令牌（calc 与 hairline 1px 边框除外）",
-      "steps": [
-        "`rg '(padding|margin|gap)[a-z-]*:[^;]*\\d+px' frontend/src -g '*.vue'` 命中仅剩非 4px 栅格值或 calc",
-        "vitest 全绿、build 0"
-      ],
-      "passes": false,
-      "blocked": true,
-      "notes": "⚠️ 待用户裁决：约 280 处间距裸值中约三分之一不在 4px 栅格（6/10/14/20px），需先决定「加半档令牌」还是「就近吸附」，否则机械替换会改变布局"
-    },
-    {
       "id": "F011",
       "category": "docs",
       "priority": "medium",
@@ -174,6 +161,62 @@
       "passes": true,
       "blocked": false,
       "notes": "docs/assets/design-audit/ 12 张；目检 cockpit/quota(浅深)、ideas-dark、gantt-dark 无破相；空态页未覆盖有数据图表"
+    },
+    {
+      "id": "F013",
+      "title": "M3 令牌层重做",
+      "description": "用官方算法从种子色生成完整 M3 色调调色板（表面五档、主/次/第三色、成功/警告、6 个强调色族），补状态层/高度/字阶/形状/动效令牌，旧令牌名全部映射到新角色，闸门新增「分区细边框」规则",
+      "passes": false,
+      "notes": "",
+      "blocked": false
+    },
+    {
+      "id": "F014",
+      "title": "M3 控件层",
+      "description": "Element Plus 与全局基础样式改为 M3 形态：填充式输入框、tonal/实心/描边/文字四级按钮、药丸指示器页签、无描边表格与卡片、浮层只靠阴影",
+      "passes": false,
+      "notes": "",
+      "blocked": false
+    },
+    {
+      "id": "F015",
+      "title": "导航骨架重构",
+      "description": "顶层目的地从顶栏页签改为导航栏（宽屏）/底部导航栏（窄屏），顶栏只留标题与状态；配额/连接状态用色调芯片",
+      "passes": false,
+      "notes": "",
+      "blocked": false
+    },
+    {
+      "id": "F016",
+      "title": "任务看板与任务卡",
+      "description": "驾驶舱页按 M3 重排：分区靠表面色阶与间距，筛选用筛选芯片，状态/优先级/分类用色调芯片，一组操作只留一个实心按钮；任务卡改填充式",
+      "passes": false,
+      "notes": "",
+      "blocked": false
+    },
+    {
+      "id": "F017",
+      "title": "项目域页面",
+      "description": "项目列表/详情/任务看板/甘特/开发日志/评论面板按 M3 重排，去掉分区细边框",
+      "passes": false,
+      "notes": "",
+      "blocked": false
+    },
+    {
+      "id": "F018",
+      "title": "算力与灵感页面",
+      "description": "算力雷达、灵感工坊及其图表按 M3 重排，健康度用色调容器表达",
+      "passes": false,
+      "notes": "",
+      "blocked": false
+    },
+    {
+      "id": "F019",
+      "title": "文档与验收",
+      "description": "DESIGN.md 重写为 M3 设计源（含方法论来源），README/CHANGELOG 同步，双主题×宽窄屏截图验收，自审清单打分",
+      "passes": false,
+      "notes": "",
+      "blocked": false
     }
   ]
 }
